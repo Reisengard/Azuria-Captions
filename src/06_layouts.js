@@ -29,8 +29,9 @@ J.mainDraw = (env, it) => {
   if (en !== J.ENTER.cut && (pIn < 1 || en.pieces)) { env.lt = ltI; en.apply(env, it, pIn, ctx); env.lt = lt0; }
   if (ltI < 0 && !en.pieces) return null;
   const amt = J.clamp((ltI - cut.inDur * 0.85) / 0.25) * (1 - pOut);
-  if (amt > 0 && !it.noHold) ho.apply(env, it, amt, ctx);
+  if (amt > 0 && !it.noHold) ho.apply(env, it, amt * (cut.holdStrength ?? 1), ctx);   // holdStrength: a caption's hold setting (Lyric Motion leaves it unset)
   if (pOut > 0 && ex !== J.EXIT.cut) ex.apply(env, it, pOut, ctx);
+  if (J.prepareCaptionActiveItem && it.captionActive) J.prepareCaptionActiveItem(env, it);
   it.charFn = J.combineChar(it.charFns);
   it.pieceFn = J.combinePiece(it.pieceFns);
   return J.drawFx(env, it);

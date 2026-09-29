@@ -222,6 +222,8 @@ J.drawItem = (env, it) => {
     if (crot) ctx.rotate(crot * J.DEG);
     if (c && c.skew) ctx.transform(1, 0, Math.tan(c.skew * J.DEG), 1, 0, 0);
     if (csx !== 1 || csy !== 1) ctx.scale(csx, csy);
+    if (!ghostPass && c && c.font) ctx.font = J.fontCSS(c.font, size);                  // per-glyph second font (caption roles)
+    if (!ghostPass && c && c.weight && J.varFontCSS) ctx.font = J.varFontCSS(it.font, size, J.clamp((c.weight - 100) / 800));
     if (c && (c.clipY || c.clipX)) {           // per-glyph mask, in fractions of the glyph box (centre = 0)
       const cy = c.clipY || [-0.7, 0.7], cx = c.clipX || [-0.7, 0.7];
       ctx.beginPath(); ctx.rect(cx[0] * g.w, cy[0] * g.h, (cx[1] - cx[0]) * g.w, (cy[1] - cy[0]) * g.h); ctx.clip();

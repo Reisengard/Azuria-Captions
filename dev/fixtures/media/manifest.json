@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "license": "CC0-1.0",
+  "provenance": "Deterministically synthesized from FFmpeg lavfi sources by generate.ps1; contains no recorded or personal media.",
+  "outputDirectory": "generated",
+  "fixtures": [
+    {
+      "file": "portrait-15s-30fps-av.mp4",
+      "purpose": "Primary supported portrait input with timestamp slate and speech-like synthetic tones",
+      "duration": 15,
+      "width": 1080,
+      "height": 1920,
+      "frameRate": 30,
+      "container": "mp4",
+      "videoCodec": "h264",
+      "pixelFormat": "yuv420p",
+      "hasAudio": true,
+      "audioCodec": "aac",
+      "audioSampleRate": 48000,
+      "transcript": "../captions/word-timestamps.json"
+    },
+    {
+      "file": "landscape-10s-30fps-av.mp4",
+      "purpose": "Landscape preview regression",
+      "duration": 10,
+      "width": 1280,
+      "height": 720,
+      "frameRate": 30,
+      "container": "mp4",
+      "videoCodec": "h264",
+      "pixelFormat": "yuv420p",
+      "hasAudio": true,
+      "audioCodec": "aac",
+      "audioSampleRate": 48000,
+      "transcript": "../captions/word-timestamps.json"
+    },
+    {
+      "file": "portrait-5s-30fps-silent.mp4",
+      "purpose": "No-audio handling",
+      "duration": 5,
+      "width": 720,
+      "height": 1280,
+      "frameRate": 30,
+      "container": "mp4",
+      "videoCodec": "h264",
+      "pixelFormat": "yuv420p",
+      "hasAudio": false,
+      "audioCodec": null,
+      "audioSampleRate": null,
+      "transcript": null
+    },
+    {
+      "file": "portrait-5s-24fps-av.mp4",
+      "purpose": "24 fps normalization diagnostic",
+      "duration": 5,
+      "width": 720,
+      "height": 1280,
+      "frameRate": 24,
+      "container": "mp4",
+      "videoCodec": "h264",
+      "pixelFormat": "yuv420p",
+      "hasAudio": true,
+      "audioCodec": "aac",
+      "audioSampleRate": 48000,
+      "transcript": null
+    },
+    {
+      "file": "portrait-5s-60fps-av.mp4",
+      "purpose": "60 fps normalization diagnostic",
+      "duration": 5,
+      "width": 720,
+      "height": 1280,
+      "frameRate": 60,
+      "container": "mp4",
+      "videoCodec": "h264",
+      "pixelFormat": "yuv420p",
+      "hasAudio": true,
+      "audioCodec": "aac",
+      "audioSampleRate": 48000,
+      "transcript": null
+    }
+  ]
+}

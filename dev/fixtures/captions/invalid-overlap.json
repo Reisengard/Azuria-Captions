@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "language": "en",
+  "timingQuality": "word",
+  "tokens": [
+    { "id": "word_overlap_1", "text": "One", "normalizedText": "one", "start": 0.2, "end": 0.8, "source": "fixture", "timingQuality": "word" },
+    { "id": "word_overlap_2", "text": "Two", "normalizedText": "two", "start": 0.7, "end": 1.1, "source": "fixture", "timingQuality": "word" }
+  ],
+  "expectedError": { "code": "TOKEN_TIMING_OVERLAP", "tokenId": "word_overlap_2", "previousTokenId": "word_overlap_1" }
+}

@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "language": "en",
+  "timingQuality": "word",
+  "tokens": [
+    { "id": "word_bad_negative", "text": "Before", "normalizedText": "before", "start": -0.1, "end": 0.2, "source": "fixture", "timingQuality": "word" }
+  ],
+  "expectedError": { "code": "TOKEN_START_NEGATIVE", "tokenId": "word_bad_negative" }
+}

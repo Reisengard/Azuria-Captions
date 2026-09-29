@@ -100,7 +100,7 @@ reg('treat', 'outline', { name: '袋文字', tags: ['graphic', 'pop', 'glitch', 
   plan: rng => ({ k: rng.range(0.022, 0.038) }),
   apply(env, it, P) {
     if (!alive(it, 0.5) || inPieces(env, it)) return;
-    it.strokeColor = colOf(env, it); it.fill = false;
+    it.strokeColor = P.color || colOf(env, it); it.fill = false;
     sized(it, env, i => { i.stroke = Math.max(1.4, i.size * (P.k || 0.03)); });
   } });
 
@@ -109,7 +109,7 @@ reg('treat', 'outlineFill', { name: '縁取り', tags: ['pop', 'graphic'], w: 1,
   apply(env, it, P) {
     if (!alive(it)) return;
     const sc = env.sc, col = colOf(env, it);
-    it.strokeColor = P.c === 2 ? firstOK([sc.accent2, sc.accent], c => ctr(c, col) >= 1.8, accentFor(sc, col, 1.8)) : accentFor(sc, col, 1.8);
+    it.strokeColor = P.color || (P.c === 2 ? firstOK([sc.accent2, sc.accent], c => ctr(c, col) >= 1.8, accentFor(sc, col, 1.8)) : accentFor(sc, col, 1.8));
     it.strokeUnder = true;
     sized(it, env, i => { i.stroke = Math.max(2, i.size * (P.k || 0.09)); });
   } });
@@ -119,7 +119,7 @@ reg('treat', 'doubleOutline', { name: '二重縁', tags: ['pop', 'graphic'], w: 
   apply(env, it, P) {
     if (!alive(it)) return;
     const sc = env.sc, col = colOf(env, it);
-    const ring = accentFor(sc, col, 1.6);
+    const ring = P.color || accentFor(sc, col, 1.6);
     const gap = ctr(sc.bg, col) >= 1.5 && ctr(sc.bg, ring) >= 1.3 ? sc.bg : best([sc.ink, sc.fg, '#000000', '#FFFFFF'], ring);
     it.strokeColor = gap; it.strokeUnder = true;
     sized(it, env, i => { i.stroke = Math.max(2, i.size * P.a); });
@@ -136,7 +136,7 @@ reg('treat', 'extrude', { name: '立体', tags: ['pop', 'graphic'], w: 0.9,
     if (!alive(it)) return;
     const sc = env.sc, col = colOf(env, it), N = glyphN(it.text);
     const base = P.c ? firstOK([sc.ink, sc.accent2], c => ctr(c, col) >= 1.6 && ctr(c, sc.bg) >= 1.4, accentFor(sc, col, 1.6)) : accentFor(sc, col, 1.6);
-    const ec = J.mix(base, '#000000', isDark(sc.bg) ? 0.3 : 0.2);
+    const ec = P.color || J.mix(base, '#000000', isDark(sc.bg) ? 0.3 : 0.2);
     sized(it, env, i => { const L = i.size * P.d; i.extrude = { n: clamp(Math.round(L / 2.5), 4, N > 10 ? 12 : 22), dx: P.dir[0] * L, dy: P.dir[1] * L, color: ec }; });
   } });
 
@@ -145,7 +145,7 @@ reg('treat', 'longShadow', { name: '長い影', tags: ['pop', 'graphic'], w: 0.6
   apply(env, it, P) {
     if (!alive(it)) return;
     const sc = env.sc, col = colOf(env, it), N = glyphN(it.text);
-    const sh = isDark(sc.bg) ? J.mix(sc.bg, accentFor(sc, col, 1.5), 0.5) : J.mix(sc.bg, sc.fg, 0.28);
+    const sh = P.color || (isDark(sc.bg) ? J.mix(sc.bg, accentFor(sc, col, 1.5), 0.5) : J.mix(sc.bg, sc.fg, 0.28));
     const ca = Math.cos(P.ang * DEG), sa = Math.sin(P.ang * DEG);
     sized(it, env, i => { const L = i.size * P.L; i.extrude = { n: clamp(Math.round(L / Math.max(2, i.size * 0.018)), 10, N > 10 ? 14 : 24), dx: ca * L, dy: sa * L, color: sh, fade: true, a: 0.9 }; });
   } });
@@ -154,7 +154,7 @@ reg('treat', 'hardShadow', { name: 'ずらし影', tags: ['pop', 'graphic', 'gli
   plan: rng => ({ d: rng.range(0.05, 0.085), dir: rng.pick([[1, 1], [1, 1], [-1, 1], [1, -1], [0.45, 1]]) }),
   apply(env, it, P) {
     if (!alive(it)) return;
-    const sh = accentFor(env.sc, colOf(env, it), 1.6);
+    const sh = P.color || accentFor(env.sc, colOf(env, it), 1.6);
     sized(it, env, i => { const L = i.size * P.d; i.extrude = { n: 1, dx: P.dir[0] * L, dy: P.dir[1] * L, color: sh }; });
   } });
 
@@ -163,7 +163,7 @@ reg('treat', 'softShadow', { name: 'ぼかし影', tags: ['calm', 'emotional', '
   apply(env, it, P) {
     if (!alive(it)) return;
     const sc = env.sc;
-    const c = isDark(sc.bg) ? J.rgba(J.mix(sc.bg, sc.accent, 0.45), 0.75) : J.rgba(J.mix(sc.fg, '#000000', 0.5), 0.36);
+    const c = P.color ? J.rgba(P.color, 0.8) : isDark(sc.bg) ? J.rgba(J.mix(sc.bg, sc.accent, 0.45), 0.75) : J.rgba(J.mix(sc.fg, '#000000', 0.5), 0.36);
     sized(it, env, i => { i.shadow = { color: c, blur: i.size * P.b, dx: i.size * 0.02, dy: i.size * P.dy }; });
   } });
 
@@ -202,7 +202,7 @@ reg('treat', 'glow', { name: '発光', tags: ['emotional', 'calm', 'glitch'], w:
   apply(env, it, P) {
     if (!alive(it)) return;
     const sc = env.sc, col = colOf(env, it), dk = isDark(sc.bg);
-    const gc = dk ? firstOK(P.self ? [col, sc.accent, sc.accent2] : [sc.accent, sc.accent2, col], c => J.lum(c) > J.lum(sc.bg) + 0.2, col)
+    const gc = P.color ? P.color : dk ? firstOK(P.self ? [col, sc.accent, sc.accent2] : [sc.accent, sc.accent2, col], c => J.lum(c) > J.lum(sc.bg) + 0.2, col)
       : firstOK([sc.accent, sc.accent2, sc.ghostA, sc.ghostB], c => ctr(c, sc.bg) >= 2 && J.lum(c) > 0.08 && ctr(c, col) >= 1.4, col);
     const small = i => i.size < Math.min(env.W, env.H) * 0.09;   // small items: a plain canvas shadow is cheap and enough
     sized(it, env, (i, e) => { i.shadow = e.allowFilter && !small(i) ? null : { color: J.rgba(gc, 0.95), blur: i.size * P.b * 0.6, dx: 0, dy: 0 }; });
@@ -325,7 +325,8 @@ reg('treat', 'gradientV', { name: '縦グラデ', tags: ['emotional', 'pop'], w:
     const sc = env.sc, col = colOf(env, it);
     const g = P.g && sc.grad && sc.grad.every(c => ctr(c, sc.bg) >= 1.6) ? sc.grad.slice() : [col, twoTone(sc, col)];
     if (P.up) g.reverse();
-    it.gradient = g;
+    // chosen colours (caption effect settings) set the two ends exactly
+    it.gradient = P.colorA || P.colorB ? [P.colorA || g[0], P.colorB || g[g.length - 1]] : g;
   } });
 
 reg('treat', 'splitColor', { name: '上下二色', tags: ['pop', 'graphic'], w: 0.8,
@@ -333,8 +334,8 @@ reg('treat', 'splitColor', { name: '上下二色', tags: ['pop', 'graphic'], w: 
   apply(env, it, P) {
     if (!alive(it) || inPieces(env, it)) return;
     const sc = env.sc, col = colOf(env, it), c2 = twoTone(sc, col);
-    const a = P.top ? c2 : col, b = P.top ? col : c2;
-    it.gradient = [[0, a], [P.sp, a], [P.sp, b], [1, b]];
+    const a = P.colorA || (P.top ? c2 : col), b = P.colorB || (P.top ? col : c2), sp = Number.isFinite(P.sp) ? P.sp : 0.535;
+    it.gradient = [[0, a], [sp, a], [sp, b], [1, b]];
   } });
 
 const patternTreat = (kind, alt) => function (env, it, P) {

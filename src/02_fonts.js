@@ -118,7 +118,10 @@ J.ensureFonts = async (text, keys) => {
   // faces in the current lyric language (+ its fallback sans / serif), each with the weight it is drawn at
   const faces = list.map(k => (J.faceOf ? J.faceOf(k) : J.FONTS[k]));
   if (J.langBaseFaces) for (const b of J.langBaseFaces(list)) faces.push({ family: '"' + b.family + '"', weight: b.weight, gf: b.gf });
-  await Promise.all([...new Set(faces.map(f => f.gf).filter(Boolean))].map(attachFamily));
+  // faces shipped inside the page (build.py embeds assets/fonts) are never fetched from Google Fonts
+  const remote = list.filter(k => !(J.isBundledFont && J.isBundledFont(k))).map(k => (J.faceOf ? J.faceOf(k) : J.FONTS[k]));
+  if (J.langBaseFaces) for (const b of J.langBaseFaces(list)) remote.push({ gf: b.gf });
+  await Promise.all([...new Set(remote.map(f => f.gf).filter(Boolean))].map(attachFamily));
   const jobs = [], seen = new Set();
   for (const f of faces) {
     const spec = `${f.weight} 64px ${f.family}`;

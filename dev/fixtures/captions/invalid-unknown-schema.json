@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 999,
+  "generatorVersion": "future-generator",
+  "mode": "video-captions",
+  "id": "project_future_schema",
+  "expectedError": { "code": "UNSUPPORTED_SCHEMA_VERSION", "schemaVersion": 999 }
+}

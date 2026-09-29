@@ -1,0 +1,157 @@
+# JIZURA — Subtitle MVP delta plan
+
+Source of truth for the refactor started from `JIZURA_HANDOFF_SUBTITLE_MVP_REVISION.md`.
+Where this file and the handoff disagree, **this file wins** (it records the audit and the owner's decisions).
+Where this file and the code disagree, trust the code and update this file.
+
+Baseline: checkpoint commit `c307142` (Video Captions Gates 0–7 + three-mode shell).
+Audit date: 2026-09-28. Audit was read-only.
+
+---
+
+## 1. Decisions (owner-confirmed)
+
+| # | Decision |
+|---|---|
+| D1 | **Style layer stack (handoff 3A): dropped.** `treatment` stays a single string plus `captionTreatment` (outline/neon/echo/backplate). Roles (3B) still ship. |
+| D2 | **Placement is block-level.** No per-word positioning. |
+| D3 | **Manual text blocks keep active-word behavior** (words spread evenly across the block, like today's `add-caption`). |
+| D4 | **Deleting a track deletes its content** (tokens are NOT returned to the primary track). Must be undoable. The primary track cannot be deleted. |
+| D5 | **Video edits are kept**: `clips[]` (trim/reorder), `panels[]` (crop / stack / PiP), `notes[]`, output formats. The handoff's "no trim / single time domain" is **void**. |
+| D6 | **Output formats stay as they are** (Shorts, Reels, YouTube 16:9, Square, 4:5). Landscape keeps working. |
+| D7 | Live Captions / OBS / `liveSafe` are removed completely (unchanged from handoff). |
+| D8 | JIZURA/MV profile is hidden from the MVP UI, not deleted (`jizura-mv` is fully implemented in `08h_caption_planner.js`). |
+| D9 | Up to 3 caption tracks; manual assignment + manual text blocks only (unchanged from handoff §4). |
+
+Consequences of D5/D6:
+- Caption times are **source-video times**; the compositor maps them through `J.videoSourceTime(clips, t)` when sections are cut. Tracks/boxes must work on top of this.
+- Boxes are **normalized (0–1)** so they follow the output format. `notes[]` already use normalized x/y (precedent).
+- `notes[]` and manual text blocks overlap in purpose. **Decided at step 7 (ADR 0007): they stay separate.** Notes are video-edit annotations (under the captions, no track/plan/active word); text blocks are captions on a track with box, roles, presets and warnings.
+
+---
+
+## 2. Audit findings (facts, with locations)
+
+**Verdict: refactor in place.** None of the restart criteria apply. Media/export/demux/preview/relink survive untouched.
+
+### Structure
+- Schema: `schemaVersion = 2`, modes `lyrics` | `video-captions` (`src/08a_project.js`). Only migration: `legacyLyrics` (v1 pre-envelope lyric project → v2).
+- Segments: flat array `project.segments[]` `{id, start, end, tokenIds, boundarySource, locks{segmentation, visualPlan, fields[]}}`.
+- Plans: map `project.plans[segmentId]` = `{id, segmentId, generated, manual, lockedFields}`; resolved by `J.captionResolvedPlan` (generated then manual).
+- Store: `CaptionStore` in `src/12b_caption_store.js`; `switch` over command types; full-project before/after snapshots for undo/redo (history limit 100); lookups by ID.
+- Seeds: `hashSeed(projectSeed, segmentId, rerollCount)` already deterministic (`J.h`, `J.sid`). Needs `trackId` added.
+- Profiles `creator`, `punchy`, `jizura-mv` are hard-coded in `08h_caption_planner.js`.
+
+### Zones (the main migration target)
+- `zone` appears ~119 times in 12 source files (`08g` 30, `08h_planner` 21, `12c_workbench` 16, `08_planner` 15 (lyric side, mostly unrelated), `11p_caption_layouts` 10, `12b_store` 9, others).
+- Passed as parameter (`env.zone`), stored in `project.safeZones` and copied into each plan (`plan.zone`, `plan.zoneId`).
+- **Zones are in pixels** (`{x,y,width,height}` vs frame); compositor rescales by `W/sourceWidth`. Moving to normalized boxes is a schema change.
+- Planner picks a zone **randomly per attempt** (`zones[h(seed,attempt,7) % n]`). Must stop: the user decides placement.
+- `treatment`: single string, read in planner, compositor (`plan.treatment || textTreatment || treat`), plus `captionTreatment` drawn ad hoc in `11c`.
+
+### Export / compositor
+- Export consumes the plan via shared `J.drawCaptionOverlay` (`src/11c_caption_compositor.js`), which resolves **exactly one segment at time t** (`segmentAt` = `find`). Multi-track changes this function; export itself needs little.
+- `drawCaptionOverlay` also calls `J.drawVideoNotes` first.
+- Export: mediabunny, H.264 via `VideoEncoder.isConfigSupported('avc1.420033')`, AAC passthrough when unedited, re-encoded audio when clips are edited (`J.pumpEditedAudio`). Blob export capped at 30 s / 128 MB unless a writable file handle is given.
+- Export tests use mocks. **Real-Chrome encode is not verified by CI**; release checklist has a blank "Chrome/Edge version" line.
+
+### Determinism / fonts
+- Planner readability uses a glyph-width guess (`glyphFactor` in `08g`): deterministic.
+- Renderer uses real canvas metrics (`J.measure` / `layoutText`), and fonts load from Google Fonts over the network + `FontFace`. Layout can differ across machines. **Bundle fonts + pin measurement.**
+
+### Build
+- `build.py` sorts `src/*.js` alphabetically and concatenates (~40k lines) → 3.3 MB single HTML per language (7 editions) + `sitemap.xml`. `python build.py --dev` also writes `dev/www/` (now gitignored).
+- No web workers (`Worker` only appears as a capability probe).
+
+### Live remnants (to remove)
+- `app/body.html:16` (Live Captions tab + "予定" badge) and `:146` (`liveCaptionsWorkspace`).
+- `src/11z_product_shell.js` (`live-captions` mode) and `dev/product_mode_shell_test.js`.
+- `liveSafe` in 10 places in `src/` (registry metadata, `internalMeta` in `08h_caption_planner.js`, `11p_*`, `11q_sets.js`, horror set) plus `dev/component_metadata_test.js`, `dev/caption_planner_test.js`, `dev/lyric_smoke.js`.
+- Docs/PRD live sections, `app/english.py`, `dev/localized_build_test.py`.
+- No OBS / `live/` companion code exists.
+
+### Tests (baseline at c307142; run individually)
+32 of 35 pass. Failing, all **stale assertions, not product bugs**:
+- `caption_planner_test.js:110` and `caption_style_controls_test.js`: expect `treat: false` in `J.CAPTION_TECHNIQUE_DRAW`; `12c_caption_workbench.js:169` now has `treat: true`.
+- `caption_workbench_test.js:18`: expects the workbench source to mention `J.captionTokenStatesAt`; that call moved to the compositor.
+- **`npm test` chains with `&&`** and stops at the first failure (halts at the planner test), so later suites never run in CI as written.
+
+### Video edits (kept, see D5)
+`src/10a_video_edits.js`, `src/12a_video_edit_ui.js`, store command `set-video-edits`, `J.drawVideoEdit`, `J.drawVideoNotes`, edited-audio path in export. Tests: `video_edits_test.js`, `video_edits_browser_test.js`.
+
+---
+
+## 3. Filename mapping (plan/PRD → repo)
+
+| Plan / PRD | Repo |
+|---|---|
+| project model | `src/08a_project.js` |
+| segmenter / emphasis / zones / motion / planner | `src/08e_`, `08f_`, `08g_`, `08h_caption_*.js` |
+| store | `src/12b_caption_store.js` |
+| workbench UI | `src/12c_caption_workbench.js` |
+| compositor | `src/11c_caption_compositor.js` |
+| caption layouts / motion / active-word / expressive | `src/11p_caption_*.js` |
+| media import / preview / export / audio / demux | `src/10c_`, `10d_`, `11b_`, `11d_`, `11e_` |
+| video edits | `src/10a_video_edits.js`, `src/12a_video_edit_ui.js` |
+| product shell | `src/11z_product_shell.js` |
+| manual text blocks | `src/08l_caption_text_blocks.js` (+ commands in `12b_caption_store.js`) |
+| ADRs | `docs/architecture/decisions/` (0001 export, 0002 aesthetic spike, 0003 seeds, 0004 schema v3, 0005 placement boxes, 0006 caption tracks, 0007 text blocks, 0009 explicit looks; 0008 is reserved for UI-5) |
+
+---
+
+## 4. Step plan
+
+Each step must leave the app working and all tests green. Status: `[ ]` todo, `[~]` in progress, `[x]` done.
+
+- [x] **Step 0 — Safety net.** *(done 2026-09-28)*
+  Fixed the 3 stale tests (draw flag `treat: true`; active-word check now looks at the compositor; workbench bind-order regex). `npm test` now runs `dev/run_all.js`: every suite runs, all failures are reported (old `&&` chain kept as `test:chain`). Added `dev/caption_plan_snapshot_test.js` (frozen plans, 6 scenes; `npm run update:plan-snapshots`); rendered-frame snapshots were already covered by `caption_visual_regression.js`; Lyric Motion smoke stays first. ADR `decisions/0003-seeds-and-determinism.md` written (includes `trackId` in the seed). `video_edits_browser_test.js` needs Playwright and is not in the runner.
+- [x] **Step 1 — Scope cleanup.** *(done 2026-09-28)*
+  Removed the Live Captions tab, panel, `live-captions` shell mode, badge CSS/strings, `liveSafe` (registry field, eligibility check, component metadata, tests, plan snapshots) and marked the PRD live sections removed. JIZURA/MV is hidden: the style option and the whole "MV effects" panel (`hidden` in `app/body.html`; the bindings stay because the effect selects force the `jizura-mv` profile). The profile code in `08h_caption_planner.js` and its tests are untouched. Video edits kept. The `captionTreatment` select was moved out of the hidden panel.
+- [x] **Step 2 — Schema v3 + migration.** *(done 2026-09-28)*
+  `PROJECT_SCHEMA_VERSION = 3` for both modes (lyrics: bump only). `tracks[]` with one primary track (`track_main`), normalized `box` derived from the current zone, `guides[]` (advisory copy of `safeZones`, which still drive the planner until step 4), empty `roles`/`style` (= inherit), `trackId` on segments and plans, validation (`TRACKS_REQUIRED`, `TRACKS_LIMIT`, `TRACK_PRIMARY_INVALID`, `TRACK_BOX_INVALID`, `SEGMENT_TRACK_NOT_FOUND`, `PLAN_TRACK_MISMATCH`, …). New test `dev/caption_schema_v3_test.js`; plan snapshots regenerated (only `trackId` added). ADR `decisions/0004-project-schema-v3.md`.
+- [x] **Step 3 — Route planner + compositor through tracks/boxes** *(done 2026-09-28)*
+  `src/08i_caption_boxes.js` (box ↔ zone helpers, `captionEffectiveBox`, `captionPlanZone`). Planner resolves a box per segment from its track; plans store `box` (normalized) next to the derived pixel `zone`. Compositor draws from `plan.box`, falling back to the saved pixel zone so old plans render unchanged. Layouts accept `box` + `frame`; anchor/line breaks are independent of the active word (tested).
+- [x] **Step 4 — Placement boxes** *(done 2026-09-28)*
+  Planner no longer picks a zone (plan snapshots regenerated: only the random top/center choice went away). Commands `set-track-box` / `set-segment-box` (validated, re-plan, undoable); overrides in `plan.manual.box`; untouched default box follows the position preset and media import. Workbench: box editor on the preview (drag, right-handle width, arrow-key nudge, snap to centre/safe edges/thirds, Alt = free), numeric X/Y/W/H, scope (track / selected caption), reset, warnings (`box-outside-safe-area`, `box-narrow`, plus readability). Unfit boxes fall back to a static plan in the same box with a warning. ADR `decisions/0005-placement-boxes.md`; tests `dev/caption_boxes_test.js`. Verified the UI in a browser with a real video (drag/nudge/numeric/undo/invalid input); pointer drags were simulated, not hand-dragged.
+- [x] **Step 5 — Roles.** *(done 2026-09-29)*
+  `track.roles = {base, active, emphasis}` (`src/08j_caption_roles.js`, validated, unknown keys/values rejected, `TRACK_ROLE_INVALID`). Base (font, colour, size) overrides the style the planner uses for that track, so fit and warnings follow and it re-plans; active (spoken-word treatment, colour) and emphasis (colour, scale 0.9–1.15, optional **second font**, threshold; manual on/off wins over the score) are draw-time only. Geometry is laid out from the base role and never depends on the others; a second face wider than the base glyph is squeezed (`sx`), never widened. Command `set-track-roles` (merge / null clears / `reset`), undoable; inspector section "Text roles"; per-glyph `font` added to `drawItem`/`combineChar`. Tests `dev/caption_roles_test.js`; plan snapshots and visual snapshots unchanged. Checked in a browser with a real video (emphasis colour and second font drawn, position unchanged).
+  **Fonts:** `assets/fonts/manifest.json` + `build.py` embed each listed woff2 as an `@font-face` data URI and publish `window.JIZURA_BUNDLED_FONTS`; bundled faces are not fetched from Google Fonts; `J.ensureCaptionFonts` loads faces and clears cached advances before preview/export; the inspector warns when a role font is not bundled or not loaded. **Bundled: all ten curated faces** (`J.CAPTION_FONTS`: Noto Sans JP 500/700/900, Noto Serif JP 700, Zen Kaku Gothic New Black, Zen Old Mincho Black, Dela Gothic One, IBM Plex Sans JP Medium, IBM Plex Mono Medium, M PLUS Rounded 1c ExtraBold; OFL 1.1, licence texts in `assets/fonts/licenses/`, notices in `THIRD_PARTY_NOTICES.md`), each subset by `tools/subset_font.py` to ASCII/Latin/kana/punctuation/JIS level-1 kanji (variable Noto fonts pinned per weight). Cost: ~6 MB of woff2, so **each edition grew from ~3.3 MB to ~11.4 MB** (the same data is embedded in all 7); glyphs outside the subset fall back to the font stack, also in Lyric Motion. Decision (owner, 2026-09-29): keep embedding them in each edition. Verified in the browser that the bundled face loads.
+- [x] **Step 6 — Multiple tracks (max 3).** *(done 2026-09-28)*
+  Commands (kebab-case): `add-track`, `remove-track` (deletes the track's captions, plans **and words**; undoable; primary undeletable), `rename-track`, `reorder-track` (= z-order, primary stays first), `set-track-box` / `set-segment-box` / `set-track-roles` (steps 4-5), `set-track-style` (validated per-track override of `preset`, treatment, accent, alignment, writing mode, motion, intensity, emphasis, segmentation), `move-segment-to-track`, `move-tokens-to-track` (runs of moved words become captions on the target; the rest is split if needed; locked captions are refused), `reroll-track`. Rules: a token is in at most one segment (`SEGMENT_TOKEN_DUPLICATE`); no overlap inside a track (`TRACK_SEGMENT_OVERLAP`); neighbours are per track; segmentation runs per track (`J.replanCaptionSegments`); **motion/attention budget is global** (one `recentPlans` in time order) while continuity is per track; seeds fold `trackId` in for non-primary tracks only (primary seeds and plan snapshots unchanged); box collision is a derived warning (`J.captionBoxCollisions`); `drawCaptionOverlay` draws one caption per track in track order and returns `layers`. UI: track panel (add / rename / forward / back / delete / reroll / style), timeline row per track, ghost outlines of other tracks while editing a box, per-word "move" checkboxes and "move caption", collision warnings. New `src/08k_caption_tracks.js`, ADR `decisions/0006-caption-tracks.md`, tests `dev/caption_tracks_test.js`. Checked in a browser with a real video (add / move / rename / restyle / reorder / delete + undo / reroll, box and role edits on the active track, two layers drawn, ghost outlines); pointer drags on other tracks were not repeated by hand. Known gap for step 7: the transcript validator rejects overlapping tokens, so text blocks that overlap speech need per-track overlap rules.
+- [x] **Step 7 — Manual text blocks.** *(done 2026-09-28)*
+  A block = one segment of typed words (`source: "manual"`, spread evenly, active word on) on one track; "is a block" is derived, so old `add-caption` captions are blocks too. Commands `create-text-block` (`add-caption` kept as alias; `trackId`, `box`, `animation`; segmentation locked by default), `edit-text-block` (text / timing re-spread the words, word IDs kept by position; track, box, animation), `delete-text-block` (segment, plan and words; speech refused); `move-segment-to-track` moves a block whole. Overlap: spoken words still never overlap; block words may overlap speech (`J.validateTranscript` skips `manual` tokens), but not another caption on the block's own track (`TEXT_BLOCK_OVERLAP`). Preset animations only: `plan.manual.entrance/hold/exit` from caption-safe registry ids (validated on load too). Creating/editing plans only that block. Also fixed on the way: a segmentation-locked caption is now kept whole by the segmenter (ADR 0006 gap), and speech/blocks are scored for emphasis as separate streams. Notes vs blocks: separate (see §1). UI: track picker in the manual entry, block editor in the inspector (text, delete with confirm, enter/hold/exit), numeric timing re-spreads a block. ADR `decisions/0007-manual-text-blocks.md`, tests `dev/caption_text_blocks_test.js`; plan and visual snapshots unchanged. Checked in the browser with the 15 s fixture video + word JSON: block on track 2 over speech (both layers drawn, each with its own active word), text edit, animation preset, numeric timing, refused move onto Main, delete + undo (exact).
+- [x] **Step 8 — Re-verify export + release matrix** (old Gates 6 and 7) **on real Chrome with H.264**; fill in the release checklist; document the fallback path. *(done 2026-09-28; manual checklist items and sign-off still open)*
+  New `dev/export_chrome_check.js` (`npm run check:export-chrome`): a local server plus Google Chrome with a fresh profile, driven over the DevTools protocol (no Playwright). It imports the generated fixtures through the app's inputs, builds captions (2 tracks, text blocks, trims, notes, all 5 output formats) and exports with the production `J.CaptionVideoExporter` (in memory, or through OPFS for the file-backed path). Each output is checked in Chrome and by an FFprobe full decode. Chrome 154 headless, Chrome 154 headed (window minimized during every export) and Edge 153 headless: 7/7 each. Exact frame counts, 30/1 fps, start 0, bit-exact AAC passthrough when untrimmed, AAC re-encode when trimmed, 3-minute file-backed export in about 30 s (0.17×), the >30 s in-memory gate refused as designed, JS heap about 50 MB with no growth between exports. Fixed on the way: trimmed exports gained one near-zero-length frame from float rounding (`11e`, regression test in `media_export_test.js`), and the `MEDIA_ENCODER_UNSUPPORTED` recovery text pointed to a Lyric Motion PNG export that cannot carry captions. Checklist filled with evidence (`docs/VIDEO_CAPTIONS_RELEASE_CHECKLIST.md`): environment, matrix, measurements, supported/fallback path, CI statement. The manual UI items, creative/accessibility review and sign-off by a tester who did not implement the feature remain open. ADR 0001 has a re-verification addendum. `generate.ps1` can make an optional 3-minute fixture (`--long`).
+
+Small features after step 8:
+- **PNG overlays / templates** *(2026-09-29)*: `settings.videoEdit.overlays[]` (max 4; `{id, name, src (PNG/WebP data URL, ≤ ~6 MB), x, y, w, h (fractions of the output frame), opacity, layer: 'below'|'above'}`), optional so existing projects load unchanged. Drawn inside `J.drawCaptionOverlay` (below: before notes/captions; above: after), so preview and export share it; images are decoded once into a cache (`J.preloadVideoOverlays`, awaited before export). UI: "Overlays & templates" in the video editor, with save/load of a template JSON file. Test: `dev/video_edits_test.js`.
+
+- **Explicit caption looks** *(2026-09-29, owner request)*: no effect is picked by chance any more. A look = layout / entrance / hold / exit / spoken-word treatment, resolved caption → track → project → the fixed standard look of the profile (`src/08m_caption_look.js`, ADR `decisions/0009-explicit-caption-looks.md`). "Randomize" (project, track or one caption) draws once, stores the result as plain choices and is undoable. Commands `set-caption-look`, `set-segment-look`, `randomize-caption-look` (`reroll-track` / `reroll-segment` are aliases). New inspector section "Effects" (scope: whole video / track / selected caption; each stage inherits or is set; Randomize; Reset to standard). Motion budget now only warns; a caption that does not fit keeps its look with a smaller font (reported). Decoration is no longer picked (it was never drawn). Tests `dev/caption_look_test.js`; plan snapshots regenerated on purpose.
+
+**UI restructure** (plan: Lyric-style top bar and right bar, mockup layout `Transcript | Video settings | Video | Right bar` + full-width timeline strip). UI only: no schema, planner or store change; all `caption*` IDs stay.
+- [x] **UI-1 — Layout skeleton + timeline strip** *(done 2026-09-29)*. Video editor moved into its own "Video settings" column (44vh cap removed); transport + timeline in a bottom strip spanning the grid. The video column width follows the output format (`fitVideoColumn` sets `--caption-video-w`; the stylesheet clamps it so transcript 260 / settings ≥300 / right bar 320 stay). Under 1280px transcript and video settings share the left column as two tabs. `#app[data-product-mode=video-captions]` is the fixed-height flex root (no more `100vh - 115px`). Box editor frame (`boxFrame`) is now the **output** frame. Known gap (planner, not UI): `08h_caption_planner.js:69` still measures fit/readability against the **source** video size, not the output format. Only English has caption strings in `app/english.py`; the other editions show the Japanese source for caption UI (unchanged).
+- [x] **UI-2 — Top bar in the Lyric pattern** *(done 2026-09-29)*. `header.bar.caption-bar` reuses `.brand/.proj/.modes/.acts`: brand ("video captions"), project label, Simple | Advanced + "?", language select, New / Open / Undo / Redo / Create variation / Save / Export / About. `build.py` now replaces an `@LANG_NAV@` marker (one in each bar) instead of anchoring on the first `.acts`; `localized_build_test.py` checks 2 menus per edition. **Deviation from the plan:** Simple/Advanced is *not* a view preference: `style.editor === 'advanced'` widens the planner's technique pool (`08h_caption_planner.js`), so it stays project state through the undoable `set-caption-style` command (one undo step, saved with the project, old projects unchanged). `#captionEditor` select is replaced by `#captionModeEasy` / `#captionModePro` (`aria-pressed`); the workspace gets `.is-easy` for UI-3/4. "?" opens a plain help dialog (`#captionHelpDlg`), not the Lyric tour (its engine is bound to Lyric-only state). About reuses `#termsDlg` via `.terms-open`. Lyric's phone-mode (`#app.is-mobile`) bar rules are now scoped to `#lyricMotionWorkspace`, otherwise a saved phone mode hid the captions bar's actions. Create variation stays in the bar until UI-3 moves it to the right bar.
+- [x] **Style panel rework** *(done 2026-09-29, owner request; replaces the UI-3 / UI-4 right-bar plan)*
+  Layout is three boxes: `Transcript (312px, +20%) | Style (wide) | Video`. The transcript column has tabs Transcript, Text roles, Selected caption (`selectLeftTab`, `#captionLeftPane_*`); the Style panel has tabs Style, Effects, Caption tracks, Caption placement box, Video settings, Export (`selectStyleTab`, `#captionStylePane_*`; sections keep their IDs; Export has its own button beside the header one). Under 1000px the Style panel moves below the preview. **Effects** shows the same animated example cards as Lyric Motion, drawn by the real compositor (`src/12bz_caption_effect_preview.js`, one sample caption built in memory; only visible cards are painted). *Simple*: three rows (Entrance / While visible / Exit) of small cards; Randomize is a small ghost button. *Advanced*: chip bar (Layout, Entrance, Hold, Exit, Spoken word, Text treatment) opening a full grid with "Auto" (= inherit). **Advanced offers every effect of enter / hold / exit / treat (Lyric ones included; 137 entrances) but not Background, and layouts stay the caption layouts**: `J.captionAdvancedOpen`, `captionTechniqueOn`, `captionAutomaticPoolOk`, and validation (`12b`) skip the caption-safe gate only when `style.editor === 'advanced'`; an explicit off (`set-technique`) still wins, and the per-technique checklist UI is gone (store command kept). Switching back to Simple re-plans: an effect that is not caption-safe is replaced by the standard with a `look-unavailable` warning, never silently. Decoration / Camera / Transition are not offered: the caption compositor does not draw those groups (`J.CAPTION_TECHNIQUE_DRAW`). Compositor now builds the colour scheme and fonts from the first Lyric style (only fg/bg/accent are the caption's own), so effects that read `accent2` / `fonts.mono` no longer throw (5 of 365 effects did). New file sorts as `12bz` so it loads before `12c` (which renders on load). Tests updated for the new column order, the advanced pool and the removed checklist.
+- [ ] **UI-3 — Right bar Simple view** (variation hero, Previous/Next, current variation, change one thing, export).
+- [ ] **UI-4 — Right bar Advanced tabs** (Style / Effects / Techniques / Captions / Export).
+- [ ] **UI-5 — Responsive, i18n, polish, ADR 0008.**
+
+Cheap wins to schedule after step 8 (or earlier if convenient): SRT/VTT export, autosave/crash recovery, quantitative success metrics.
+
+---
+
+## 5. Open items
+
+- **ASR:** still no transcription adapter; `transcribe_audio.py` exists at repo root (untracked audio file `audio_transcript.json` is intentionally not committed). Decide whether to pull one adapter forward.
+- ~~**Notes vs text blocks** overlap (step 7).~~ Decided: separate (ADR 0007).
+- ~~**Real-Chrome export verification** and how CI handles H.264 (step 8).~~ Done: `dev/export_chrome_check.js` on a machine with Google Chrome; there is no CI in the repo, and `npm test` uses mocks (see the release checklist). Still open: the manual release-checklist items and a sign-off by someone other than the implementer.
+- Workers / bundling: no workers today; only decide if export performance needs them.
+- Docs to reconcile: PRD live sections (9.3, 9.4, 10, Phase 4) marked removed; `docs/VIDEO_CAPTIONS_ADVANCED_AND_TRIM_SLICES.md` should reflect D5.
+
+## 6. Reduced ADR list
+
+1. Seeds & determinism (incl. font measurement pinning) — **first**.
+2. Project schema, IDs, generated-vs-manual (v3, tracks, boxes).
+3. Caption component safety metadata & default-deny.
+4. Media path & output/audio policy (extends 0001).
