@@ -105,7 +105,7 @@ for (const plan of generated(popOn)) assert.equal(plan.entrance, 'pop', `advance
 const drawBlock = fs.readFileSync(path.join(root, 'src', '12c_caption_workbench.js'), 'utf8');
 const drawStart = drawBlock.indexOf('J.CAPTION_TECHNIQUE_DRAW = {');
 const drawBody = drawBlock.slice(drawStart, drawBlock.indexOf('};', drawStart));
-const drawFlags = { layout: false, enter: true, hold: true, exit: true, decor: false, treat: false, bg: false, cam: false, fx: false, trans: false };
+const drawFlags = { layout: false, enter: true, hold: true, exit: true, decor: false, treat: true, bg: false, cam: false, fx: false, trans: false };
 for (const [group, value] of Object.entries(drawFlags)) {
   assert.match(drawBody, new RegExp(group + ': ' + value), `${group} draw flag was not ${value}`);
 }

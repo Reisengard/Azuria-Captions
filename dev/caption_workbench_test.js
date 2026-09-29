@@ -15,7 +15,7 @@ assert.match(source, /new J\.MediaPreviewController/, 'workbench does not use th
 assert.match(source, /new J\.CaptionStore/, 'workbench does not use caption command history');
 assert.match(source, /J\.segmentCaptions/, 'transcript import does not create caption segments');
 assert.match(source, /J\.planCaptions/, 'workbench does not create frozen visual plans');
-assert.match(source, /J\.captionTokenStatesAt/, 'preview does not follow active-word timing');
+assert.match(fs.readFileSync(path.join(root, 'src', '11c_caption_compositor.js'), 'utf8'), /J\.captionTokenStatesAt/, 'compositor does not follow active-word timing');
 assert.match(body, /id="captionExport"[^>]*disabled/, 'unfinished export must not appear functional');
-assert.match(source, /\/\* The single-file build[\s\S]*\r?\nbind\(\);\r?\nJ\.captionWorkbench/, 'caption workbench waits too late to bind in the single-file build');
+assert.match(source, /\/\* The single-file build[\s\S]*\r?\nbind\(\);[\s\S]*\r?\nJ\.captionWorkbench = ui;/, 'caption workbench waits too late to bind in the single-file build');
 console.log('Gate 5.2 caption workbench tests passed.');

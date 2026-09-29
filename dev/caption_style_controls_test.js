@@ -21,7 +21,7 @@ const hostMarkup = body.match(/<div id="captionTechniqueHost" hidden>([\s\S]*?)<
 assert.equal(hostMarkup[1], '');
 assert.equal(ui.includes('setMode'), false);
 assert.equal(ui.includes('renderTech'), false);
-assert.match(ui, /layout: false, enter: true, hold: true, exit: true,\s*decor: false, treat: false, bg: false, cam: false, fx: false, trans: false/);
+assert.match(ui, /layout: false, enter: true, hold: true, exit: true,\s*decor: false, treat: true, bg: false, cam: false, fx: false, trans: false/);
 
 const byId = {};
 function matches(node, selector) {
@@ -244,7 +244,7 @@ function domText(node) {
   }
   const partBoxes = document.querySelectorAll('[data-technique-id]');
   assert.ok(partBoxes.length > 0, 'advanced host has no technique parts');
-  const drawnGroups = new Set(['enter', 'hold', 'exit']);
+  const drawnGroups = new Set(['enter', 'hold', 'exit', 'treat']);
   for (const box of partBoxes) {
     const group = box.closest('[data-caption-group]');
     assert.equal(box.disabled, !drawnGroups.has(group.dataset.captionGroup), group.dataset.captionGroup);
@@ -347,8 +347,8 @@ function domText(node) {
     const group = box.closest('[data-caption-group]');
     assert.equal(box.disabled, !drawnGroups.has(group.dataset.captionGroup), group.dataset.captionGroup);
   }
-  for (const key of ['layout', 'decor', 'treat', 'bg', 'cam', 'fx', 'trans']) assert.equal(J.CAPTION_TECHNIQUE_DRAW[key], false, key);
-  for (const key of ['enter', 'hold', 'exit']) assert.equal(J.CAPTION_TECHNIQUE_DRAW[key], true, key);
+  for (const key of ['layout', 'decor', 'bg', 'cam', 'fx', 'trans']) assert.equal(J.CAPTION_TECHNIQUE_DRAW[key], false, key);
+  for (const key of ['enter', 'hold', 'exit', 'treat']) assert.equal(J.CAPTION_TECHNIQUE_DRAW[key], true, key);
   const source = fs.readFileSync(path.join(root, 'src', '12c_caption_workbench.js'), 'utf8');
   assert.match(source, /layout: false, enter: true, hold: true, exit: true/);
   assert.equal(source.includes('renderTech'), false);
