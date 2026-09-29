@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 2,
+  "mode": "video-captions",
+  "id": "project_unsafe_technique",
+  "segments": [
+    { "id": "segment_0001", "tokenIds": ["word_000001"], "start": 0.4, "end": 0.82 }
+  ],
+  "plans": {
+    "segment_0001": {
+      "segmentId": "segment_0001",
+      "layout": "captionBottomStack",
+      "entrance": "fixtureFullFrameFlash",
+      "hold": "captionStill",
+      "exit": "captionFade",
+      "metadata": { "captionSafe": false, "requiresFullFrame": true, "flashes": true }
+    }
+  },
+  "expectedError": { "code": "CAPTION_TECHNIQUE_UNSAFE", "segmentId": "segment_0001", "componentId": "fixtureFullFrameFlash" }
+}

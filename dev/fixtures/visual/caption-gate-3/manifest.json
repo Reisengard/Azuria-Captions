@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "gate": "3.6",
+  "format": "deterministic-svg",
+  "coverage": {
+    "phases": [
+      "entry",
+      "active",
+      "hold",
+      "exit",
+      "transition"
+    ],
+    "orientations": [
+      "portrait",
+      "landscape"
+    ],
+    "profiles": [
+      "creator",
+      "punchy",
+      "jizura-mv"
+    ],
+    "edgeCases": [
+      "long-text",
+      "emoji",
+      "cjk",
+      "numbers",
+      "minimum-duration",
+      "maximum-words"
+    ]
+  },
+  "snapshots": {
+    "portrait-entry.svg": "6681a19605ffffc4e726db873dbc4acbb5f9638337c1a6bdd34d5487961863a5",
+    "portrait-active.svg": "8720c5233bf45f941a37f9d3ad243243f1aeed30c93d6915f6a883a9ce678410",
+    "portrait-hold.svg": "51d65abc394296d5c3db41affdbbba863b6076ebdcd7fbca5bd6c231a34b9126",
+    "portrait-exit.svg": "7dbc7c15cbde7e3525d4d92f322ab59ae97b597593b2b576d4ee5c8ffe61b7a3",
+    "portrait-transition.svg": "dbdee4e66e8c628004839038548916816274e7c366a6a3bb33bd389e0a7aef5b",
+    "landscape-entry.svg": "0ea6da9bfd880916cf5e2b7d3d7dc7a23f4a15eb272ed5e14e3cb015838a04a2",
+    "landscape-active.svg": "6fa1588b1344a2a17d42c344105b726c200a7da4fd2803804005822914826089",
+    "landscape-hold.svg": "04aea1d05ee7b90664efcfca7a28bfd3e0084c99f73ca2f46a626df719ba7b9f",
+    "landscape-exit.svg": "f64f18d423775ed99711e002bbf426b41ac1fb5c7f0a6dedde2ab74867266220",
+    "landscape-transition.svg": "40cf51922e1d099d175929648b61f104af2cf39c286ba41ab45edb6e846028b5",
+    "edge-long-text.svg": "bc03380ff8579295c33af6aae906ef7b6250da9a964ce83a106085701dd1de0d",
+    "edge-emoji.svg": "cdc2f020a734bae1d07bb21c1737fe9a68f01c19ada87467a3f1f9587af56591",
+    "edge-cjk.svg": "6640d720bfbd8e128dc0d491cd112f4ff1cd6d65b370873df6a1a01e5d1006e4",
+    "edge-numbers.svg": "86635b70d1ca3f807d30c8fa6a62f99415a0059f928a205e27de17ae2bd9a21e",
+    "edge-min-duration.svg": "f6c4c2bac59dc5ec28d74b49e987443214c74086ff4b2737a9882d5c42d86239",
+    "edge-max-words.svg": "f7699bda08ab25de18ad291d38d3f34558f31a784a1598df951a9bc884a1507a"
+  }
+}

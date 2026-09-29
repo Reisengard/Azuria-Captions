@@ -8,6 +8,151 @@
   </div>
 </div>
 <div id="app">
+  <nav class="product-shell" aria-label="JIZURA product mode">
+    <div class="product-shell-brand" aria-hidden="true"><span class="mark">字面</span><span>JIZURA</span></div>
+    <div id="productModes" class="product-modes" role="tablist" aria-label="Product mode">
+      <button id="productVideoCaptions" type="button" role="tab" data-product-mode="video-captions" aria-controls="videoCaptionsWorkspace" aria-selected="false">Video Captions</button>
+      <button id="productLyricMotion" type="button" role="tab" data-product-mode="lyrics" aria-controls="lyricMotionWorkspace" aria-selected="true">Lyric Motion</button>
+      <button id="productLiveCaptions" type="button" role="tab" data-product-mode="live-captions" aria-controls="liveCaptionsWorkspace" aria-selected="false">Live Captions <span class="planned-badge">予定</span></button>
+    </div>
+  </nav>
+
+  <section id="videoCaptionsWorkspace" class="product-surface caption-surface" role="tabpanel" aria-labelledby="productVideoCaptions" hidden>
+    <header class="caption-toolbar">
+      <div><span class="product-kicker">VIDEO CAPTIONS</span><strong id="captionProjectName">無題の字幕プロジェクト</strong></div>
+      <div class="caption-actions" role="toolbar" aria-label="字幕プロジェクト操作">
+        <button id="captionNew" type="button">新規</button>
+        <label class="file caption-open-project">開く<input id="captionProjectFile" type="file" accept=".json,application/json"></label>
+        <button id="captionUndo" type="button" disabled>元に戻す</button>
+        <button id="captionRedo" type="button" disabled>やり直す</button>
+        <button id="captionVariation" type="button" class="accent" disabled>別案を作る</button>
+        <button id="captionSave" type="button" disabled>保存</button>
+        <button id="captionExport" type="button" class="primary" disabled title="字幕付き MP4 を書き出す">書き出し</button>
+      </div>
+    </header>
+    <div class="caption-workbench">
+      <aside class="caption-panel caption-transcript" aria-label="文字起こしと字幕セグメント">
+        <div class="caption-panel-head"><h2>文字起こし</h2><span id="captionTimingBadge" class="caption-badge">未読込</span></div>
+        <div id="captionDropZone" class="caption-import-zone">
+          <strong>まず動画を読み込む</strong>
+          <p>ローカル動画はブラウザ内だけで扱われます。</p>
+          <label class="file">動画を選択<input id="captionVideoFile" type="file" accept="video/*,.mp4,.webm,.mov,.m4v"></label>
+          <label class="file">文字起こしを読込<input id="captionTranscriptFile" type="file" accept=".json,.srt,.vtt,application/json,text/vtt"></label>
+        </div>
+        <details class="caption-manual-entry">
+          <summary>字幕を手入力</summary>
+          <label for="captionManualText">字幕テキスト</label>
+          <textarea id="captionManualText" rows="3"></textarea>
+          <div class="caption-manual-times">
+            <label>開始（秒）<input id="captionManualStart" type="number" min="0" step="0.01" value="0"></label>
+            <label>終了（秒）<input id="captionManualEnd" type="number" min="0" step="0.01" value="3"></label>
+          </div>
+          <button id="captionManualAdd" type="button">字幕を追加</button>
+          <p>単語タイミングは指定した範囲内で推定されます。</p>
+        </details>
+        <div id="captionMediaName" class="caption-source-name muted">動画未選択</div>
+        <div id="captionRelinkNotice" class="caption-relink-notice" hidden>
+          <strong>元の動画を再リンクしてください</strong>
+          <p>プロジェクトには動画本体を保存しません。同じ動画を選ぶと編集を再開できます。</p>
+          <label class="file">動画を再リンク<input id="captionRelinkFile" type="file" accept="video/*,.mp4,.webm,.mov,.m4v"></label>
+        </div>
+        <ol id="captionSegmentList" class="caption-segment-list" aria-label="字幕セグメント"></ol>
+        <div id="captionTranscriptEmpty" class="caption-empty">動画と単語タイムスタンプ JSON、SRT、または VTT を読み込むと字幕が表示されます。</div>
+      </aside>
+
+      <main class="caption-stage" aria-label="動画字幕プレビュー">
+        <div id="captionPreviewFrame" class="caption-preview-frame">
+          <canvas id="captionPreview" width="1080" height="1920" aria-label="動画と字幕のプレビュー"></canvas>
+          <div class="caption-safe-zone" aria-hidden="true"></div>
+          <div id="captionPreviewEmpty" class="caption-preview-empty">動画を選択してプレビューを開始</div>
+        </div>
+        <div class="caption-transport">
+          <button id="captionPlay" type="button" class="play" disabled aria-label="再生">▶</button>
+          <span id="captionTime" class="tc">00:00.00</span>
+          <input id="captionScrub" type="range" min="0" max="1000" value="0" disabled aria-label="動画の再生位置">
+          <span id="captionDuration" class="tc muted">00:00.00</span>
+        </div>
+        <div id="captionVideoEditor" class="video-edit-tools"></div>
+        <div class="caption-timeline-toolbar"><span>タイムライン</span><div><button id="captionTimelineOut" type="button" class="small" aria-label="タイムラインを縮小">−</button><button id="captionTimelineIn" type="button" class="small" aria-label="タイムラインを拡大">＋</button><button id="captionTimelineFit" type="button" class="small">全体</button></div></div>
+        <div id="captionTimeline" class="caption-timeline" aria-label="字幕タイムライン" tabindex="0">
+          <div id="captionTimelineContent" class="caption-timeline-content">
+            <div class="caption-track-label">VIDEO</div><div class="caption-video-track"></div>
+            <div class="caption-track-label">CAPTIONS</div><div id="captionSegmentTrack" class="caption-segment-track"></div>
+            <div class="caption-track-label">WORDS</div><div id="captionWordTrack" class="caption-word-track"></div>
+            <div id="captionPlayhead" class="caption-playhead" aria-hidden="true"></div>
+          </div>
+        </div>
+      </main>
+
+      <aside class="caption-panel caption-inspector" aria-label="字幕スタイルとセグメント設定">
+        <div class="caption-panel-head"><h2>スタイル</h2></div>
+        <label class="field">編集モード<select id="captionEditor"><option value="simple" selected>Simple</option><option value="advanced">Advanced</option></select></label>
+        <div id="captionTechniqueHost" hidden></div>
+        <label class="field">スタイルファミリー<select id="captionStyle"><option value="creator">Creator</option><option value="punchy">Punchy</option><option value="jizura-mv">JIZURA / MV（動き多め）</option></select></label>
+        <p id="captionProfileNote" class="caption-profile-note">読みやすさを優先した標準スタイルです。</p>
+        <section class="caption-effects" aria-labelledby="captionEffectsHeading">
+          <div class="caption-effects-heading"><h3 id="captionEffectsHeading">MV effects</h3><span>TEXT MOTION</span></div>
+          <p class="caption-profile-note">Mix a look, then fine-tune each stage. Applies to unlocked captions.</p>
+          <div class="caption-effect-presets" role="group" aria-label="Caption effect combinations">
+            <button type="button" data-caption-look="clean" aria-pressed="false"><span class="caption-look-sample">Aa</span><strong>Clean</strong><small>Soft rise · outline</small></button>
+            <button type="button" data-caption-look="pop" aria-pressed="false"><span class="caption-look-sample">Aa!</span><strong>Lyric pop</strong><small>Pop · color echo</small></button>
+            <button type="button" data-caption-look="neon" aria-pressed="false"><span class="caption-look-sample">Aa</span><strong>Neon wave</strong><small>Blur · wave · glow</small></button>
+            <button type="button" data-caption-look="type" aria-pressed="false"><span class="caption-look-sample">Aa_</span><strong>Typewriter</strong><small>Letter reveal · plate</small></button>
+          </div>
+          <details class="caption-effect-customize" open><summary>Customize effects</summary>
+        <label class="field">登場エフェクト<select id="captionEffect"><option value="auto">スタイルに合わせる</option><option value="captionFade">Fade</option><option value="captionSoftRise">Rise</option><option value="captionSoftScale">Zoom</option><option value="captionPop">Lyric Pop</option><option value="captionDrop">Letter Drop</option><option value="captionImpact">Impact</option><option value="captionType">Typewriter</option><option value="captionBlur">Blur Reveal</option><option value="captionWipe">Wipe</option><option value="captionWordFade">Letter Fade</option></select></label>
+        <label class="field">文字の装飾<select id="captionTreatment"><option value="outline">Outline</option><option value="backplate">Backplate</option><option value="neon">Neon Glow</option><option value="echo">Color Echo</option></select></label>
+            <label class="field">While visible<select id="captionHoldEffect"><option value="auto">Match style</option><option value="captionStill">Still</option><option value="captionBreathe">Breathe</option><option value="captionWave">MV Wave</option></select></label>
+            <label class="field">Exit<select id="captionExitEffect"><option value="auto">Match style</option><option value="captionFadeOut">Fade out</option><option value="captionShrinkOut">Shrink out</option><option value="captionBlurOut">Blur out</option></select></label>
+          </details>
+          <p id="captionEffectsSummary" class="caption-effects-summary" role="status"></p>
+          <p class="caption-profile-note">MV text effects are adapted to the caption area. Short or crowded captions may use a simpler effect.</p>
+        </section>
+        <label class="field">強さ<input id="captionIntensity" type="range" min="0" max="100" value="50"></label>
+        <label class="field">動き<input id="captionMotion" type="range" min="0" max="100" value="45"></label>
+        <label class="field">字幕あたりの単語数<input id="captionDensity" type="range" min="2" max="8" value="6"><output id="captionDensityValue">6</output></label>
+        <label class="field">位置<select id="captionPosition"><option value="bottom">下</option><option value="center">中央</option><option value="top">上</option></select></label>
+        <label class="field">アクセント色<input id="captionAccent" type="color" value="#f5a50c"></label>
+        <label class="field">文字方向<select id="captionWritingMode"><option value="horizontal">横書き</option><option value="vertical">縦書き</option></select></label>
+        <label class="field">強調の強さ<input id="captionEmphasisStrength" type="range" min="0" max="100" value="100"></label>
+        <label class="caption-reduced-motion"><input id="captionReducedMotion" type="checkbox"> プレビューの動きを減らす</label>
+        <div class="caption-panel-head segment-head"><h2>選択中の字幕</h2></div>
+        <div id="captionInspectorEmpty" class="caption-empty">字幕を選択すると詳細が表示されます。</div>
+        <div id="captionSegmentInspector" hidden>
+          <strong id="captionSelectedText"></strong>
+          <div id="captionEditError" class="caption-validation" role="alert" hidden></div>
+          <div class="caption-time-fields">
+            <label>開始（秒）<input id="captionSelectedStart" type="number" min="0" step="0.01"></label>
+            <label>終了（秒）<input id="captionSelectedEnd" type="number" min="0" step="0.01"></label>
+          </div>
+          <dl class="caption-meta"><dt>精度</dt><dd id="captionSelectedQuality">—</dd><dt>レイアウト</dt><dd id="captionSelectedLayout">—</dd></dl>
+          <div class="caption-edit-group">
+            <label>分割位置<select id="captionSplitPoint"></select></label>
+            <button id="captionSplit" type="button">単語の前で分割</button>
+            <button id="captionMerge" type="button">次の字幕と結合</button>
+          </div>
+          <div class="caption-token-head"><strong>単語</strong><span>文字を修正・強調を指定</span></div>
+          <div id="captionTokenList" class="caption-token-list"></div>
+          <div id="captionAccessibility" class="caption-accessibility" aria-live="polite"></div>
+          <button id="captionLock" type="button" aria-pressed="false">セグメントをロック</button>
+          <button id="captionReroll" type="button">この字幕を再抽選</button>
+          <button id="captionDisableAnimation" type="button" aria-pressed="false">アニメーションを無効化</button>
+        </div>
+        <div id="captionStatus" class="caption-status" role="status" aria-live="polite">準備完了</div>
+      </aside>
+    </div>
+  </section>
+
+  <section id="liveCaptionsWorkspace" class="product-surface live-surface" role="tabpanel" aria-labelledby="productLiveCaptions" hidden>
+    <div class="product-empty-state">
+      <span class="product-kicker">LIVE CAPTIONS</span>
+      <h1>ライブ字幕は今後追加予定です</h1>
+      <p>現在は設定や開始操作を提供していません。Video Captions または Lyric Motion をお使いください。</p>
+      <span class="planned-badge large">予定</span>
+    </div>
+  </section>
+
+  <div id="lyricMotionWorkspace" class="product-workspace" role="tabpanel" aria-labelledby="productLyricMotion">
   <header class="bar">
     <div class="brand"><span class="mark" aria-hidden="true">字面</span><span class="word">JIZURA</span><span class="tag">lyric motion engine</span><span class="ver">v@VERSION@</span></div>
     <div class="proj">
@@ -264,6 +409,7 @@
       </div>
     </section>
   </main>
+  </div>
 </div>
 
 <dialog id="resetDlg" class="terms" aria-labelledby="resetTitle">

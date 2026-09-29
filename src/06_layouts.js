@@ -31,6 +31,7 @@ J.mainDraw = (env, it) => {
   const amt = J.clamp((ltI - cut.inDur * 0.85) / 0.25) * (1 - pOut);
   if (amt > 0 && !it.noHold) ho.apply(env, it, amt, ctx);
   if (pOut > 0 && ex !== J.EXIT.cut) ex.apply(env, it, pOut, ctx);
+  if (J.prepareCaptionActiveItem && it.captionActive) J.prepareCaptionActiveItem(env, it);
   it.charFn = J.combineChar(it.charFns);
   it.pieceFn = J.combinePiece(it.pieceFns);
   return J.drawFx(env, it);

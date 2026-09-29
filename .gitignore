@@ -1,2 +1,4 @@
 __pycache__/
 *.pyc
+dev/fixtures/media/generated/
+dev/www/

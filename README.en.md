@@ -1,5 +1,7 @@
 # JIZURA — Lyric Motion Video Maker
 
+See the [Video Captions MVP guide](docs/VIDEO_CAPTIONS_MVP.md) for the supported workflow, privacy, relinking, timing quality, recovery guidance, and limitations.
+
 Turn lyrics into animated lyric videos in your browser. JIZURA combines layouts, entrances, holds, exits, decorations, text treatments, backgrounds, camera moves, effects and transitions. Change the seed or press **Create a variation** to explore another arrangement.
 
 **[Open the English app](https://852wa.github.io/JIZURA/en/)** · [Bahasa Indonesia](https://852wa.github.io/JIZURA/id/) · [Tiếng Việt](https://852wa.github.io/JIZURA/vi/) · [Vietnamese guide](README.vi.md) · [日本語版](https://852wa.github.io/JIZURA/) · [繁體中文](https://852wa.github.io/JIZURA/zh-hant/) · [简体中文](https://852wa.github.io/JIZURA/zh-hans/) · [한국어](https://852wa.github.io/JIZURA/ko/) · [Korean guide](README.ko.md) · [Japanese guide](README.md)
@@ -109,6 +111,8 @@ Use **Save** and **Open** for `.jizura.json` projects. **Export for AE** creates
 <summary><h2>Build and publish</h2></summary>
 
 The version lives in `VERSION` at the repository root; the builds insert it into the pages and panels. Record changes in `CHANGELOG.md`.
+
+The repository-specific Video Captions implementation boundaries, baseline commands, and Lyric Motion regression fixture are documented in [docs/architecture/video-captions-mvp.md](docs/architecture/video-captions-mvp.md).
 
 Run `python3 build.py` at the repository root. It creates `index.html`, `en/`, `zh-hant/`, `zh-hans/`, `ko/`, `id/` and `vi/` editions (translations in `app/english.py` and `app/i18n_*.py`), all standalone pages for GitHub Pages. Run `python3 build_ae.py --lang en` to rebuild `JIZURA_AE_en.jsx`, and `python3 build_cep.py --lang en --out dist` to build `dist/JIZURA_CEP_en.zip` (copy the ZIP to the repository root for Pages downloads). Commit the built pages, panels and translation sources together. Publish from the repository root on GitHub Pages; the English edition is then served at `/JIZURA/en/` and the Indonesian edition at `/JIZURA/id/`. Open either HTML file locally for offline use, with installed fonts as a fallback.
 

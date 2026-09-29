@@ -386,6 +386,7 @@ J.combineChar = (fns) => {
       if (r.s != null) o.s *= r.s; if (r.a != null) o.a *= r.a;
       if (r.sx) o.sx = (o.sx || 1) * r.sx; if (r.sy) o.sy = (o.sy || 1) * r.sy;
       if (r.ch) o.ch = r.ch; if (r.color) o.color = r.color;
+      if (r.weight) o.weight = r.weight;
       if (r.skew) o.skew = (o.skew || 0) + r.skew;
       if (r.blur) o.blur = (o.blur || 0) + r.blur;
       if (r.outline) o.outline = true;

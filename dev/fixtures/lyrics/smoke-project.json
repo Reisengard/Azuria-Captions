@@ -1,0 +1,22 @@
+{
+  "lyrics": "Hello world\nMake it move!\nAgain again",
+  "seed": 424242,
+  "aspect": "9:16",
+  "style": "noir",
+  "extra": false,
+  "wa": false,
+  "typo": false,
+  "kinetic": false,
+  "timing": {
+    "bpm": 0,
+    "offset": 0.25,
+    "snap": false,
+    "tail": 0.75,
+    "lineTimes": {
+      "0": 0.5,
+      "1": 2.5,
+      "2": 4.5
+    },
+    "lineScale": 1
+  }
+}

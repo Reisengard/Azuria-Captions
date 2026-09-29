@@ -1,0 +1,13 @@
+{
+  "duration": 7.92,
+  "lines": [
+    { "text": "Hello world", "start": 0.5, "end": 2.5, "seed": 1918444305 },
+    { "text": "Make it move", "start": 2.5, "end": 4.5, "seed": 2920625227 },
+    { "text": "Again again", "start": 4.5, "end": 7.17, "seed": 873851958 }
+  ],
+  "cuts": [
+    { "text": "Hello world", "line": 0, "start": 0.5, "end": 2.5, "layout": "neon", "enter": "strokeDraw", "hold": "still", "exit": "shrink", "decor": ["scribbleUnder"], "treat": "none", "bg": "none", "cam": "whipIn", "seed": 543324925 },
+    { "text": "Make it move", "line": 1, "start": 2.5, "end": 4.5, "layout": "panels", "enter": "diagWipe", "hold": "jitter", "exit": "glitchDissolve", "decor": ["verticalStrip"], "treat": "none", "bg": "none", "cam": "push", "seed": 3773941722 },
+    { "text": "Again again", "line": 2, "start": 4.5, "end": 7.17, "layout": "stack", "enter": "riseMask", "hold": "drift", "exit": "slice", "decor": ["heartsStars"], "treat": "none", "bg": "splitH", "cam": "push", "seed": 2162905952 }
+  ]
+}

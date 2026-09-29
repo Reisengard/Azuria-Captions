@@ -1,0 +1,277 @@
+/* ============================================================
+   JIZURA — deterministic caption visual planner (Gate 2.5)
+   ============================================================ */
+(() => {
+'use strict';
+
+J.CAPTION_PLANNER_VERSION = 1;
+J.CAPTION_GENERATOR_VERSION = 'caption-planner-1';
+
+const clone = value => JSON.parse(JSON.stringify(value));
+const profiles = {
+  creator: {
+    label: 'Creator', font: 'Inter', fontSize: 76, minFontSize: 44, alignment: 'center', accentColor: '#B7FF4A', textColor: '#FFFFFF', backgroundColor: '#111318', contrastStrategy: 'backplate',
+    zones: ['bottom', 'center', 'top'], layouts: ['captionBottomStack', 'captionBottomTwoLine', 'captionLeftAnchor', 'captionRightAnchor', 'captionCenterStack'],
+    entrances: ['captionFade', 'captionSoftRise', 'captionSoftScale', 'captionWordFade', 'captionSoftReplace'], holds: ['captionStill'], exits: ['captionFadeOut'],
+    activeTreatments: ['captionActiveColor', 'captionActiveWeight', 'captionActiveUnderline'], maxAttempts: 18, allowFullFrame: false,
+    segmentation: { minWords: 2, maxWords: 6, targetWords: 4, minDwell: 0.7, targetDwell: 1.8, maxDwell: 3.6 },
+    motionBudget: { maxIntensity: 1, maxMotionCost: 0.72, maxAttentionCost: 0.7, maxRollingAttention: 1.15, maxContinuityChanges: 1,
+      continuity: { font: 'fixed', alignment: 'fixed', position: 'fixed', treatment: 'sticky', accentColor: 'fixed', animationFamily: 'sticky' } },
+  },
+  punchy: {
+    label: 'Punchy', font: 'Inter', fontSize: 84, minFontSize: 44, alignment: 'center', accentColor: '#FFDE59', textColor: '#FFFFFF', backgroundColor: '#111111', contrastStrategy: 'backplate',
+    zones: ['center', 'bottom', 'top'], layouts: ['captionBottomStack', 'captionBottomTwoLine', 'captionCenterStack', 'captionSingleWordHero', 'captionLeftAnchor', 'captionRightAnchor', 'captionTwoLinePunch'],
+    entrances: ['captionFade', 'captionSoftRise', 'captionSoftScale', 'captionWordFade', 'captionSoftReplace', 'captionImpact'], holds: ['captionStill'], exits: ['captionFadeOut'],
+    activeTreatments: ['captionActiveColor', 'captionActiveScale', 'captionActiveLift'], maxAttempts: 20, allowFullFrame: false,
+    segmentation: { minWords: 1, maxWords: 4, targetWords: 3, minDwell: 0.55, targetDwell: 1.35, maxDwell: 2.8 },
+    motionBudget: { maxIntensity: 2, maxMotionCost: 0.92, maxAttentionCost: 0.9, maxRollingAttention: 1.45, maxContinuityChanges: 2,
+      continuity: { font: 'fixed', alignment: 'sticky', position: 'sticky', treatment: 'sticky', accentColor: 'fixed', animationFamily: 'flexible' } },
+  },
+  'jizura-mv': {
+    label: 'JIZURA / MV', font: 'Noto Sans', fontSize: 80, minFontSize: 42, alignment: 'center', accentColor: '#57E6FF', textColor: '#FFFFFF', backgroundColor: '#0B1020', contrastStrategy: 'outline',
+    zones: ['center', 'bottom', 'top'], layouts: ['captionBottomStack', 'captionBottomTwoLine', 'captionCenterStack', 'captionSingleWordHero', 'captionLeftAnchor', 'captionRightAnchor', 'captionTwoLinePunch'],
+    entrances: ['captionFade', 'captionSoftRise', 'captionSoftScale', 'captionWordFade', 'captionSoftReplace', 'captionImpact', 'captionType', 'captionBlur', 'captionWipe', 'captionPop', 'captionDrop'],
+    holds: ['captionStill', 'captionBreathe'], exits: ['captionFadeOut', 'captionShrinkOut'],
+    activeTreatments: ['captionActiveColor', 'captionActiveScale', 'captionActiveLift', 'captionActiveWeight', 'captionActiveUnderline'], maxAttempts: 24, allowFullFrame: false,
+    segmentation: { minWords: 1, maxWords: 6, targetWords: 3, minDwell: 0.55, targetDwell: 1.5, maxDwell: 3.2 },
+    motionBudget: { maxIntensity: 3, maxMotionCost: 1.1, maxAttentionCost: 1.05, maxRollingAttention: 1.7, maxContinuityChanges: 3,
+      continuity: { font: 'sticky', alignment: 'sticky', position: 'sticky', treatment: 'flexible', accentColor: 'sticky', animationFamily: 'flexible' } },
+  },
+};
+J.CAPTION_STYLE_PROFILES = Object.freeze(profiles);
+
+const internalMeta = (intensity, motionCost, attentionCost) => ({ intensity, motionCost, attentionCost, captionSafe: true, liveSafe: true, minDuration: 0, maxWords: 99, portraitFriendly: true, emojiSafe: true, requiresFullFrame: false, flashes: false, movesCamera: false, incompatibleComponentIds: [], incompatibleCategories: [] });
+const SAFE = Object.freeze({
+  layout: { group: 'layout', id: 'captionStatic', metadata: internalMeta(0, 0, 0) },
+  enter: { group: 'enter', id: 'captionFade', metadata: internalMeta(1, 0.12, 0.18), role: 'primary' },
+  hold: { group: 'hold', id: 'captionStill', metadata: internalMeta(0, 0, 0) },
+  exit: { group: 'exit', id: 'captionFadeOut', metadata: internalMeta(0, 0.06, 0) },
+  active: { group: 'active', id: 'captionActiveColor', metadata: internalMeta(0, 0, 0.06), role: 'secondary' },
+  treat: { group: 'treat', id: 'captionBackplate', metadata: internalMeta(0, 0, 0) },
+});
+
+const styleFor = project => {
+  const source = project.style || {};
+  const key = typeof source === 'string' ? source : source.preset || source.profile || 'creator';
+  const normalized = key === 'jizura' || key === 'mv' ? 'jizura-mv' : key;
+  const base = profiles[normalized] || profiles.creator;
+  const resolvedKey = profiles[normalized] ? normalized : 'creator';
+  const overrides = typeof source === 'object' ? source : {};
+  return { key: resolvedKey, value: Object.assign({}, base, overrides, {
+    profileId: resolvedKey,
+    segmentation: Object.assign({}, base.segmentation, overrides.segmentation || {}),
+    motionBudget: Object.assign({}, base.motionBudget, overrides.motionBudget || {}, {
+      continuity: Object.assign({}, base.motionBudget.continuity, overrides.motionBudget && overrides.motionBudget.continuity || {}),
+    }),
+  }) };
+};
+const frameFor = (project, media) => ({
+  width: Number(media && (media.width || media.videoWidth) || project.media && project.media.width) || 1080,
+  height: Number(media && (media.height || media.videoHeight) || project.media && project.media.height) || 1920,
+});
+const hasEmoji = text => /\p{Extended_Pictographic}/u.test(text);
+const resolvedStored = stored => Object.assign({}, stored && stored.generated || {}, stored && stored.manual || {});
+const fieldsLocked = (segment, stored) => new Set([...(segment.locks && segment.locks.fields || []), ...(stored && stored.lockedFields || [])]);
+const hashSeed = (seed, segmentId, reroll = 0) => J.h(Number(seed) || 0, J.sid(String(segmentId)), reroll, J.CAPTION_PLANNER_VERSION);
+const advancedEditor = style => style.editor === 'advanced';
+// Reviewed lyric ids carry intensity 4. The caption budget would drop them before the id is stored.
+const NEUTRAL_POOL_META = Object.freeze({ intensity: 0, motionCost: 0, attentionCost: 0 });
+const automaticPoolOk = (project, group, id) => {
+  if (!J.captionTechniqueOn || J.captionTechniqueOn(project, group, id) !== true) return false;
+  const def = J.registry(group)[id];
+  if (!def) return false;
+  const flags = J.captionTechniques(project);
+  if (def.extra && flags.extra !== true) return false;
+  if (def.wa && flags.wa !== true) return false;
+  if (def.set && flags[def.set] !== true) return false;
+  return true;
+};
+
+const eligible = (group, segment, text, frame, style, project) => {
+  if (advancedEditor(style)) return J.order(group).filter(id => automaticPoolOk(project, group, id));
+  if (!J.captionCandidates) return [];
+  return J.captionCandidates(group, { duration: segment.end - segment.start, wordCount: segment.tokenIds.length, portrait: frame.height > frame.width,
+    hasEmoji: hasEmoji(text), allowFullFrame: style.allowFullFrame === true, allowFlashes: false, allowCameraMotion: false }).filter(id => {
+      const definition = J.registry(group)[id], allowedProfiles = definition && definition.captionProfiles;
+      const selected = { enter: style.effect, hold: style.holdEffect, exit: style.exitEffect }[group];
+      const profileList = selected && selected !== 'auto' ? [selected] : group === 'layout' ? style.layouts : group === 'enter' ? style.entrances : group === 'hold' ? style.holds : group === 'exit' ? style.exits : null;
+      return (!allowedProfiles || allowedProfiles.includes(style.profileId)) && (!profileList || profileList.includes(id));
+    });
+};
+const optionList = (group, fallback, segment, text, frame, style, project) => {
+  const registered = eligible(group, segment, text, frame, style, project).map(id => ({ group, id }));
+  return registered.length ? registered : [fallback];
+};
+const choose = (list, seed, attempt, salt) => clone(list[J.h(seed, attempt, salt) % list.length]);
+const metadataFor = component => component.metadata || (J.registry && J.registry(component.group)[component.id] && J.registry(component.group)[component.id].capabilities);
+const withMeta = (component, role) => {
+  component.metadata = metadataFor(component);
+  const resolvedRole = component.role || role;
+  if (resolvedRole) component.role = resolvedRole;
+  return component;
+};
+const registeredComponent = (group, id, fallback, role) => {
+  const definition = J.registry && J.GROUP_KEYS.includes(group) && J.registry(group)[id];
+  return withMeta({ group, id, metadata: definition && definition.capabilities || fallback.metadata }, role);
+};
+const componentsCompatible = (components, advanced) => components.every((component, index) => {
+  if (!J.captionComponentEligibility || !component.group || !J.registry || !J.GROUP_KEYS.includes(component.group) || !J.registry(component.group)[component.id]) return true;
+  const selected = components.filter((_, otherIndex) => otherIndex !== index).map(item => ({
+    group: item.group, key: item.id, def: J.GROUP_KEYS.includes(item.group) ? J.registry(item.group)[item.id] : null,
+  }));
+  const result = J.captionComponentEligibility(component.group, component.id, { selected });
+  if (result.allowed) return true;
+  return advanced === true && (result.code === 'COMPONENT_NOT_CAPTION_SAFE' || result.code === 'COMPONENT_CAPABILITIES_UNREVIEWED');
+});
+const motionCandidate = (candidate, advanced) => {
+  if (!advanced) return candidate;
+  return Object.assign({}, candidate, {
+    components: candidate.components.map(component => {
+      const def = component.group && J.GROUP_KEYS.includes(component.group) && J.registry(component.group)[component.id];
+      const meta = def && def.capabilities;
+      if (meta && meta.captionSafe === true) return component;
+      return Object.assign({}, component, { metadata: NEUTRAL_POOL_META });
+    }),
+  });
+};
+
+const projectZones = (project, frame, style) => {
+  const valid = [];
+  for (const zone of project.safeZones || []) {
+    try { if (zone.kind) { J.validateCaptionZone(zone, frame); valid.push(clone(zone)); } } catch (_) { /* invalid saved zones are not planner candidates */ }
+  }
+  if (valid.length) return valid;
+  return style.zones.map(kind => J.createCaptionZone(kind, frame));
+};
+const segmentText = (segment, tokenMap) => segment.tokenIds.map(id => tokenMap.get(id)).filter(Boolean).map(token => token.text).join(' ');
+const segmentEmphasis = (segment, tokenMap, strength = 1) => segment.tokenIds.map(id => tokenMap.get(id)).filter(Boolean).map(token => ({ id: token.id, score: Math.max(0, Math.min(1, (token.emphasis && token.emphasis.score || 0) * strength)), reasons: token.emphasis && token.emphasis.reasons || [] }));
+
+const candidateFor = (segment, text, emphasis, zone, style, seed, attempt, frame, project) => {
+  const layout = choose(optionList('layout', SAFE.layout, segment, text, frame, style, project), seed, attempt, 11);
+  const entrance = choose(optionList('enter', SAFE.enter, segment, text, frame, style, project), seed, attempt, 12);
+  const hold = choose(optionList('hold', SAFE.hold, segment, text, frame, style, project), seed, attempt, 13);
+  const exit = choose(optionList('exit', SAFE.exit, segment, text, frame, style, project), seed, attempt, 14);
+  const treatment = choose(optionList('treat', SAFE.treat, segment, text, frame, style, project), seed, attempt, 15);
+  const decorations = eligible('decor', segment, text, frame, style, project);
+  const decoration = decorations.length && J.r(seed, attempt, 16) < 0.32 ? { group: 'decor', id: decorations[J.h(seed, attempt, 17) % decorations.length] } : null;
+  const activeIds = (style.activeTreatments || ['captionActiveColor']).filter(id => J.CAPTION_ACTIVE && J.CAPTION_ACTIVE[id]);
+  const activeId = activeIds.length ? activeIds[J.h(seed, attempt, 18) % activeIds.length] : SAFE.active.id;
+  const activeDefinition = J.CAPTION_ACTIVE && J.CAPTION_ACTIVE[activeId];
+  const active = { group: 'active', id: activeId, metadata: activeDefinition && activeDefinition.capabilities || SAFE.active.metadata, role: 'secondary' };
+  const components = [withMeta(layout), withMeta(entrance, 'primary'), withMeta(hold), withMeta(exit), active, withMeta(treatment)];
+  if (decoration) components.push(withMeta(decoration, 'secondary'));
+  const strongest = emphasis.reduce((best, item) => !best || item.score > best.score ? item : best, null);
+  return {
+    segmentId: segment.id, seed, text, tokenIds: segment.tokenIds.slice(), start: segment.start, end: segment.end,
+    zoneId: zone.id, zone: clone(zone), layout: layout.id, entrance: entrance.id, hold: hold.id, exit: exit.id,
+    activeWordTreatment: activeId, textTreatment: treatment.id, decoration: decoration && decoration.id,
+    font: style.font, fontSize: style.fontSize, alignment: style.alignment, position: zone.kind, writingMode: style.writingMode || 'horizontal',
+    treatment: treatment.id, accentColor: style.accentColor, animationFamily: entrance.id,
+    textColor: style.textColor, backgroundColor: style.backgroundColor, contrastStrategy: style.contrastStrategy,
+    duration: segment.end - segment.start, maxLines: 2, stableAnchor: true, emphasis, strongestEmphasis: strongest,
+    motion: style.motion == null ? .6 : style.motion, intensity: style.intensity == null ? .6 : style.intensity, captionTreatment: style.captionTreatment || 'outline',
+    styleProfile: style.profileId, allowFullFrame: style.allowFullFrame === true,
+    components,
+  };
+};
+
+const applyLocks = (candidate, oldPlan, locked) => {
+  const previous = resolvedStored(oldPlan);
+  for (const field of locked) if (previous[field] !== undefined) candidate[field] = clone(previous[field]);
+  return candidate;
+};
+const completeStoredPlan = (segment, candidate, oldPlan, attempt, fallback, readability, motion, rerollCount) => ({
+  id: oldPlan && oldPlan.id || `plan_${segment.id}`, segmentId: segment.id,
+  generated: Object.assign({}, candidate, { attempt, fallback, readability, motionSummary: Object.assign({}, motion.totals, { hero: motion.hero }), rerollCount }),
+  manual: clone(oldPlan && oldPlan.manual || {}), lockedFields: clone(oldPlan && oldPlan.lockedFields || []),
+});
+
+const staticFallback = (segment, text, emphasis, zone, style, seed, frame, project) => {
+  let fontSize = style.fontSize, readability, candidate;
+  do {
+    candidate = candidateFor(segment, text, emphasis, zone, style, seed, 999, frame, project);
+    const pooled = group => advancedEditor(style) ? eligible(group, segment, text, frame, style, project)[0] : null;
+    const layoutId = pooled('layout') || (style.layouts && style.layouts.find(id => J.LAYOUTS && J.LAYOUTS[id] && J.LAYOUTS[id].capabilities)) || SAFE.layout.id;
+    const entranceId = pooled('enter') || SAFE.enter.id;
+    const holdId = pooled('hold') || SAFE.hold.id;
+    const exitId = pooled('exit') || SAFE.exit.id;
+    const treatId = pooled('treat') || SAFE.treat.id;
+    candidate.layout = layoutId; candidate.entrance = entranceId; candidate.hold = holdId; candidate.exit = exitId;
+    candidate.textTreatment = treatId; candidate.treatment = treatId; candidate.decoration = null;
+    candidate.animationFamily = entranceId; candidate.activeWordTreatment = SAFE.active.id;
+    const activeDefinition = J.CAPTION_ACTIVE && J.CAPTION_ACTIVE[SAFE.active.id];
+    const template = (group, id, safe) => {
+      const def = J.registry(group)[id];
+      return def && def.capabilities ? safe : advancedEditor(style) ? { metadata: NEUTRAL_POOL_META } : safe;
+    };
+    candidate.components = [registeredComponent('layout', layoutId, template('layout', layoutId, SAFE.layout)), registeredComponent('enter', entranceId, template('enter', entranceId, SAFE.enter), 'primary'),
+      registeredComponent('hold', holdId, template('hold', holdId, SAFE.hold)), registeredComponent('exit', exitId, template('exit', exitId, SAFE.exit)),
+      { group: 'active', id: SAFE.active.id, metadata: activeDefinition && activeDefinition.capabilities || SAFE.active.metadata, role: 'secondary' }, registeredComponent('treat', treatId, template('treat', treatId, SAFE.treat))];
+    candidate.fontSize = fontSize;
+    readability = J.evaluateCaptionReadability(candidate, { frame, constraints: { minFontSize: style.minFontSize, maxLines: 2 } });
+    fontSize -= 2;
+  } while (!readability.allowed && fontSize >= style.minFontSize);
+  return { candidate, readability };
+};
+
+const planOne = (segment, tokenMap, zones, style, project, projectSeed, oldPlan, recentPlans, frame, rerollCount) => {
+  if (segment.locks && segment.locks.visualPlan && oldPlan) return clone(oldPlan);
+  const text = segmentText(segment, tokenMap), emphasis = segmentEmphasis(segment, tokenMap, Number.isFinite(style.emphasisStrength) ? style.emphasisStrength : 1);
+  const seed = hashSeed(projectSeed, segment.id, rerollCount), locked = fieldsLocked(segment, oldPlan);
+  const advanced = advancedEditor(style);
+  for (let attempt = 0; attempt < style.maxAttempts; attempt++) {
+    const zone = zones[J.h(seed, attempt, 7) % zones.length];
+    let candidate = candidateFor(segment, text, emphasis, zone, style, seed, attempt, frame, project);
+    candidate = applyLocks(candidate, oldPlan, locked);
+    if (!componentsCompatible(candidate.components, advanced)) continue;
+    const readability = J.evaluateCaptionReadability(candidate, { frame, constraints: { minFontSize: style.minFontSize, maxLines: 2 } });
+    if (!readability.allowed) continue;
+    // Explicit combinations use the existing manual motion policy; component eligibility
+    // and readability remain mandatory. Automatic styles retain their original budgets.
+    const motion = J.evaluateCaptionMotionPlan(motionCandidate(candidate, advanced), { profile: style.motionBudget, manualOverride: !!(style.holdEffect && style.holdEffect !== 'auto' || style.exitEffect && style.exitEffect !== 'auto'), recentPlans, previousPlan: recentPlans[recentPlans.length - 1] });
+    if (!motion.allowed) continue;
+    return completeStoredPlan(segment, candidate, oldPlan, attempt, false, readability, motion, rerollCount);
+  }
+  const zone = zones.find(item => item.kind === 'bottom') || zones[0];
+  const fallback = staticFallback(segment, text, emphasis, zone, style, seed, frame, project);
+  const candidate = applyLocks(fallback.candidate, oldPlan, locked);
+  const readability = J.evaluateCaptionReadability(candidate, { frame, constraints: { minFontSize: style.minFontSize, maxLines: 2 } });
+  const motion = J.evaluateCaptionMotionPlan(candidate, { profile: style.motionBudget, manualOverride: !!(style.holdEffect && style.holdEffect !== 'auto' || style.exitEffect && style.exitEffect !== 'auto'), recentPlans, previousPlan: recentPlans[recentPlans.length - 1] });
+  return completeStoredPlan(segment, candidate, oldPlan, style.maxAttempts, true, readability, motion, rerollCount);
+};
+
+J.planCaptions = (project, media, options = {}) => {
+  const frame = frameFor(project, media), resolvedStyle = styleFor(project), style = resolvedStyle.value;
+  const emphasized = J.applyCaptionEmphasis(project.transcript), tokenMap = new Map(emphasized.tokens.map(token => [token.id, token]));
+  const zones = projectZones(project, frame, style), plans = {}, recentPlans = [];
+  const segments = project.segments && project.segments.length ? project.segments : J.segmentCaptions(emphasized, {
+    duration: project.media && project.media.duration, safeZone: zones[0], existingSegments: project.segments || [], ...style.segmentation,
+  }).segments;
+  for (const segment of segments) {
+    const oldPlan = project.plans && project.plans[segment.id];
+    const rerollCount = options.rerollCounts && options.rerollCounts[segment.id] != null ? options.rerollCounts[segment.id] : oldPlan && oldPlan.generated && oldPlan.generated.rerollCount || 0;
+    const stored = planOne(segment, tokenMap, zones, style, project, project.seed, oldPlan, recentPlans, frame, rerollCount);
+    plans[segment.id] = stored; recentPlans.push(stored.generated);
+  }
+  return { version: J.CAPTION_PLANNER_VERSION, generatorVersion: J.CAPTION_GENERATOR_VERSION, projectId: project.id,
+    seed: project.seed, profile: resolvedStyle.key, frame, zones, tokens: emphasized.tokens, segments: clone(segments), plans };
+};
+
+J.createCaptionVisualVariation = (project, options = {}) => {
+  const varied = clone(project), requestedSeed = options.seed;
+  varied.seed = Number.isFinite(requestedSeed) ? requestedSeed : J.h(Number(project.seed) || 0, 0x564152, Number(options.variation || 1));
+  const result = J.planCaptions(varied, options.media);
+  varied.plans = result.plans;
+  return varied;
+};
+
+J.rerollCaptionVisual = (project, segmentId, options = {}) => {
+  const segment = (project.segments || []).find(item => item.id === segmentId);
+  if (!segment) { const error = new Error(`Segment "${segmentId}" was not found.`); error.code = 'SEGMENT_NOT_FOUND'; throw error; }
+  if (segment.locks && segment.locks.visualPlan) { const error = new Error(`Segment "${segmentId}" visual plan is locked.`); error.code = 'SEGMENT_FIELD_LOCKED'; throw error; }
+  const current = project.plans && project.plans[segmentId], count = current && current.generated && current.generated.rerollCount || 0;
+  const result = J.planCaptions(project, options.media, { rerollCounts: { [segmentId]: count + 1 } });
+  const changed = clone(project); changed.plans = clone(project.plans || {}); changed.plans[segmentId] = result.plans[segmentId];
+  return changed;
+};
+})();

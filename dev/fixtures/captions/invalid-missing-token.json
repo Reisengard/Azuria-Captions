@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 2,
+  "mode": "video-captions",
+  "id": "project_missing_token",
+  "transcript": {
+    "language": "en",
+    "timingQuality": "word",
+    "tokens": [
+      { "id": "word_present", "text": "Present", "normalizedText": "present", "start": 0, "end": 0.5, "source": "fixture", "timingQuality": "word" }
+    ]
+  },
+  "segments": [
+    { "id": "segment_0001", "tokenIds": ["word_present", "word_missing"], "start": 0, "end": 1, "boundarySource": "fixture", "locks": { "segmentation": false, "visualPlan": false, "fields": [] } }
+  ],
+  "expectedError": { "code": "SEGMENT_TOKEN_NOT_FOUND", "segmentId": "segment_0001", "tokenId": "word_missing" }
+}

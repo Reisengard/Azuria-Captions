@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "language": "en",
+  "timingQuality": "word",
+  "tokens": [
+    { "id": "word_000001", "text": "Wait,", "normalizedText": "wait", "start": 0.4, "end": 0.82, "confidence": 0.99, "source": "fixture", "timingQuality": "word", "speakerId": null, "emphasis": { "score": 0, "reasons": [] }, "manualEmphasis": null },
+    { "id": "word_000002", "text": "we", "normalizedText": "we", "start": 0.88, "end": 1.04, "confidence": 0.98, "source": "fixture", "timingQuality": "word", "speakerId": null, "emphasis": { "score": 0, "reasons": [] }, "manualEmphasis": null },
+    { "id": "word_000003", "text": "made", "normalizedText": "made", "start": 1.08, "end": 1.34, "confidence": 0.98, "source": "fixture", "timingQuality": "word", "speakerId": null, "emphasis": { "score": 0, "reasons": [] }, "manualEmphasis": null },
+    { "id": "word_000004", "text": "42%", "normalizedText": "42%", "start": 1.39, "end": 1.82, "confidence": 0.97, "source": "fixture", "timingQuality": "word", "speakerId": null, "emphasis": { "score": 0, "reasons": [] }, "manualEmphasis": { "enabled": true, "reason": "fixture" } },
+    { "id": "word_000005", "text": "more.", "normalizedText": "more", "start": 1.87, "end": 2.25, "confidence": 0.99, "source": "fixture", "timingQuality": "word", "speakerId": null, "emphasis": { "score": 0, "reasons": [] }, "manualEmphasis": null },
+    { "id": "word_000006", "text": "Now", "normalizedText": "now", "start": 3.4, "end": 3.68, "confidence": 0.99, "source": "fixture", "timingQuality": "word", "speakerId": null, "emphasis": { "score": 0, "reasons": [] }, "manualEmphasis": null },
+    { "id": "word_000007", "text": "go", "normalizedText": "go", "start": 3.72, "end": 3.96, "confidence": 0.98, "source": "fixture", "timingQuality": "word", "speakerId": null, "emphasis": { "score": 0, "reasons": [] }, "manualEmphasis": null },
+    { "id": "word_000008", "text": "go", "normalizedText": "go", "start": 4.02, "end": 4.27, "confidence": 0.98, "source": "fixture", "timingQuality": "word", "speakerId": null, "emphasis": { "score": 0, "reasons": [] }, "manualEmphasis": null },
+    { "id": "word_000009", "text": "go!", "normalizedText": "go", "start": 4.34, "end": 4.7, "confidence": 0.99, "source": "fixture", "timingQuality": "word", "speakerId": null, "emphasis": { "score": 0, "reasons": [] }, "manualEmphasis": null },
+    { "id": "word_000010", "text": "Captions", "normalizedText": "captions", "start": 6.1, "end": 6.62, "confidence": 0.99, "source": "fixture", "timingQuality": "word", "speakerId": null, "emphasis": { "score": 0, "reasons": [] }, "manualEmphasis": null },
+    { "id": "word_000011", "text": "stay", "normalizedText": "stay", "start": 6.68, "end": 7.01, "confidence": 0.99, "source": "fixture", "timingQuality": "word", "speakerId": null, "emphasis": { "score": 0, "reasons": [] }, "manualEmphasis": null },
+    { "id": "word_000012", "text": "in", "normalizedText": "in", "start": 7.06, "end": 7.2, "confidence": 0.99, "source": "fixture", "timingQuality": "word", "speakerId": null, "emphasis": { "score": 0, "reasons": [] }, "manualEmphasis": null },
+    { "id": "word_000013", "text": "sync.", "normalizedText": "sync", "start": 7.25, "end": 7.72, "confidence": 0.99, "source": "fixture", "timingQuality": "word", "speakerId": null, "emphasis": { "score": 0, "reasons": [] }, "manualEmphasis": null },
+    { "id": "word_000014", "text": "Three", "normalizedText": "three", "start": 9.1, "end": 9.48, "confidence": 0.99, "source": "fixture", "timingQuality": "word", "speakerId": null, "emphasis": { "score": 0, "reasons": [] }, "manualEmphasis": null },
+    { "id": "word_000015", "text": "layouts.", "normalizedText": "layouts", "start": 9.54, "end": 10.08, "confidence": 0.99, "source": "fixture", "timingQuality": "word", "speakerId": null, "emphasis": { "score": 0, "reasons": [] }, "manualEmphasis": null },
+    { "id": "word_000016", "text": "One", "normalizedText": "one", "start": 11.0, "end": 11.28, "confidence": 0.99, "source": "fixture", "timingQuality": "word", "speakerId": null, "emphasis": { "score": 0, "reasons": [] }, "manualEmphasis": null },
+    { "id": "word_000017", "text": "clear", "normalizedText": "clear", "start": 11.34, "end": 11.68, "confidence": 0.99, "source": "fixture", "timingQuality": "word", "speakerId": null, "emphasis": { "score": 0, "reasons": [] }, "manualEmphasis": null },
+    { "id": "word_000018", "text": "story.", "normalizedText": "story", "start": 11.74, "end": 12.2, "confidence": 0.99, "source": "fixture", "timingQuality": "word", "speakerId": null, "emphasis": { "score": 0, "reasons": [] }, "manualEmphasis": null },
+    { "id": "word_000019", "text": "Ready", "normalizedText": "ready", "start": 13.0, "end": 13.36, "confidence": 0.99, "source": "fixture", "timingQuality": "word", "speakerId": null, "emphasis": { "score": 0, "reasons": [] }, "manualEmphasis": null },
+    { "id": "word_000020", "text": "to", "normalizedText": "to", "start": 13.42, "end": 13.58, "confidence": 0.99, "source": "fixture", "timingQuality": "word", "speakerId": null, "emphasis": { "score": 0, "reasons": [] }, "manualEmphasis": null },
+    { "id": "word_000021", "text": "create?", "normalizedText": "create", "start": 13.64, "end": 14.32, "confidence": 0.99, "source": "fixture", "timingQuality": "word", "speakerId": null, "emphasis": { "score": 0, "reasons": [] }, "manualEmphasis": null }
+  ]
+}

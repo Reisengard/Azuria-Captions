@@ -1,6 +1,7 @@
 """Korean copy for the browser edition (same glossary keys as app/english.py). The Japanese source stays authoritative."""
 
 BODY = {
+    '編集モード<select id="captionEditor"': '편집 모드<select id="captionEditor"',
     '文字PV系の部品を使う': '타이포그래피 부품 사용',
     'キネティックの部品を使う': '키네틱 부품 사용',
     'ホラーの演出も使う': '호러 연출도 사용',

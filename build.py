@@ -11,6 +11,7 @@ VERSION = read('VERSION').strip()
 sources = sorted(glob.glob('src/*.js'))
 js = '\n'.join(read(f) for f in sources)
 mux = '/*! mp4-muxer v5.2.2 | MIT License | (c) 2023 Vanilagy | see THIRD_PARTY_NOTICES.md */\n' + read('vendor/mp4-muxer.min.js')
+media = '/*! Mediabunny v1.60.0 | MPL-2.0 | see THIRD_PARTY_NOTICES.md */\n' + read('vendor/mediabunny-1.60.0.min.js')
 def build(lang):
     english = lang == 'en'
     local = lang in i18n.MODULES
@@ -58,6 +59,9 @@ def build(lang):
 {body}
 <script>
 {mux}
+</script>
+<script>
+{media}
 </script>
 <script>
 {script}

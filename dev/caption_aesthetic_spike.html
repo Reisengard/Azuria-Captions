@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>JIZURA caption aesthetic spike</title>
+  <style>
+    :root { color-scheme: dark; font: 14px/1.4 Inter, system-ui, sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #111; color: #f7f7f2; }
+    main { display: grid; grid-template-columns: minmax(320px, 540px) minmax(280px, 1fr); gap: 28px; max-width: 1050px; margin: auto; padding: 24px; }
+    canvas { width: min(100%, 432px); aspect-ratio: 9/16; border-radius: 18px; background: #20222a; box-shadow: 0 22px 70px #0009; }
+    h1 { margin-top: 0; font-size: 28px; }
+    .controls { display: flex; flex-wrap: wrap; gap: 9px; margin: 16px 0; }
+    button { border: 1px solid #ffffff22; border-radius: 999px; padding: 9px 14px; color: inherit; background: #292b34; cursor: pointer; }
+    button[aria-pressed="true"], button.primary { color: #111; background: #b7ff4a; }
+    input[type="range"] { width: min(100%, 430px); accent-color: #b7ff4a; }
+    pre { min-height: 180px; padding: 14px; overflow: auto; border-radius: 10px; background: #090a0d; color: #aeb3c4; font-size: 12px; }
+    .note { color: #aeb3c4; }
+    @media (max-width: 760px) { main { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+<main>
+  <section><canvas id="preview" width="1080" height="1920" aria-label="Caption preview"></canvas></section>
+  <section>
+    <h1>Caption aesthetic spike</h1>
+    <p class="note">Three layouts, calm and punchy profiles, active-word color, and deterministic variations over a 15-second synthetic fixture.</p>
+    <div class="controls">
+      <button id="play" class="primary">Play</button>
+      <button id="restart">Restart</button>
+    </div>
+    <input id="time" type="range" min="0" max="15" step="0.001" value="0" aria-label="Timeline">
+    <div class="controls" aria-label="Style profile">
+      <button class="profile" data-profile="creator" aria-pressed="true">Creator</button>
+      <button class="profile" data-profile="punchy" aria-pressed="false">Punchy</button>
+    </div>
+    <div class="controls">
+      <button id="variation">Create variation</button>
+      <button id="seed">Seed 3107</button>
+    </div>
+    <pre id="debug">Loading timed words…</pre>
+  </section>
+</main>
+<script src="caption_aesthetic_spike.js"></script>
+</body>
+</html>

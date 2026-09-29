@@ -1,5 +1,11 @@
 # Third-party notices
 
+## Mediabunny 1.60.0 (bundled)
+
+`vendor/mediabunny-1.60.0.min.js` is embedded in the browser editions and is used to read, decode, encode, and mux media for Video Captions export.
+Source: https://github.com/Vanilagy/mediabunny — licensed under the Mozilla Public License 2.0.
+The complete license text is included at `vendor/mediabunny-LICENSE.txt`.
+
 ## mp4-muxer 5.2.2 (bundled)
 
 `vendor/mp4-muxer.min.js` is embedded in `index.html` and is used to write MP4 files.
