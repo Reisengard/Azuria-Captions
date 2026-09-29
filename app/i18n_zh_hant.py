@@ -1,7 +1,6 @@
 """Traditional Chinese (Taiwan) copy for the browser edition. Same glossary keys as app/english.py."""
 
 BODY = {
-    '編集モード<select id="captionEditor"': '編輯模式<select id="captionEditor"',
     '文字PV系の部品を使う': '使用文字排版部件',
     'キネティックの部品を使う': '使用動態文字部件',
     'ホラーの演出も使う': '也使用恐怖特效',

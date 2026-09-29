@@ -18,6 +18,12 @@ J.mountVideoEditor = ({ host, project, video, commit, status }) => {
       <div><p>Output · drag to move panel</p><canvas data-edit="output" width="360" height="640" aria-label="Output panel placement; use percentage fields below for keyboard editing"></canvas></div></div>
       <div data-edit="rects"></div><button type="button" data-action="removePanel">Remove selected panel</button>
     </details>
+    <details><summary>Overlays & templates</summary><p>Add a PNG with transparent areas (a frame, logo or template) on top of the video. Position and size are percentages of the output frame. Overlays are saved with the project; use Save template / Load template to reuse a set in other projects.</p>
+      <div data-edit="overlays"></div>
+      <div class="video-edit-buttons"><label class="button-like">Add PNG overlay<input data-edit="overlayFile" type="file" accept="image/png,image/webp" hidden></label>
+        <button type="button" data-action="saveTemplate">Save template</button>
+        <label class="button-like">Load template<input data-edit="templateFile" type="file" accept="application/json,.json" hidden></label></div>
+    </details>
     <details><summary>Extra captions & notes</summary><p>Each note has its own timing and position and can overlap subtitles or other notes.</p>
       <div data-edit="notes"></div><button type="button" data-action="note">Add note</button>
     </details>
@@ -48,6 +54,7 @@ J.mountVideoEditor = ({ host, project, video, commit, status }) => {
     try {
       J.validateVideoEdits(draft, project().media.duration);
       J.drawVideoEdit(out, source, output.width, output.height, { ...project(), settings: { ...project().settings, videoEdit: draft } });
+      J.drawVideoOverlays(out, { ...project(), settings: { ...project().settings, videoEdit: draft } }, 'all', { designWidth: output.width, designHeight: output.height });
       const panel = draft.panels[selected];
       if (panel) { const t = panel.target; out.strokeStyle = '#f5a50c'; out.lineWidth = 3; out.strokeRect(t.x * output.width, t.y * output.height, t.w * output.width, t.h * output.height); }
     } catch (_) { out.fillStyle = '#111'; out.fillRect(0, 0, output.width, output.height); }
@@ -75,6 +82,17 @@ J.mountVideoEditor = ({ host, project, video, commit, status }) => {
       for (const [field, label] of [['x', 'Left'], ['y', 'Top'], ['w', 'Width'], ['h', 'Height']]) group.append(input(label, +(panel[key][field] * 100).toFixed(2), value => { panel[key][field] = value / 100; }, { max: 100 }));
       el('rects').append(group);
     }
+    el('overlays').replaceChildren();
+    (draft.overlays || []).forEach((overlay, i) => {
+      const row = document.createElement('fieldset'); const legend = document.createElement('legend'); legend.textContent = `Overlay ${i + 1} · ${overlay.name}`; row.append(legend); row.className = 'video-edit-grid';
+      for (const [key, label] of [['x', 'Left (%)'], ['y', 'Top (%)'], ['w', 'Width (%)'], ['h', 'Height (%)']]) row.append(input(label, +(overlay[key] * 100).toFixed(2), value => { overlay[key] = value / 100; }, { min: -200, max: 400 }));
+      row.append(input('Opacity (%)', Math.round(overlay.opacity * 100), value => { overlay.opacity = value / 100; }, { max: 100 }));
+      const layer = document.createElement('label'); layer.textContent = 'Layer'; const select = document.createElement('select');
+      for (const [value, text] of [['below', 'Under captions'], ['above', 'Over captions']]) { const option = document.createElement('option'); option.value = value; option.textContent = text; select.append(option); }
+      select.value = overlay.layer; select.onchange = () => { overlay.layer = select.value; el('message').textContent = 'Unapplied changes'; paint(); }; layer.append(select);
+      row.append(layer, button('Fit to frame', () => { Object.assign(overlay, { x: 0, y: 0, w: 1, h: 1 }); render(); el('message').textContent = 'Unapplied changes'; }), button('Delete overlay', () => { draft.overlays.splice(i, 1); render(); el('message').textContent = 'Unapplied changes'; }));
+      el('overlays').append(row);
+    });
     el('notes').replaceChildren();
     draft.notes.forEach((note, i) => {
       const row = document.createElement('fieldset'); const legend = document.createElement('legend'); legend.textContent = `Note ${i + 1}`; row.append(legend); row.className = 'video-edit-grid';
@@ -88,6 +106,32 @@ J.mountVideoEditor = ({ host, project, video, commit, status }) => {
     const value = JSON.stringify(J.videoEditSettings(project()));
     if (value !== saved || mediaDuration !== project().media.duration) { saved = value; mediaDuration = project().media.duration; draft = JSON.parse(value); render(); }
   }
+  const readDataUrl = file => new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = () => reject(new Error('Could not read the image.')); reader.readAsDataURL(file); });
+  const decode = src => new Promise((resolve, reject) => { const image = new Image(); image.onload = () => resolve(image); image.onerror = () => reject(new Error('That file is not a readable image.')); image.src = src; });
+  const nextOverlayId = () => { const used = new Set((draft.overlays || []).map(overlay => overlay.id)); let n = 1; while (used.has(`overlay_${n}`)) n++; return `overlay_${n}`; };
+  const addOverlay = async (file, template) => {
+    try {
+      draft.overlays = draft.overlays || [];
+      if (draft.overlays.length >= J.VIDEO_OVERLAY_LIMIT) throw new Error(`Use at most ${J.VIDEO_OVERLAY_LIMIT} overlays.`);
+      if (!/^image\/(png|webp)$/.test(file.type)) throw new Error('Choose a PNG (or WebP) image with transparency.');
+      const src = await readDataUrl(file); if (src.length > J.VIDEO_OVERLAY_MAX_CHARS) throw new Error('Overlay image is too large (limit about 6 MB).');
+      const image = await decode(src), format = J.videoFormats[draft.format];
+      // Contain-fit at full width or height; a frame the same shape as the output fills it exactly.
+      const scale = Math.min(format.width / image.naturalWidth, format.height / image.naturalHeight), w = image.naturalWidth * scale / format.width, h = image.naturalHeight * scale / format.height;
+      draft.overlays.push({ id: nextOverlayId(), name: file.name.slice(0, 200), src, x: (1 - w) / 2, y: (1 - h) / 2, w, h, opacity: 1, layer: 'below' });
+      await J.preloadVideoOverlays({ settings: { videoEdit: draft } }); render(); el('message').textContent = 'Unapplied changes';
+    } catch (error) { el('message').textContent = error.message; status(error.message, true); }
+  };
+  el('overlayFile').onchange = () => { const file = el('overlayFile').files[0]; el('overlayFile').value = ''; if (file) addOverlay(file); };
+  el('templateFile').onchange = async () => {
+    const file = el('templateFile').files[0]; el('templateFile').value = ''; if (!file) return;
+    try {
+      const data = JSON.parse(await file.text());
+      if (!data || data.kind !== 'jizura-overlay-template' || !Array.isArray(data.overlays)) throw new Error('That is not a JIZURA overlay template.');
+      J.validateVideoOverlays(data.overlays); draft.overlays = data.overlays;
+      await J.preloadVideoOverlays({ settings: { videoEdit: draft } }); render(); el('message').textContent = 'Unapplied changes';
+    } catch (error) { el('message').textContent = error.message; status(error.message, true); }
+  };
   const whole = () => ({ x: 0, y: 0, w: 1, h: 1 });
   host.addEventListener('click', event => {
     const action = event.target.dataset.action; if (!action) return;
@@ -116,6 +160,11 @@ J.mountVideoEditor = ({ host, project, video, commit, status }) => {
       if (action === 'panel') { draft.panels.push({ source: whole(), target: whole() }); selected = draft.panels.length - 1; }
       if (action === 'resetPanels') draft.panels = [];
       if (action === 'removePanel') draft.panels.splice(selected, 1);
+      if (action === 'saveTemplate') {
+        if (!(draft.overlays || []).length) throw new Error('Add an overlay first.');
+        J.saveFile('jizura-overlay-template.json', JSON.stringify({ kind: 'jizura-overlay-template', version: 1, overlays: draft.overlays }));
+        return;
+      }
       if (action === 'note') { if (!duration) throw new Error('Load a video first.'); const start = Math.min(video() && video().currentTime || 0, Math.max(0, duration - .1)); draft.notes.push({ text: 'New note', start, end: Math.min(duration, start + 3), x: .5, y: .18 + (draft.notes.length % 5) * .12, size: 4, color: '#ffffff' }); }
       if (action === 'markStart' || action === 'markEnd') {
         const source = video();

@@ -109,7 +109,7 @@ const compose = (kind, input = {}) => {
     anchor, stableAnchor: true, activeTokenId: input.activeTokenId || null, diagnostics,
     items: [{ text: fitted.lines.join('\n'), font, size: fitted.fontSize, x: anchor.x, y: anchor.y, align, lead: 1.18, color: input.textColor,
       captionActive: input.tokens && input.tokens.length ? { tokens: input.tokens, clockTime: input.clockTime,
-        treatment: input.activeTreatment || 'captionActiveColor', accentColor: input.accentColor,
+        treatment: input.activeTreatment || 'captionActiveColor', accentColor: input.accentColor, scale: input.activeScale, lift: input.activeLift, weight: input.activeWeight,
         variableWeightSupported: input.variableWeightSupported, emphasis: input.emphasis || null } : null }],
   };
 };

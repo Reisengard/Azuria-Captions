@@ -182,14 +182,15 @@ for (const id of [1, 2, 3]) reroll.execute({ type: 'move-segment-to-track', segm
 reroll.execute({ type: 'set-segment-lock', segmentId: 'segment_000003', lock: 'visualPlan', locked: true });
 const rerollBefore = reroll.snapshot();
 exact(reroll, () => reroll.execute({ type: 'reroll-track', trackId: 'track_2' }));
-const count = id => reroll.project.plans[id].generated.rerollCount;
-assert.equal(count('segment_000001'), 1); assert.equal(count('segment_000002'), 1);
-assert.equal(count('segment_000003'), rerollBefore.plans.segment_000003.generated.rerollCount || 0, 'a locked caption keeps its look');
-assert.deepStrictEqual(reroll.project.plans.segment_000003, rerollBefore.plans.segment_000003);
-for (const id of [4, 5, 6]) assert.deepStrictEqual(reroll.project.plans[`segment_00000${id}`], rerollBefore.plans[`segment_00000${id}`], 'other tracks keep their plans');
-assert.notEqual(reroll.project.plans.segment_000001.generated.seed, rerollBefore.plans.segment_000001.generated.seed, 'the reroll counter changes the seed');
+const trackLook = reroll.project.tracks[1].style.look;
+assert.ok(trackLook && trackLook.enter, 'randomizing a track stores its look as plain choices');
+for (const id of [1, 2]) assert.equal(reroll.project.plans[`segment_00000${id}`].generated.entrance, trackLook.enter, 'captions follow the track look');
+assert.deepStrictEqual(reroll.project.plans.segment_000003, rerollBefore.plans.segment_000003, 'a locked caption keeps its look');
+// The rolling-attention figure is informational and counts neighbours on every track; the visible look must not move.
+const withoutMotionInfo = plan => { const copy = clone(plan); delete copy.generated.motionSummary; delete copy.generated.overBudget; return copy; };
+for (const id of [4, 5, 6]) assert.deepStrictEqual(withoutMotionInfo(reroll.project.plans[`segment_00000${id}`]), withoutMotionInfo(rerollBefore.plans[`segment_00000${id}`]), 'other tracks keep their plans');
 const again = new J.CaptionStore(clone(rerollBefore)); again.execute({ type: 'reroll-track', trackId: 'track_2' });
-assert.deepStrictEqual(again.project.plans, reroll.project.plans, 'the same reroll gives the same plans');
+assert.deepStrictEqual(again.project.plans, reroll.project.plans, 'the same randomize gives the same plans');
 const allLocked = storeOf(); allLocked.execute({ type: 'add-track' });
 assert.equal(code(() => allLocked.execute({ type: 'reroll-track', trackId: 'track_2' })), 'TRACK_NOTHING_TO_REROLL', 'an empty track has nothing to reroll');
 
@@ -300,7 +301,7 @@ assert.deepStrictEqual(J.planCaptions(loaded, loaded.media).plans, loaded.plans,
 const body = fs.readFileSync(path.join(root, 'app', 'body.html'), 'utf8'), ui = fs.readFileSync(path.join(root, 'src', '12c_caption_workbench.js'), 'utf8');
 for (const id of ['captionTracksPanel', 'captionTrackList', 'captionTrackAdd', 'captionTrackDelete', 'captionTrackName', 'captionTrackForward', 'captionTrackBack', 'captionTrackReroll',
   'captionTrackPreset', 'captionTrackTreatment', 'captionTrackAccent', 'captionMoveTrack', 'captionMoveSegment', 'captionMoveTokens', 'captionTrackLabels', 'captionBoxGhosts']) assert.match(body, new RegExp(`id="${id}"`), `${id} is missing from the page`);
-for (const command of ['add-track', 'remove-track', 'rename-track', 'reorder-track', 'set-track-style', 'reroll-track', 'move-segment-to-track', 'move-tokens-to-track']) assert.match(ui, new RegExp(`'${command}'`), `${command} is not reachable from the workbench`);
+for (const command of ['add-track', 'remove-track', 'rename-track', 'reorder-track', 'set-track-style', 'randomize-caption-look', 'set-caption-look', 'set-segment-look', 'move-segment-to-track', 'move-tokens-to-track']) assert.match(ui, new RegExp(`'${command}'`), `${command} is not reachable from the workbench`);
 assert.match(ui, /caption-track-row/, 'the timeline has no row per track'); assert.match(ui, /caption-box-ghost/, 'other tracks have no ghost outline');
 assert.match(ui, /J\.captionBoxCollisions/, 'collision warnings are not shown'); assert.match(ui, /window\.confirm\(`トラック/, 'deleting a track is not confirmed');
 assert.doesNotMatch(ui, /segments\[index \+ 1\]|segments\[index - 1\]|segments\[segments\.indexOf/, 'a neighbouring caption must be looked up per track, not by list position');

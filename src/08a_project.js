@@ -54,7 +54,11 @@ J.projectMigrations = Object.freeze({
 
 const round9 = value => Math.round(value * 1e9) / 1e9;
 const FALLBACK_FRAME = Object.freeze({ width: 1080, height: 1920 });
+/* Boxes, guides and safe areas live in the OUTPUT frame (the post format the preview and export use), not in the source video's frame:
+   a landscape video posted as a 9:16 Short has to be placed inside the Shorts safe area. */
 const frameOf = project => {
+  const out = project && J.videoOutputSize ? J.videoOutputSize(project) : null;
+  if (out && out.width > 0 && out.height > 0) return { width: out.width, height: out.height };
   const media = project && project.media;
   return media && media.width > 0 && media.height > 0 ? { width: media.width, height: media.height } : FALLBACK_FRAME;
 };

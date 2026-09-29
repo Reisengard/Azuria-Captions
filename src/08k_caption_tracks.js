@@ -39,6 +39,16 @@ J.normalizeCaptionTrackStyle = (input, allowNull = false) => {
   if (input == null) return out;
   if (!plain(input)) throw styleError('Track style must be an object.');
   for (const [field, value] of Object.entries(input)) {
+    if (field === 'look') {
+      if (value == null && allowNull) { out.look = null; continue; }
+      try { out.look = J.normalizeCaptionLook(value, allowNull); } catch (error) { throw styleError(error.message, error.details); }
+      continue;
+    }
+    if (field === 'lookSettings') {
+      if (value == null && allowNull) { out.lookSettings = null; continue; }
+      try { out.lookSettings = J.normalizeCaptionLookSettings(value, allowNull); } catch (error) { throw styleError(error.message, error.details); }
+      continue;
+    }
     if (field === 'segmentation') {
       if (value == null && allowNull) { out.segmentation = null; continue; }
       if (!plain(value)) throw styleError('Track style "segmentation" must be an object.', { field });
@@ -66,6 +76,18 @@ J.normalizeCaptionTrackStyle = (input, allowNull = false) => {
 J.mergeCaptionTrackStyle = (current, edit) => {
   const base = J.normalizeCaptionTrackStyle(current), patch = J.normalizeCaptionTrackStyle(edit, true);
   for (const [field, value] of Object.entries(patch)) {
+    if (field === 'look') {
+      if (value === null) { delete base.look; continue; }
+      const look = J.mergeCaptionLook(base.look, value);
+      if (Object.keys(look).length) base.look = look; else delete base.look;
+      continue;
+    }
+    if (field === 'lookSettings') {
+      if (value === null) { delete base.lookSettings; continue; }
+      const settings = J.mergeCaptionLookSettings(base.lookSettings, value);
+      if (Object.keys(settings).length) base.lookSettings = settings; else delete base.lookSettings;
+      continue;
+    }
     if (field === 'segmentation') {
       if (value === null) { delete base.segmentation; continue; }
       const seg = Object.assign({}, base.segmentation);
@@ -84,6 +106,8 @@ J.captionTrackProjectStyle = (project, track) => {
   const source = typeof base === 'string' ? { preset: base } : plain(base) ? base : {};
   const merged = Object.assign({}, source, own);
   if (own.segmentation) merged.segmentation = Object.assign({}, source.segmentation, own.segmentation);
+  if (own.look) merged.look = Object.assign({}, source.look, own.look);
+  if (own.lookSettings) merged.lookSettings = J.mergeCaptionLookSettings(source.lookSettings, own.lookSettings);
   if (own.preset) delete merged.profile;
   return merged;
 };

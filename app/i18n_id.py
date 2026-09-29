@@ -41,7 +41,6 @@ STYLES = {
 }
 
 BODY = {
-    '編集モード<select id="captionEditor"': 'Mode editor<select id="captionEditor"',
     '文字PV系の部品を使う': 'Pakai bagian tipografi',
     'キネティックの部品を使う': 'Pakai bagian kinetik',
     'ホラーの演出も使う': 'Sertakan efek horor',

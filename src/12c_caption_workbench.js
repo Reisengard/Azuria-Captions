@@ -7,7 +7,7 @@ if (typeof document === 'undefined' || typeof document.getElementById !== 'funct
 
 const $ = id => document.getElementById(id);
 const clone = value => JSON.parse(JSON.stringify(value));
-const ui = { store: null, media: null, preview: null, selectedId: null, trackId: null, moveTokens: new Set(), variation: 0, errors: {}, timelineZoom: 1, boundaryDrag: null,
+const ui = { store: null, media: null, preview: null, selectedId: null, trackId: null, moveTokens: new Set(), variation: 0, lookScope: 'project', errors: {}, timelineZoom: 1, boundaryDrag: null,
   exporter: null, exportAbort: null };
 const captionLooks = {
   clean: ['captionSoftRise', 'captionStill', 'captionFadeOut', 'outline'],
@@ -19,7 +19,16 @@ const effectControls = ['captionEffect', 'captionHoldEffect', 'captionExitEffect
 // Same names as the effect menus; other ids fall back to the registry name.
 const PRESET_LABELS = { captionFade: 'Fade', captionSoftRise: 'Rise', captionSoftScale: 'Zoom', captionWordFade: 'Letter Fade', captionSoftReplace: 'Replace', captionImpact: 'Impact',
   captionType: 'Typewriter', captionBlur: 'Blur Reveal', captionWipe: 'Wipe', captionPop: 'Lyric Pop', captionDrop: 'Letter Drop', captionStill: 'Still', captionBreathe: 'Breathe',
-  captionWave: 'MV Wave', captionFadeOut: 'Fade out', captionShrinkOut: 'Shrink out', captionBlurOut: 'Blur out' };
+  captionWave: 'MV Wave', captionFadeOut: 'Fade out', captionShrinkOut: 'Shrink out', captionBlurOut: 'Blur out',
+  captionBottomStack: 'Stack', captionBottomTwoLine: 'Two lines', captionCenterStack: 'Centered stack', captionLeftAnchor: 'Left anchor', captionRightAnchor: 'Right anchor', captionTwoLinePunch: 'Two-line punch', captionSingleWordHero: 'One-word hero',
+  captionBackplate: 'Backplate', captionActiveColor: 'Color', captionActiveScale: 'Scale', captionActiveLift: 'Lift', captionActiveWeight: 'Weight', captionActiveUnderline: 'Underline' };
+const LOOK_CONTROLS = { layout: 'captionLookLayout', enter: 'captionLookEnter', hold: 'captionLookHold', exit: 'captionLookExit', active: 'captionLookActive' };
+const LOOK_FIELD_NAMES = { layout: 'レイアウト', enter: '登場', hold: '表示中', exit: '退場', active: '話している単語', treat: '文字の加工' };
+const lookLabel = (key, id) => {
+  if (!id) return '';
+  const group = J.CAPTION_LOOK_FIELDS[key].group, def = group === 'active' ? J.CAPTION_ACTIVE[id] : J.registry(group)[id];
+  return PRESET_LABELS[id] || def && def.name || id;
+};
 const BLOCK_ANIMATION_CONTROLS = { enter: 'captionBlockEnter', hold: 'captionBlockHold', exit: 'captionBlockExit' };
 const sourceVideo = () => ui.media && ui.media.current && ui.media.current.video;
 const tokenMap = () => new Map((ui.store && ui.store.project.transcript.tokens || []).map(token => [token.id, token]));
@@ -60,6 +69,11 @@ function accessibilityWarnings(segment) {
   if (reasons.has('too-many-lines')) warnings.push('字幕の行数が多すぎます。字幕あたりの単語数を減らしてください。');
   if (reasons.has('contrast-insufficient') || readability.warnings && readability.warnings.includes('contrast-assisted')) warnings.push('背景とのコントラストを確認してください。アウトラインまたは背景板を推奨します。');
   if ((plan.components || []).some(component => component.metadata && component.metadata.flashes)) warnings.push('点滅を含む演出です。光過敏への配慮から別の演出を推奨します。');
+  for (const item of plan.lookWarnings || []) {
+    if (item.code === 'look-unavailable') warnings.push(`${LOOK_FIELD_NAMES[item.field] || item.field}: 選んだエフェクトはこの字幕では使えないため、安全な標準に置き換えました。`);
+    if (item.code === 'font-reduced') warnings.push(`文字が入りきらないため、サイズを ${item.from} から ${item.to} に下げました。文字数か位置ボックスを調整すると元のサイズに戻せます。`);
+  }
+  if ((plan.overBudget || []).length) warnings.push('動きが多めの組み合わせです。読みにくい場合は、エフェクトを控えめにしてください。');
   if (plan.fallback) warnings.push('安全性と読みやすさのため、この字幕は静止表示にフォールバックしました。文字数を減らすか、動きと強さを下げると再計画できます。');
 
   if (plan.font && document.fonts && typeof document.fonts.check === 'function' && !document.fonts.check(`16px "${String(plan.font).replace(/["\\]/g, '')}"`)) warnings.push('指定フォントを読み込めませんでした。ネットワークを確認するか、別のフォントを選んでください。');
@@ -191,6 +205,193 @@ function setBlockAnimation(key, value) {
   runCommand({ type: 'edit-text-block', segmentId: segment.id, animation: { [key]: value || null } }, segment.id);
 }
 
+/* Effects: what the project / a track / one caption uses for each stage. An empty choice inherits (project: the style's fixed standard). */
+function lookScope() {
+  const project = ui.store.project, tracks = project.tracks || [], segment = selectedSegment();
+  let kind = ui.lookScope;
+  if (kind === 'segment' && !segment) kind = 'project';
+  const track = kind.startsWith('track:') ? tracks.find(item => `track:${item.id}` === kind) : null;
+  if (kind.startsWith('track:') && !track) kind = 'project';
+  return { kind, track, segment: kind === 'segment' ? segment : null };
+}
+function renderLookPanel() {
+  const project = ui.store.project, tracks = project.tracks || [], segment = selectedSegment(), scope = lookScope(), select = $('captionLookScope');
+  select.replaceChildren();
+  const add = (value, text) => { const option = document.createElement('option'); option.value = value; option.textContent = text; select.appendChild(option); };
+  add('project', tracks.length > 1 ? '全体（すべてのトラック）' : '全体（すべての字幕）');
+  if (tracks.length > 1) for (const track of tracks) add(`track:${track.id}`, `トラック: ${track.name || track.id}`);
+  if (segment) add('segment', '選択中の字幕だけ');
+  select.value = scope.kind; ui.lookScope = scope.kind;
+  const track = scope.track || J.captionTrack(project, segmentTrackId(scope.segment || segment)) || tracks[0];
+  const profileId = J.captionStyleProfileId(project, track), projectResolved = J.resolveCaptionLook(project.style, J.captionStyleProfileId(project));
+  const trackLook = J.resolveCaptionLook(J.captionTrackProjectStyle(project, track), profileId).look;
+  const stored = scope.segment && project.plans[scope.segment.id], manual = stored && stored.manual || {};
+  const own = {};
+  for (const key of J.CAPTION_LOOK_KEYS) {
+    if (scope.segment) own[key] = manual[J.CAPTION_LOOK_FIELDS[key].plan] || null;
+    else if (scope.track) own[key] = scope.track.style && scope.track.style.look && scope.track.style.look[key] || null;
+    else own[key] = projectResolved.explicit[key] ? projectResolved.look[key] : null;
+  }
+  const locked = !!(scope.segment && scope.segment.locks && scope.segment.locks.visualPlan);
+  const inherit = scope.segment ? { text: 'トラックに合わせる', look: trackLook } : scope.track ? { text: '全体に合わせる', look: projectResolved.look } : { text: '標準', look: J.CAPTION_STANDARD_LOOKS[profileId] || J.CAPTION_STANDARD_LOOKS.creator };
+  // Effect settings at this scope, and the values it inherits (a caption: its track + project; a track: the project).
+  const projectSettings = project.style && project.style.lookSettings || {};
+  inherit.settings = scope.segment ? { own: manual.lookSettings || {}, from: (J.captionTrackProjectStyle(project, track) || {}).lookSettings || {} }
+    : scope.track ? { own: scope.track.style && scope.track.style.lookSettings || {}, from: projectSettings } : { own: projectSettings, from: {} };
+  for (const [key, id] of Object.entries(LOOK_CONTROLS)) {
+    const control = $(id), ids = J.captionLookOptions(J.CAPTION_LOOK_FIELDS[key].group, project);
+    for (const extra of [own[key], inherit.look[key]]) if (extra && !ids.includes(extra)) ids.push(extra);
+    control.replaceChildren();
+    const first = document.createElement('option'); first.value = ''; first.textContent = `${inherit.text}: ${lookLabel(key, inherit.look[key])}`; control.appendChild(first);
+    for (const value of ids) { const option = document.createElement('option'); option.value = value; option.textContent = lookLabel(key, value); control.appendChild(option); }
+    control.value = own[key] || ''; control.disabled = locked;
+  }
+  $('captionLookRandom').disabled = locked; $('captionLookReset').disabled = locked;
+  renderLookPickers(project, scope, own, inherit, locked);
+}
+
+/* ---- effect pickers with animated examples: three rows in Simple, a chip bar plus a full grid in Advanced ---- */
+const LOOK_STAGES_SIMPLE = ['enter', 'hold', 'exit'];
+const LOOK_STAGES_ADVANCED = ['layout', 'enter', 'hold', 'exit', 'active', 'treat'];
+function setLook(key, value) { const scope = lookScope(); return runCommand(lookCommand({ look: { [key]: value || null } }), scope.segment && scope.segment.id); }
+function lookChoices(key, project, own, inheritLook) {
+  const ids = J.captionLookOptions(J.CAPTION_LOOK_FIELDS[key].group, project).slice();
+  for (const extra of [own[key], inheritLook[key]]) if (extra && !ids.includes(extra)) ids.push(extra);
+  if (key === 'treat' && !ids.includes('captionBackplate')) ids.unshift('captionBackplate');
+  return ids;
+}
+function lookCard(key, id, text, on, disabled, onPick, badge) {
+  const button = document.createElement('button'), canvas = document.createElement('canvas'), name = document.createElement('span'), label = document.createElement('span');
+  button.type = 'button'; button.className = `tcard caption-look-card${on ? ' is-on' : ''}`; button.disabled = !!disabled; button.title = id;
+  button.setAttribute('aria-pressed', String(!!on));
+  canvas.width = 176; canvas.height = 99; canvas.dataset.g = J.CAPTION_LOOK_FIELDS[key].group; canvas.dataset.k = id;
+  name.className = 'tcard-name'; label.textContent = text; name.appendChild(label);
+  if (badge) { const tag = document.createElement('span'); tag.className = 'tcard-badge'; tag.textContent = 'New'; name.appendChild(tag); }
+  button.append(canvas, name); button.addEventListener('click', onPick);
+  return button;
+}
+function fillLookGrid(grid, key, project, own, inherit, locked) {
+  const group = J.CAPTION_LOOK_FIELDS[key].group;
+  grid.appendChild(lookCard(key, inherit.look[key], `${inherit.text}: ${lookLabel(key, inherit.look[key])}`, !own[key], locked, () => setLook(key, null)));
+  for (const id of lookChoices(key, project, own, inherit.look)) {
+    grid.appendChild(lookCard(key, id, lookLabel(key, id), own[key] === id, locked, () => setLook(key, id), group !== 'layout' && group !== 'active' && /^caption/.test(id)));
+  }
+}
+function renderLookPickers(project, scope, own, inherit, locked) {
+  const advanced = project.style && project.style.editor === 'advanced', simple = $('captionLookSimple'), chips = $('captionLookChips'), pick = $('captionLookPick');
+  J.captionEffectPreviewMotion = !(project.settings && project.settings.reducedMotionPreview) && !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  const stages = advanced ? LOOK_STAGES_ADVANCED : LOOK_STAGES_SIMPLE;
+  if (!stages.includes(ui.lookPick)) ui.lookPick = 'enter';   // one sub-tab is always open
+  const signature = JSON.stringify([advanced, scope.kind, stages.map(key => [own[key], inherit.look[key]]), locked, ui.lookPick, inherit.text, J.captionEffectPreviewMotion, advanced && inherit.settings]);
+  if (signature === ui.lookSignature) return;
+  ui.lookSignature = signature;
+  if (J.resetCaptionEffectWatch) J.resetCaptionEffectWatch();
+  simple.replaceChildren(); chips.replaceChildren(); pick.hidden = true; $('captionLookPickGrid').replaceChildren(); $('captionLookSettings').hidden = true;
+  const select = key => { ui.lookPick = key; ui.lookSignature = null; renderLookPanel(); };
+  if (!advanced) {
+    const bar = document.createElement('div'), grid = document.createElement('div');
+    bar.className = 'caption-look-subtabs'; bar.setAttribute('role', 'tablist'); grid.className = 'caption-look-grid is-compact';
+    for (const key of stages) {
+      const tab = document.createElement('button');
+      tab.type = 'button'; tab.setAttribute('role', 'tab'); tab.dataset.stage = key; tab.setAttribute('aria-selected', String(ui.lookPick === key)); tab.textContent = LOOK_FIELD_NAMES[key];
+      tab.addEventListener('click', () => select(key)); bar.appendChild(tab);
+    }
+    fillLookGrid(grid, ui.lookPick, project, own, inherit, locked); simple.append(bar, grid);
+  } else {
+    for (const key of stages) {
+      const chip = document.createElement('button'), name = document.createElement('span'), value = document.createElement('b'), shown = own[key] || inherit.look[key];
+      chip.type = 'button'; chip.setAttribute('role', 'tab'); chip.className = `caption-look-chip${own[key] ? ' is-set' : ''}`; chip.dataset.stage = key; chip.setAttribute('aria-pressed', String(ui.lookPick === key));
+      name.textContent = LOOK_FIELD_NAMES[key]; value.textContent = lookLabel(key, shown);
+      chip.append(name, ' ', value); chip.addEventListener('click', () => select(key));
+      chips.appendChild(chip);
+    }
+    $('captionLookPickTitle').textContent = LOOK_FIELD_NAMES[ui.lookPick]; pick.hidden = false; $('captionLookPickClose').hidden = true;
+    fillLookGrid($('captionLookPickGrid'), ui.lookPick, project, own, inherit, locked);
+    renderLookSettings(ui.lookPick, own[ui.lookPick] || inherit.look[ui.lookPick], project, inherit, locked);
+  }
+  (advanced ? pick : simple).querySelectorAll('canvas[data-g]').forEach(canvas => J.watchCaptionEffect && J.watchCaptionEffect(canvas));
+}
+
+/* ---- settings of the effect shown in the Advanced sub-tab (colours, lengths, sizes); unset values stay automatic ---- */
+const LOOK_SETTING_LABELS = {
+  'all.duration': '長さ（秒）',
+  'all.strength': '動きの強さ',
+  'color': '色',
+  'colorA': '上の色',
+  'colorB': '下の色',
+  'splitColor.sp': '色の境目',
+  'k': '線の太さ',
+  'doubleOutline.a': '内側の縁の太さ',
+  'doubleOutline.b': '外側の縁の太さ',
+  'doubleOutline.color': '外側の縁の色',
+  'extrude.d': '奥行き',
+  'extrude.color': '側面の色',
+  'longShadow.L': '影の長さ',
+  'longShadow.ang': '影の角度',
+  'hardShadow.d': '影のずれ',
+  'softShadow.b': '影のぼかし',
+  'softShadow.dy': '影の下へのずれ',
+  'longShadow.color': '影の色',
+  'hardShadow.color': '影の色',
+  'softShadow.color': '影の色',
+  'glow.b': '光の広がり',
+  'glow.color': '光の色',
+  'outline.color': '線の色',
+  'outlineFill.color': '縁の色',
+  'captionActiveScale.scale': '拡大',
+  'captionActiveLift.lift': '持ち上げ',
+  'captionActiveWeight.weight': '太さ（ウェイト）',
+};
+const lookSettingLabel = (scope, key) => LOOK_SETTING_LABELS[`${scope}.${key}`] || LOOK_SETTING_LABELS[key] || key;
+const lookSettingText = (key, value) => key === 'duration' ? `${value.toFixed(2)} s` : key === 'strength' ? `×${value.toFixed(2)}` : key === 'scale' ? `×${value.toFixed(3)}`
+  : key === 'ang' ? `${Math.round(value)}°` : key === 'weight' || key === 'lift' ? String(Math.round(value * 10) / 10) : `${Math.round(value * 1000) / 10}%`;
+function setLookSetting(stage, scope, key, value) {
+  const scopeState = lookScope();
+  return runCommand(lookCommand({ lookSettings: { [stage]: { [scope]: { [key]: value } } } }), scopeState.segment && scopeState.segment.id);
+}
+function renderLookSettings(stage, effectId, project, inherit, locked) {
+  const host = $('captionLookSettings'), spec = J.captionLookSettingsSpec(stage, effectId);
+  host.replaceChildren(); host.hidden = false;
+  const title = document.createElement('h4'); title.textContent = `${lookLabel(stage, effectId)} の設定`; host.appendChild(title);
+  if (!spec.length) { const note = document.createElement('p'); note.className = 'muted'; note.textContent = 'このエフェクトには調整できる設定がありません。'; host.appendChild(note); return; }
+  const at = (settings, scope, key) => settings && settings[stage] && settings[stage][scope] && settings[stage][scope][key];
+  for (const { scope, key, def } of spec) {
+    const own = at(inherit.settings.own, scope, key), from = at(inherit.settings.from, scope, key), set = own != null;
+    const fallback = def.type === 'color' && stage === 'active' ? (project.style && project.style.accentColor || def.def) : def.def;
+    const value = set ? own : from != null ? from : fallback;
+    const row = document.createElement('label'), name = document.createElement('span'), input = document.createElement('input'), out = document.createElement('output'), reset = document.createElement('button');
+    row.className = `caption-look-setting${set ? ' is-set' : ''}`; row.dataset.setting = `${scope}.${key}`;
+    name.textContent = lookSettingLabel(scope, key);
+    input.type = def.type; input.disabled = locked;
+    const unsetText = from != null ? inherit.text : '自動';
+    if (def.type === 'range') {
+      input.min = def.min; input.max = def.max; input.step = def.step; input.value = value;
+      out.textContent = set || from != null ? lookSettingText(key, value) : unsetText;
+      input.addEventListener('input', () => { out.textContent = lookSettingText(key, Number(input.value)); });
+      input.addEventListener('change', () => setLookSetting(stage, scope, key, Number(input.value)));
+    } else {
+      input.value = value;
+      out.textContent = set ? value : unsetText;
+      input.addEventListener('change', () => setLookSetting(stage, scope, key, input.value.toLowerCase()));
+    }
+    reset.type = 'button'; reset.className = 'ghost small'; reset.textContent = '↺'; reset.title = '自動に戻す'; reset.setAttribute('aria-label', '自動に戻す'); reset.disabled = locked || !set;
+    reset.addEventListener('click', event => { event.preventDefault(); setLookSetting(stage, scope, key, null); });
+    row.append(name, input, out, reset); host.appendChild(row);
+  }
+}
+
+function lookCommand(look) {
+  const scope = lookScope();
+  if (scope.segment) return Object.assign({ type: 'set-segment-look', segmentId: scope.segment.id }, look);
+  return Object.assign({ type: 'set-caption-look' }, scope.track ? { trackId: scope.track.id } : {}, look);
+}
+function randomLook(scope) {
+  ui.variation += 1;
+  const command = { type: 'randomize-caption-look', variation: ui.variation };
+  if (scope.segment) command.segmentId = scope.segment.id; else if (scope.track) command.trackId = scope.track.id;
+  return command;
+}
+
 function renderManualTrack() {
   const select = $('captionManualTrack'), kept = select.value, tracks = ui.store.project.tracks || [];
   select.replaceChildren();
@@ -206,7 +407,7 @@ function commandError(error) {
     TRACK_STYLE_INVALID: 'トラックのスタイルの値が正しくありません。', TOKENS_REQUIRED: '移動する単語を選んでください。', TRACK_NOTHING_TO_REROLL: 'ロックされていない字幕がありません。',
     TRACK_SEGMENT_OVERLAP: '移動先のトラックで他の字幕と時間が重なります。先にその字幕を移動または短くしてください。',
     TEXT_BLOCK_OVERLAP: 'この時間には同じトラックに別の字幕があります。別のトラックを選ぶか、空いている時間を指定してください。', TOKEN_END_AFTER_DURATION: '字幕の終了が動画の長さを超えています。',
-    TEXT_BLOCK_ANIMATION_INVALID: 'ブロックのアニメーションが正しくありません。', SEGMENT_NOT_TEXT_BLOCK: 'テキストブロックではありません。' };
+    CAPTION_LOOK_INVALID: '選んだエフェクトが正しくありません。', TEXT_BLOCK_ANIMATION_INVALID: 'ブロックのアニメーションが正しくありません。', SEGMENT_NOT_TEXT_BLOCK: 'テキストブロックではありません。' };
   return messages[error.code] || error.message || '変更を適用できませんでした。';
 }
 
@@ -400,13 +601,17 @@ function renderActions() {
   const hasTranscript = ui.store.project.transcript.tokens.length > 0;
   $('captionUndo').disabled = !ui.store.canUndo(); $('captionRedo').disabled = !ui.store.canRedo();
   $('captionVariation').disabled = !hasTranscript; $('captionSave').disabled = !(hasTranscript || sourceVideo() || ui.store.project.settings.videoEdit);
-  $('captionExport').disabled = ui.exportAbort ? false : !sourceVideo();
+  $('captionExport').disabled = $('captionExportPanel').disabled = ui.exportAbort ? false : !sourceVideo();
+  const out = J.videoOutputSize ? J.videoOutputSize(ui.store.project) : null;
+  $('captionExportFormat').textContent = out ? `${out.width} × ${out.height}` : '—';
+  $('captionExportDuration').textContent = fmt(J.videoEditDuration(J.videoClips(ui.store.project)));
+  $('captionExportCaptions').textContent = String(ui.store.project.segments.length);
   $('captionStyle').value = ui.store.project.style && ui.store.project.style.preset || 'creator';
   const style = ui.store.project.style || {}, segmentation = style.segmentation || {};
   const editor = style.editor === 'advanced' ? 'advanced' : 'simple';
-  $('captionEditor').value = editor;
-  $('captionTechniqueHost').hidden = editor !== 'advanced';
-  renderCaptionTechniques();
+  $('captionModeEasy').setAttribute('aria-pressed', String(editor === 'simple')); $('captionModePro').setAttribute('aria-pressed', String(editor === 'advanced'));
+  $('videoCaptionsWorkspace').classList.toggle('is-easy', editor !== 'advanced');
+  $('captionTechniqueHost').hidden = true;   // the advanced editor now offers every effect in the Effects tab
   $('captionHoldEffect').value = style.holdEffect || 'auto'; $('captionExitEffect').value = style.exitEffect || 'auto';
   $('captionEffect').value = style.effect || 'auto'; $('captionTreatment').value = style.captionTreatment || 'outline';
   document.querySelectorAll('[data-caption-look]').forEach(button => {
@@ -431,8 +636,36 @@ function renderAll() {
   if (ui.selectedId && !ui.store.project.segments.some(segment => segment.id === ui.selectedId)) ui.selectedId = ui.store.project.segments[0] && ui.store.project.segments[0].id || null;
   if (!(ui.store.project.tracks || []).some(track => track.id === ui.trackId)) ui.trackId = segmentTrackId(selectedSegment());
   if (ui.videoEditor) ui.videoEditor.refresh();
+  if (J.preloadVideoOverlays) J.preloadVideoOverlays(ui.store.project, () => { if (ui.preview) ui.preview.renderNow(); });   // no-op once decoded
   if (ui.preview && J.videoOutputSize) { const size = J.videoOutputSize(ui.store.project); ui.preview.designWidth = size.width; ui.preview.designHeight = size.height; }
-  renderSegments(); renderInspector(); renderTracksPanel(); renderManualTrack(); renderBoxPanel(); renderRolesPanel(); renderActions(); updatePlayhead(sourceVideo() && sourceVideo().currentTime || 0); if (ui.preview) ui.preview.renderNow();
+  fitVideoColumn();
+  renderSegments(); renderInspector(); renderTracksPanel(); renderLookPanel(); renderManualTrack(); renderBoxPanel(); renderRolesPanel(); renderActions(); updatePlayhead(sourceVideo() && sourceVideo().currentTime || 0); if (ui.preview) ui.preview.renderNow();
+}
+/* The video column is as wide as the output frame is at the stage's height (9:16 narrow, 16:9 wide); the settings column keeps the rest.
+   Only the ideal width is set here; the stylesheet clamps it so the other columns keep their minimum. */
+function fitVideoColumn() {
+  const bench = document.querySelector && document.querySelector('.caption-workbench'), stage = document.querySelector && document.querySelector('.caption-stage');
+  if (!bench || !stage || !bench.style || !(stage.clientHeight > 0)) return;
+  const out = J.videoOutputSize ? J.videoOutputSize(ui.store.project) : { width: 1080, height: 1920 }, pad = 30;   // stage padding (2 x 14) + frame border (2 x 1)
+  bench.style.setProperty('--caption-video-w', `${Math.max(240, Math.round((stage.clientHeight - pad) * out.width / out.height + pad))}px`);
+}
+function onWorkbenchResize() { fitVideoColumn(); if (ui.preview) ui.preview.renderNow(); paintBoxEditor(); }
+function selectStyleTab(tab) {
+  const panel = document.querySelector('.caption-inspector'); if (!panel) return;
+  const known = [...panel.querySelectorAll('.caption-style-tabs [data-style-tab]')].map(button => button.dataset.styleTab);
+  const name = known.includes(tab) ? tab : 'style';
+  ui.styleTab = name; panel.dataset.styleTab = name;
+  for (const button of panel.querySelectorAll('.caption-style-tabs [data-style-tab]')) button.setAttribute('aria-selected', String(button.dataset.styleTab === name));
+  for (const pane of panel.querySelectorAll('.caption-style-pane')) pane.hidden = pane.id !== `captionStylePane_${name}`;
+  if (name === 'effects' && J.refreshCaptionEffectPreviews) J.refreshCaptionEffectPreviews();
+}
+function selectLeftTab(tab) {
+  const panel = document.querySelector('.caption-left'); if (!panel) return;
+  const known = [...panel.querySelectorAll('.caption-left-tabs [data-left-tab]')].map(button => button.dataset.leftTab);
+  const name = known.includes(tab) ? tab : 'transcript';
+  ui.leftTab = name; panel.dataset.leftTab = name;
+  for (const button of panel.querySelectorAll('.caption-left-tabs [data-left-tab]')) button.setAttribute('aria-selected', String(button.dataset.leftTab === name));
+  for (const pane of panel.querySelectorAll('.caption-left-pane')) pane.hidden = pane.id !== `captionLeftPane_${name}`;
 }
 function escapeHtml(value) { const node = document.createElement('span'); node.textContent = value; return node.innerHTML; }
 
@@ -459,7 +692,12 @@ function drawCaptions(ctx, time, info) {
    Snap targets are the centre lines, the social-safe edges and thirds; hold Alt to drag freely.
    Editing never moves text on its own: unfit or unsafe boxes only produce warnings. */
 const BOX_STEP = 0.005, BOX_STEP_BIG = 0.02;
-const boxFrame = () => { const media = ui.store.project.media; return media && media.width > 0 && media.height > 0 ? { width: media.width, height: media.height } : { width: 1080, height: 1920 }; };
+/* The frame a box is edited in is the output frame (post format), not the source video: the preview shows the output. */
+const boxFrame = () => {
+  const media = ui.store.project.media, out = J.videoOutputSize && J.videoOutputSize(ui.store.project);
+  if (out && out.width > 0 && out.height > 0) return { width: out.width, height: out.height };
+  return media && media.width > 0 && media.height > 0 ? { width: media.width, height: media.height } : { width: 1080, height: 1920 };
+};
 
 function boxContext() {
   const project = ui.store.project, segment = selectedSegment(), track = activeTrack();
@@ -739,7 +977,7 @@ async function exportCaptions() {
     if (typeof window.showSaveFilePicker === 'function') { const handle = await window.showSaveFilePicker({ suggestedName: `jizura-${ui.store.project.id}.mp4`,
       types: [{ description: 'MP4 video', accept: { 'video/mp4': ['.mp4'] } }] }); writable = await handle.createWritable(); }
   } catch (error) { if (error && error.name === 'AbortError') return; throw error; }
-  ui.exportAbort = new AbortController(); ui.exporter = new J.CaptionVideoExporter(); const button = $('captionExport'); button.textContent = 'キャンセル'; button.disabled = false;
+  ui.exportAbort = new AbortController(); ui.exporter = new J.CaptionVideoExporter(); const buttons = [$('captionExport'), $('captionExportPanel')]; buttons.forEach(button => { button.textContent = 'キャンセル'; button.disabled = false; });
   try {
     const result = await ui.exporter.export(current.file, clone(ui.store.project), { writable, signal: ui.exportAbort.signal,
       onProgress: event => { const labels = { checking: '書き出し環境を確認中', video: '字幕付き映像を書き出し中', audio: '元の音声を保持中', finalizing: 'MP4を仕上げています' };
@@ -748,7 +986,7 @@ async function exportCaptions() {
     status(`書き出しました（${result.frameCount}フレーム・音声${result.audio.mode !== 'none' ? '保持' : 'なし'}・${result.metrics.elapsedSeconds.toFixed(1)}秒）。`);
   } catch (error) { const recovery = J.recoveryForError ? J.recoveryForError(error) : { display: error.message || '書き出しに失敗しました。' };
     status(error.code === 'MEDIA_EXPORT_CANCELLED' ? '書き出しをキャンセルしました。' : recovery.display, error.code !== 'MEDIA_EXPORT_CANCELLED'); }
-  finally { ui.exportAbort = null; ui.exporter = null; button.textContent = '書き出し'; renderActions(); }
+  finally { ui.exportAbort = null; ui.exporter = null; buttons.forEach(button => { button.textContent = '書き出し'; }); renderActions(); }
 }
 
 function updatePlayhead(time) {
@@ -842,7 +1080,7 @@ async function importTranscript(file) {
 function replanStyle() {
   const project = clone(ui.store.project), motion = Number($('captionMotion').value) / 100, intensity = Number($('captionIntensity').value) / 100;
   project.style = Object.assign({}, project.style, { preset: $('captionStyle').value, effect: $('captionEffect').value, holdEffect: $('captionHoldEffect').value, exitEffect: $('captionExitEffect').value, captionTreatment: $('captionTreatment').value, intensity, motion, accentColor: $('captionAccent').value,
-    editor: $('captionEditor').value === 'advanced' ? 'advanced' : 'simple',
+    editor: $('captionModePro').getAttribute('aria-pressed') === 'true' ? 'advanced' : 'simple',
     position: $('captionPosition').value, zones: [$('captionPosition').value], writingMode: $('captionWritingMode').value,
     emphasisStrength: Number($('captionEmphasisStrength').value) / 100,
     motionBudget: { maxIntensity: Math.max(0, Math.round(intensity * 3)), maxMotionCost: .25 + motion * .9, maxAttentionCost: .3 + intensity * .8 } });
@@ -894,12 +1132,12 @@ function bind() {
   $('captionPlay').addEventListener('click', () => { if (!sourceVideo()) return; if (sourceVideo().paused) { const clips = J.videoClips(ui.store.project), time = sourceVideo().currentTime; if (time >= clips[clips.length - 1].end) sourceVideo().currentTime = clips[0].start; else if (!clips.some(c => time >= c.start && time < c.end)) sourceVideo().currentTime = (clips.find(c => c.start > time) || clips[0]).start; sourceVideo().play().catch(error => status(error.message, true)); } else sourceVideo().pause(); });
   $('captionScrub').addEventListener('input', event => { if (!sourceVideo()) return; sourceVideo().currentTime = sourceVideo().duration * Number(event.target.value) / 1000; if (ui.preview) ui.preview.renderNow(); });
   $('captionUndo').addEventListener('click', () => { if (ui.store.undo()) renderAll(); }); $('captionRedo').addEventListener('click', () => { if (ui.store.redo()) renderAll(); });
-  $('captionVariation').addEventListener('click', () => { const varied = J.createCaptionVisualVariation(ui.store.project, { variation: ++ui.variation, media: ui.store.project.media }); setProject(varied, true); status('新しいビジュアル案を作りました。'); });
+  $('captionVariation').addEventListener('click', () => { if (runCommand({ type: 'randomize-caption-look', variation: ++ui.variation })) status('全体のエフェクトをランダムに決めました。元に戻すで戻せます。'); });
   $('captionSave').addEventListener('click', () => J.saveFile(`jizura-${ui.store.project.id}.json`, ui.store.serialize()));
-  $('captionExport').addEventListener('click', () => exportCaptions().catch(error => status(error.message, true)));
+  for (const id of ['captionExport', 'captionExportPanel']) $(id).addEventListener('click', () => exportCaptions().catch(error => status(error.message, true)));
   $('captionNew').addEventListener('click', () => { if (ui.preview) ui.preview.disconnect(); if (ui.media) ui.media.close(); ui.media = null; ui.preview = null; ui.selectedId = null; setProject(emptyProject()); $('captionProjectName').textContent = '無題の字幕プロジェクト'; $('captionRelinkNotice').hidden = true; $('captionPreviewEmpty').hidden = false; $('captionMediaName').textContent = '動画未選択'; $('captionPlay').disabled = true; $('captionScrub').disabled = true; status('新しいプロジェクトを作成しました。'); });
   $('captionLock').addEventListener('click', () => { const segment = selectedSegment(); if (!segment) return; const locked = !!(segment.locks && segment.locks.visualPlan); runCommand({ type: 'set-segment-locks', segmentId: segment.id, locked: !locked }, segment.id); });
-  $('captionReroll').addEventListener('click', () => { const segment = selectedSegment(); if (!segment) return; setProject(J.rerollCaptionVisual(ui.store.project, segment.id, { media: ui.store.project.media }), true); status('選択した字幕を再抽選しました。'); });
+  $('captionReroll').addEventListener('click', () => { const segment = selectedSegment(); if (!segment) return; ui.variation += 1; if (runCommand({ type: 'randomize-caption-look', segmentId: segment.id, variation: ui.variation }, segment.id)) status('選択した字幕をランダムに決めました。'); });
   $('captionDisableAnimation').addEventListener('click', () => { const segment = selectedSegment(); if (!segment) return; const plan = J.captionResolvedPlan(ui.store.project.plans[segment.id]);
     runCommand({ type: 'set-segment-animation-disabled', segmentId: segment.id, disabled: !plan.animationDisabled }, segment.id); });
   $('captionBlockApply').addEventListener('click', applyBlockText); $('captionBlockDelete').addEventListener('click', deleteBlock);
@@ -931,7 +1169,19 @@ function bind() {
     $('captionStyle').value = 'jizura-mv'; $('captionIntensity').value = 70; $('captionMotion').value = 65;
     replanStyle();
   }));
-  $('captionEditor').addEventListener('change', replanStyle);
+  /* Simple / Advanced changes which techniques the planner may pick, so it stays project state (undoable, saved), not a view preference. */
+  for (const [id, mode] of [['captionModeEasy', 'simple'], ['captionModePro', 'advanced']]) $(id).addEventListener('click', () => {
+    if ($('captionModePro').getAttribute('aria-pressed') === String(mode === 'advanced')) return;
+    $('captionModeEasy').setAttribute('aria-pressed', String(mode === 'simple')); $('captionModePro').setAttribute('aria-pressed', String(mode === 'advanced'));
+    replanStyle(); renderActions();
+  });
+  $('captionHelp').addEventListener('click', () => { const dialog = $('captionHelpDlg'); if (dialog.showModal) { if (!dialog.open) dialog.showModal(); } else dialog.setAttribute('open', ''); });
+  $('captionLookPickAuto').addEventListener('click', () => { if (ui.lookPick) setLook(ui.lookPick, null); });
+  $('captionLookPickClose').addEventListener('click', () => { ui.lookPick = null; ui.lookSignature = null; renderLookPanel(); });
+  $('captionLookScope').addEventListener('change', event => { ui.lookScope = event.target.value; renderLookPanel(); });
+  for (const [key, id] of Object.entries(LOOK_CONTROLS)) $(id).addEventListener('change', event => { const scope = lookScope(); runCommand(lookCommand({ look: { [key]: event.target.value || null } }), scope.segment && scope.segment.id); });
+  $('captionLookRandom').addEventListener('click', () => { const scope = lookScope(); if (runCommand(randomLook(scope), scope.segment && scope.segment.id)) status('エフェクトをランダムに決めました。決めた内容は固定され、元に戻すで戻せます。'); });
+  $('captionLookReset').addEventListener('click', () => { const scope = lookScope(); runCommand(lookCommand({ reset: true }), scope.segment && scope.segment.id); });
   $('captionTreatment').addEventListener('change', replanStyle);
   $('captionStyle').addEventListener('change', () => { $('captionEffect').value = 'auto'; $('captionHoldEffect').value = 'auto'; $('captionExitEffect').value = 'auto'; replanStyle(); }); $('captionIntensity').addEventListener('change', replanStyle); $('captionMotion').addEventListener('change', replanStyle); $('captionAccent').addEventListener('change', replanStyle);
   const boxEditor = $('captionBoxEditor');
@@ -944,7 +1194,7 @@ function bind() {
   $('captionTrackAdd').addEventListener('click', addTrack); $('captionTrackDelete').addEventListener('click', deleteTrack);
   $('captionTrackForward').addEventListener('click', () => reorderTrack(1)); $('captionTrackBack').addEventListener('click', () => reorderTrack(-1));
   $('captionTrackName').addEventListener('change', () => { const track = activeTrack(); if (track) runCommand({ type: 'rename-track', trackId: track.id, name: $('captionTrackName').value }); });
-  $('captionTrackReroll').addEventListener('click', () => { const track = activeTrack(); if (track && runCommand({ type: 'reroll-track', trackId: track.id })) status('トラックの字幕を再抽選しました。'); });
+  $('captionTrackReroll').addEventListener('click', () => { const track = activeTrack(); if (track && runCommand({ type: 'randomize-caption-look', trackId: track.id, variation: ++ui.variation })) status('トラックのエフェクトをランダムに決めました。'); });
   $('captionTrackPreset').addEventListener('change', () => applyTrackStyle('preset', $('captionTrackPreset').value || null));
   $('captionTrackTreatment').addEventListener('change', () => applyTrackStyle('captionTreatment', $('captionTrackTreatment').value || null));
   $('captionTrackAccent').addEventListener('change', () => { $('captionTrackAccent').dataset.unset = ''; applyTrackStyle('accentColor', $('captionTrackAccent').value); });
@@ -954,11 +1204,15 @@ function bind() {
   for (const id of Object.keys(ROLE_CONTROLS)) $(id).addEventListener('change', () => applyRoleInput($(id)));
   document.querySelectorAll('[data-role-clear]').forEach(button => button.addEventListener('click', () => clearRoleInput(button)));
   $('captionRolesReset').addEventListener('click', () => { const track = roleTrack(); if (track) runCommand({ type: 'set-track-roles', trackId: track.id, reset: true }); });
-  window.addEventListener('resize', () => paintBoxEditor());
+  window.addEventListener('resize', onWorkbenchResize);
+  if (typeof ResizeObserver === 'function') { const observer = new ResizeObserver(onWorkbenchResize); observer.observe(document.querySelector('.caption-stage')); }   // strip height changes with the track count
+  document.querySelectorAll('.caption-style-tabs [data-style-tab]').forEach(button => button.addEventListener('click', () => selectStyleTab(button.dataset.styleTab)));
+  document.querySelectorAll('.caption-left-tabs [data-left-tab]').forEach(button => button.addEventListener('click', () => selectLeftTab(button.dataset.leftTab)));
   $('captionPosition').addEventListener('change', replanStyle); $('captionWritingMode').addEventListener('change', replanStyle); $('captionEmphasisStrength').addEventListener('change', replanStyle);
   $('captionReducedMotion').addEventListener('change', event => { runCommand({ type: 'set-project-setting', field: 'reducedMotionPreview', value: event.target.checked }, ui.selectedId); status(event.target.checked ? 'プレビューの動きを減らしました。' : '通常のプレビュー動作に戻しました。'); });
   $('captionDensity').addEventListener('input', () => { $('captionDensityValue').value = $('captionDensity').value; }); $('captionDensity').addEventListener('change', changeDensity);
   $('app').addEventListener('jizura:product-mode', event => {
+    if (event.detail.mode === 'video-captions') fitVideoColumn();
     if (!sourceVideo()) return;
     if (event.detail.mode !== 'video-captions') sourceVideo().pause();
     else if (ui.preview) ui.preview.renderNow();

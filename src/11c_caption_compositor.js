@@ -47,8 +47,12 @@ function drawCaptionSegment(ctx, project, segment, time, info, map) {
   const zone = J.captionPlanZone(placed, frame, { width: sourceWidth, height: sourceHeight })
     || { id: 'caption-preview-bottom', kind: 'bottom', x: W * .08, y: H * .7, width: W * .84, height: H * .2 };
   const roleRender = J.captionRoleRender ? J.captionRoleRender(project, segment, plan, tokens) : { active: {}, emphasis: null };
+  // Effect settings chosen in the look panel (Advanced); unset values keep each effect's own behaviour.
+  const settingsOf = (stage, id) => J.captionLookSettingsFor ? J.captionLookSettingsFor(plan.lookSettings, stage, id) : {};
+  const activeTreatment = roleRender.active.treatment || plan.activeWordTreatment, activeSet = settingsOf('active', activeTreatment);
   const layout = J.composeCaptionLayout ? J.composeCaptionLayout(plan.layout || 'captionBottomStack', { text, tokens, clockTime: time,
-    activeTreatment: roleRender.active.treatment || plan.activeWordTreatment, accentColor: roleRender.active.color || plan.accentColor, emphasis: roleRender.emphasis, font: plan.font, fontSize: plan.fontSize,
+    activeTreatment, accentColor: activeSet.color || roleRender.active.color || plan.accentColor, activeScale: activeSet.scale, activeLift: activeSet.lift, activeWeight: activeSet.weight,
+    emphasis: roleRender.emphasis, font: plan.font, fontSize: plan.fontSize,
     zone, box: J.isCaptionBox(placed.box) ? placed.box : undefined, frame, textColor: plan.textColor || '#ffffff' }) : null;
   const lines = layout && layout.lines || [text], fontSize = layout && layout.fontSize || Math.max(38, Math.min(74, W / Math.max(10, text.length * .62)));
   const anchor = layout && layout.anchor || { x: zone.x + zone.width / 2, y: zone.y + zone.height / 2, align: 'center' };
@@ -56,15 +60,25 @@ function drawCaptionSegment(ctx, project, segment, time, info, map) {
   if (J.mainDraw && J.Renderer && layout) {
     const reduced = info.reducedMotion === true || plan.animationDisabled;
     const duration = segment.end - segment.start, motion = plan.motion == null ? .6 : plan.motion;
-    const entranceTime = Math.min(duration * .35, .22 + motion * .4);
+    const enterSet = settingsOf('enter', plan.entrance), exitSet = settingsOf('exit', plan.exit), holdSet = settingsOf('hold', plan.hold);
+    const entranceTime = Number.isFinite(enterSet.duration) ? Math.min(duration * .45, enterSet.duration) : Math.min(duration * .35, .22 + motion * .4);
+    const exitTime = Number.isFinite(exitSet.duration) ? Math.min(duration * .45, exitSet.duration) : Math.min(duration * .2, .18);
     const cut = { seed: plan.seed || 1, dur: duration, inDur: reduced ? 0 : entranceTime,
-      outDur: reduced ? 0 : Math.min(duration * .2, .18),
+      outDur: reduced ? 0 : exitTime, holdStrength: Number.isFinite(holdSet.strength) ? holdSet.strength : undefined,
       enter: reduced || motion === 0 ? 'cut' : plan.entrance, hold: reduced || motion === 0 ? 'still' : plan.hold,
       exit: reduced || motion === 0 ? 'cut' : plan.exit };
     const treatId = [plan.treatment, plan.textTreatment, plan.treat].find(id => id && id !== 'none' && J.TREAT && Object.prototype.hasOwnProperty.call(J.TREAT, id));
-    if (treatId) cut.treat = treatId;
-    const sc = { fg: plan.textColor || '#ffffff', bg: plan.backgroundColor || '#111318', accent: plan.accentColor || '#f5a50c' };
-    const env = J.Renderer.prototype.makeEnv(ctx, { W, H, fps: 30, style: {}, fx: { motion }, }, cut, sc,
+    // The scheme keeps every colour slot an effect may read (accent2, ghost, ...); only fg / bg / accent are the caption's own.
+    const baseStyle = J.STYLES && J.STYLE_ORDER && J.STYLES[J.STYLE_ORDER[0]] || null;
+    if (treatId) {
+      // Treatments read planned params (e.g. splitColor's split point); seed them from the caption so the look is stable.
+      cut.treat = treatId;
+      const TD = J.TREAT[treatId];
+      try { cut.treatP = TD.plan ? TD.plan(J.rng(J.h(cut.seed, J.sid(treatId), 93)), baseStyle || {}) || {} : {}; } catch (e) { cut.treatP = {}; }
+      cut.treatP = Object.assign({}, cut.treatP, settingsOf('treat', treatId));
+    }
+    const sc = Object.assign({}, baseStyle && baseStyle.schemes && baseStyle.schemes[0], { fg: plan.textColor || '#ffffff', bg: plan.backgroundColor || '#111318', accent: plan.accentColor || '#f5a50c' });
+    const env = J.Renderer.prototype.makeEnv(ctx, { W, H, fps: 30, style: baseStyle ? { fonts: baseStyle.fonts } : {}, fx: { motion }, }, cut, sc,
       { pass: 'main', t: time, lt: time - segment.start, scale: info.scale || 1, allowFilter: true });
     ctx.save();
     try {

@@ -34,7 +34,7 @@ def build(lang):
     folder = dict((c, f) for c, f, _, _ in i18n.EDITIONS)[lang]
     canonical = i18n.BASE + (folder + '/' if folder else '')
     language_nav = i18n.nav(lang)
-    body = read('app/body.html').replace('@VERSION@', VERSION).replace('    <div class="acts">', '    ' + language_nav + '\n    <div class="acts">', 1)
+    body = read('app/body.html').replace('@VERSION@', VERSION).replace('@LANG_NAV@', language_nav)
     if english: body = localize_body(body)
     elif local: body = i18n.localize_body(lang, body)
     if english: script = '\n'.join(localize_js(read(f), f) for f in sources)

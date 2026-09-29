@@ -65,14 +65,6 @@ assert.deepStrictEqual(varied.plans[lockedId], lockedProject.plans[lockedId], 'v
 assert.equal(varied.plans[target].generated.font, 'Locked Font', 'variation changed a locked field');
 assert.deepStrictEqual(varied.plans[target].manual, lockedProject.plans[target].manual);
 
-const noRegistryProject = overridden(project);
-const orders = Object.fromEntries(J.GROUP_KEYS.map(group => [group, J.order(group).slice()]));
-for (const group of J.GROUP_KEYS) J[({ layout: 'LAYOUT_ORDER', enter: 'ENTER_ORDER', hold: 'HOLD_ORDER', exit: 'EXIT_ORDER', decor: 'DECOR_ORDER', treat: 'TREAT_ORDER', bg: 'BG_ORDER', cam: 'CAMERA_ORDER', fx: 'FXE_ORDER', trans: 'TRANS_ORDER' })[group]] = [];
-const fallback = J.planCaptions(noRegistryProject, noRegistryProject.media);
-assert.ok(Object.values(fallback.plans).every(plan => plan.generated.fallback || plan.generated.layout === 'captionStatic'));
-assert.ok(Object.values(fallback.plans).every(plan => plan.generated.readability.allowed), 'safe static fallback was not legible');
-for (const [group, order] of Object.entries(orders)) J[({ layout: 'LAYOUT_ORDER', enter: 'ENTER_ORDER', hold: 'HOLD_ORDER', exit: 'EXIT_ORDER', decor: 'DECOR_ORDER', treat: 'TREAT_ORDER', bg: 'BG_ORDER', cam: 'CAMERA_ORDER', fx: 'FXE_ORDER', trans: 'TRANS_ORDER' })[group]] = order;
-
 const planWith = (style, techniques) => {
   const next = JSON.parse(JSON.stringify(project));
   next.plans = {};
@@ -82,9 +74,17 @@ const planWith = (style, techniques) => {
 };
 const generated = result => Object.values(result.plans).map(stored => stored.generated);
 const creator = J.CAPTION_STYLE_PROFILES.creator;
+/* A choice that cannot be used on a caption is replaced by the safe default and reported, never silently. */
+const unusable = JSON.parse(JSON.stringify(project)); unusable.plans = {}; unusable.style = { preset: 'creator', look: { enter: 'testTooSlowEnter' } };
+const unusablePlans = generated(J.planCaptions(unusable, unusable.media));
+for (const plan of unusablePlans) {
+  assert.equal(plan.entrance, 'captionFade', 'an unusable entrance was not replaced by the safe default');
+  assert.ok(plan.lookWarnings.some(warning => warning.field === 'enter' && warning.code === 'look-unavailable'), 'the replaced entrance was not reported');
+}
+assert.throws(() => J.normalizeCaptionLook({ enter: 'noSuchEffect' }), error => error.code === 'CAPTION_LOOK_INVALID');
 const kineticLayout = id => { const def = J.registry('layout')[id]; return !!(def && def.set === 'kinetic'); };
 
-const advancedOff = planWith({ editor: 'advanced' }, { extra: false, wa: false, typo: false, kinetic: false, horror: false, enabled: {} });
+const advancedOff = planWith({ editor: 'advanced', look: { layout: 'knSlamStack' } }, { extra: false, wa: false, typo: false, kinetic: false, horror: false, enabled: {} });
 for (const plan of generated(advancedOff)) {
   assert.equal(kineticLayout(plan.layout), false, `advanced kinetic-off plan stored ${plan.layout}`);
   for (const component of plan.components) {
@@ -93,14 +93,14 @@ for (const plan of generated(advancedOff)) {
   }
 }
 
-const riseOff = planWith({ editor: 'advanced' }, { extra: true, kinetic: false, enabled: { enter: { captionSoftRise: false } } });
+const riseOff = planWith({ editor: 'advanced', look: { enter: 'captionSoftRise' } }, { extra: true, kinetic: false, enabled: { enter: { captionSoftRise: false } } });
 for (const plan of generated(riseOff)) assert.notEqual(plan.entrance, 'captionSoftRise', 'advanced plan stored captionSoftRise while that entrance was off');
 const onlyRise = { enter: {} };
 for (const id of creator.entrances) if (id !== 'captionSoftRise') onlyRise.enter[id] = false;
-const riseOn = planWith({ editor: 'advanced' }, { extra: true, kinetic: false, enabled: onlyRise });
+const riseOn = planWith({ editor: 'advanced', look: { enter: 'captionSoftRise' } }, { extra: true, kinetic: false, enabled: onlyRise });
 for (const plan of generated(riseOn)) assert.equal(plan.entrance, 'captionSoftRise', `advanced pool stored ${plan.entrance} instead of captionSoftRise`);
 
-const popOn = planWith({ editor: 'advanced' }, { enabled: { enter: { pop: true } } });
+const popOn = planWith({ editor: 'advanced', look: { enter: 'pop' } }, { enabled: { enter: { pop: true } } });
 for (const plan of generated(popOn)) assert.equal(plan.entrance, 'pop', `advanced pool stored ${plan.entrance} instead of pop`);
 const drawBlock = fs.readFileSync(path.join(root, 'src', '12c_caption_workbench.js'), 'utf8');
 const drawStart = drawBlock.indexOf('J.CAPTION_TECHNIQUE_DRAW = {');
@@ -126,9 +126,9 @@ for (const plan of generated(simple)) {
   }
 }
 
-const slamOn = planWith({ editor: 'advanced' }, { kinetic: true, enabled: { layout: { knSlamStack: true } } });
+const slamOn = planWith({ editor: 'advanced', look: { layout: 'knSlamStack' } }, { kinetic: true, enabled: { layout: { knSlamStack: true } } });
 for (const plan of generated(slamOn)) assert.equal(plan.layout, 'knSlamStack', `advanced kinetic pool stored ${plan.layout}`);
-const slamOff = planWith({ editor: 'advanced' }, { kinetic: false, enabled: { layout: { knSlamStack: true } } });
+const slamOff = planWith({ editor: 'advanced', look: { layout: 'knSlamStack' } }, { kinetic: false, enabled: { layout: { knSlamStack: true } } });
 for (const plan of generated(slamOff)) assert.notEqual(plan.layout, 'knSlamStack', 'explicit knSlamStack overrode kinetic off');
 assert.equal(J.registry('layout').knSlamStack.captionSafe, undefined, 'planning marked knSlamStack caption-safe');
 assert.equal(J.registry('layout').knSlamStack.capabilities, undefined, 'planning wrote capabilities onto knSlamStack');

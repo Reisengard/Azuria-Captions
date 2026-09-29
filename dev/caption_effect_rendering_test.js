@@ -31,7 +31,7 @@ assert.equal(typeof J.ENTER.pop.apply, 'function');
 const enter = { pop: true };
 for (const id of creatorEntrances) enter[id] = false;
 const cueProject = { media: { width: 1280, height: 720, duration: 3 }, transcript, segments: [], plans: {}, seed: 3107,
-  style: { preset: 'creator', editor: 'advanced', motion: .7 }, techniques: { extra: false, wa: false, typo: false, kinetic: false, horror: false, enabled: { enter } } };
+  style: { preset: 'creator', editor: 'advanced', motion: .7, look: { enter: 'pop' } }, techniques: { extra: false, wa: false, typo: false, kinetic: false, horror: false, enabled: { enter } } };
 Object.assign(cueProject, J.planCaptions(cueProject, cueProject.media));
 assert.equal(cueProject.segments.length, 1);
 const cue = cueProject.segments[0];
@@ -55,7 +55,7 @@ J.drawFx = drawFx;
 assert.equal(typeof J.TREAT.wide.apply, 'function');
 const treat = { wide: true };
 const treatProject = { media: { width: 1280, height: 720, duration: 3 }, transcript, segments: [], plans: {}, seed: 3107,
-  style: { preset: 'creator', editor: 'advanced', motion: .7 }, techniques: { extra: false, wa: false, typo: false, kinetic: false, horror: false, enabled: { treat } } };
+  style: { preset: 'creator', editor: 'advanced', motion: .7, look: { treat: 'wide' } }, techniques: { extra: false, wa: false, typo: false, kinetic: false, horror: false, enabled: { treat } } };
 Object.assign(treatProject, J.planCaptions(treatProject, treatProject.media));
 assert.equal(treatProject.segments.length, 1);
 const treatCue = treatProject.segments[0];
@@ -66,7 +66,7 @@ const drawn = [];
 J.drawFx = (env, item) => { drawn.push({ treat: env.cut.treat }); };
 J.drawCaptionOverlay(ctx, treatProject, treatCue.start + 0.05);
 assert.equal(drawn.at(-1).treat, 'wide');
-delete treat.wide;
+treat.wide = false;   // advanced offers every effect; an explicit off still wins
 Object.assign(treatProject, J.planCaptions(treatProject, treatProject.media));
 const treatAgain = treatProject.segments[0];
 J.drawCaptionOverlay(ctx, treatProject, treatAgain.start + 0.05);

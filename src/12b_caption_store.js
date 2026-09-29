@@ -55,6 +55,11 @@ J.captionTechniques = project => {
   return filled;
 };
 
+/* The advanced editor offers every effect of the groups a caption can draw, except the background (the video is the background).
+   The simple editor stays on the caption-safe set. */
+J.CAPTION_ADVANCED_GROUPS = Object.freeze(['layout', 'enter', 'hold', 'exit', 'treat']);
+J.isCaptionPackDef = def => !!def && typeof def.pack === 'string' && def.pack.startsWith('caption-');
+J.captionAdvancedOpen = (project, group) => !!(project && project.style && project.style.editor === 'advanced') && group !== 'bg';
 J.captionTechniqueOn = (project, group, id) => {
   const explicit = J.captionTechniques(project).enabled[group];
   if (explicit && typeof explicit[id] === 'boolean') return explicit[id];
@@ -62,6 +67,8 @@ J.captionTechniqueOn = (project, group, id) => {
   const registry = J.registry(group);
   const def = registry[id];
   if (!def || !Object.prototype.hasOwnProperty.call(registry, id)) return false;
+  // Advanced opens every effect; for layouts only the caption packs' own (the compositor cannot draw Lyric Motion layouts).
+  if (J.captionAdvancedOpen(project, group) && !def.special && (group !== 'layout' || J.isCaptionPackDef(def))) return true;
   if (!def.capabilities || def.capabilities.captionSafe !== true) return false;
   const listed = captionProfileList(project, group);
   if (listed == null) return true;
@@ -117,16 +124,17 @@ J.validateCaptionProject = project => {
     if (previous && segment.start < previous.start) fail('SEGMENT_ORDER_INVALID', `Segment "${segment.id}" is out of order.`, { segmentId: segment.id, previousSegmentId: previous.id });
     previous = segment;
   }
+  const advancedOpen = J.captionAdvancedOpen(project, 'enter');
   for (const [segmentId, plan] of Object.entries(project.plans || {})) {
     if (!segmentIds.has(segmentId)) fail('PLAN_SEGMENT_NOT_FOUND', `Plan references missing segment "${segmentId}".`, { segmentId });
     const owner = project.segments.find(item => item.id === segmentId);
     if (plan && plan.manual && plan.manual.box !== undefined && !J.isCaptionBox(plan.manual.box)) fail('PLAN_BOX_INVALID', `Plan "${segmentId}" has an invalid box override.`, { segmentId });
     if (plan && plan.manual && J.CAPTION_TEXT_BLOCK_ANIMATION) for (const [key, spec] of Object.entries(J.CAPTION_TEXT_BLOCK_ANIMATION)) {
       const id = plan.manual[spec.field];
-      if (id !== undefined && (typeof id !== 'string' || !J.registry || !J.registry(spec.group)[id] || !J.captionComponentEligibility(spec.group, id, {}).allowed)) fail('CAPTION_TECHNIQUE_UNSAFE', `Segment "${segmentId}" uses unsafe ${key} preset "${String(id)}".`, { segmentId, componentId: id });
+      if (id !== undefined && (typeof id !== 'string' || !J.registry || !J.registry(spec.group)[id] || !advancedOpen && !J.captionComponentEligibility(spec.group, id, {}).allowed)) fail('CAPTION_TECHNIQUE_UNSAFE', `Segment "${segmentId}" uses unsafe ${key} preset "${String(id)}".`, { segmentId, componentId: id });
     }
     if (plan && plan.trackId !== owner.trackId) fail('PLAN_TRACK_MISMATCH', `Plan "${segmentId}" belongs to track "${String(plan.trackId)}" but its segment is on "${owner.trackId}".`, { segmentId, trackId: plan.trackId });
-    if (plan && plan.metadata && plan.metadata.captionSafe !== true) {
+    if (plan && plan.metadata && plan.metadata.captionSafe !== true && !advancedOpen) {
       const componentId = plan.entrance || plan.enter || plan.layout || 'unknown';
       fail('CAPTION_TECHNIQUE_UNSAFE', `Segment "${segmentId}" uses unsafe component "${componentId}".`, { segmentId, componentId });
     }
@@ -137,7 +145,7 @@ J.validateCaptionProject = project => {
     for (const [group, componentId] of refs) {
       if (!componentId || !J.registry || !J.registry(group)[componentId]) continue;
       const eligible = J.captionComponentEligibility(group, componentId, {});
-      if (!eligible.allowed) fail('CAPTION_TECHNIQUE_UNSAFE', `Segment "${segmentId}" uses unsafe component "${componentId}".`, { segmentId, componentId, reason: eligible.code });
+      if (!eligible.allowed && !(advancedOpen && group !== 'layout')) fail('CAPTION_TECHNIQUE_UNSAFE', `Segment "${segmentId}" uses unsafe component "${componentId}".`, { segmentId, componentId, reason: eligible.code });
     }
   }
   return project;
@@ -225,6 +233,7 @@ class CaptionStore {
         J.validateVideoEdits(command.value, this.project.media.duration);
         this.project.settings = this.project.settings || {};
         this.project.settings.videoEdit = clone(command.value);
+        J.captionSyncDefaultBoxes(this.project);   // the untouched default box follows the output format's safe area
         break;
       }
       case 'set-caption-style': {
@@ -283,6 +292,9 @@ class CaptionStore {
       case 'reorder-track': this.reorderTrack(command); break;
       case 'move-segment-to-track': this.moveSegmentToTrack(command); break;
       case 'move-tokens-to-track': this.moveTokensToTrack(command); break;
+      case 'set-caption-look': this.setCaptionLook(command); break;
+      case 'set-segment-look': this.setSegmentLook(command); break;
+      case 'randomize-caption-look': this.randomizeCaptionLook(command); break;
       case 'reroll-track': this.rerollTrack(command); break;
       case 'set-visual-override': this.setVisualOverride(command); break;
       case 'set-segment-lock': this.setSegmentLock(command); break;
@@ -301,7 +313,7 @@ class CaptionStore {
         if (!plainObject(this.project.settings)) this.project.settings = {}; this.project.settings[command.field] = clone(command.value); break;
       }
       case 'set-field-lock': this.setFieldLock(command); break;
-      case 'reroll-segment': this.rerollSegment(command); break;
+      case 'reroll-segment': this.randomizeCaptionLook({ segmentId: command.segmentId, variation: command.variation }); break;
       case 'set-technique': this.setTechnique(command); break;
       default: fail('COMMAND_UNKNOWN', `Unknown caption command "${command.type}".`, { commandType: command.type });
     }
@@ -646,18 +658,79 @@ class CaptionStore {
     this.project.transcript.tokens = this.project.transcript.tokens.filter(token => !words.has(token.id));
   }
 
-  /* New look for every unlocked caption on one track (rerollCount + 1); other tracks keep their plans. */
-  rerollTrack(command) {
-    const track = this.requireTrack(command.trackId), counts = {};
-    for (const segment of J.captionTrackSegments(this.project, track.id)) {
-      if (segmentLocks(segment).visualPlan) continue;
-      const old = this.project.plans[segment.id];
-      counts[segment.id] = (old && old.generated && Number.isInteger(old.generated.rerollCount) ? old.generated.rerollCount : 0) + 1;
+  /* The effects of the whole project (no trackId), one track, all as plain choices. { look: {stage: id|null} } merges; { reset: true } goes back to the standard look. */
+  setCaptionLook(command) {
+    if (command.trackId != null) {
+      const track = this.requireTrack(command.trackId);
+      const edit = command.reset === true ? { look: null, lookSettings: null } : {};
+      if (command.reset !== true && command.look !== undefined) edit.look = command.look;
+      if (command.reset !== true && command.lookSettings !== undefined) edit.lookSettings = command.lookSettings;
+      track.style = J.mergeCaptionTrackStyle(track.style, edit);
+    } else {
+      const style = plainObject(this.project.style) ? clone(this.project.style) : { preset: typeof this.project.style === 'string' ? this.project.style : 'creator' };
+      if (command.reset === true) { delete style.look; delete style.lookSettings; delete style.effect; delete style.holdEffect; delete style.exitEffect; }
+      else {
+        const look = J.mergeCaptionLook(style.look, command.look);
+        for (const [key, legacy] of [['enter', 'effect'], ['hold', 'holdEffect'], ['exit', 'exitEffect']]) if (command.look && command.look[key] !== undefined) delete style[legacy];
+        if (Object.keys(look).length) style.look = look; else delete style.look;
+        if (command.lookSettings !== undefined) {
+          const settings = J.mergeCaptionLookSettings(style.lookSettings, command.lookSettings);
+          if (Object.keys(settings).length) style.lookSettings = settings; else delete style.lookSettings;
+        }
+      }
+      this.project.style = style;
     }
-    if (!Object.keys(counts).length) fail('TRACK_NOTHING_TO_REROLL', `Track "${track.name}" has no unlocked captions.`, { trackId: track.id });
-    const planned = J.planCaptions(this.project, this.project.media, { rerollCounts: counts }).plans;
-    for (const id of Object.keys(counts)) this.project.plans[id] = planned[id];
+    this.replanAfterPlacement();
   }
+
+  /* One caption's own effects (stored as manual overrides, so re-planning keeps them). { look } merges, { reset: true } clears them. */
+  setSegmentLook(command) {
+    const { segment } = this.segment(command.segmentId);
+    this.assertUnlocked(segment, 'look'); this.assertUnlocked(segment, 'look', 'visualPlan');
+    if (!plainObject(this.project.plans)) this.project.plans = {};
+    const plan = this.project.plans[segment.id] || (this.project.plans[segment.id] = { id: `plan_${segment.id}`, segmentId: segment.id, trackId: segment.trackId || J.CAPTION_PRIMARY_TRACK_ID, generated: {}, manual: {}, lockedFields: [] });
+    if (!plainObject(plan.generated)) plan.generated = {};
+    if (!plainObject(plan.manual)) plan.manual = {};
+    const patch = command.reset === true ? Object.fromEntries(J.CAPTION_LOOK_KEYS.map(key => [key, null])) : J.normalizeCaptionLook(command.look, true);
+    for (const [key, id] of Object.entries(patch)) {
+      const field = J.CAPTION_LOOK_FIELDS[key].plan;
+      for (const name of key === 'treat' ? ['textTreatment', 'treatment'] : [field]) { if (id === null) delete plan.manual[name]; else plan.manual[name] = id; }
+    }
+    if (command.reset === true || command.lookSettings !== undefined) {
+      const settings = command.reset === true ? {} : J.mergeCaptionLookSettings(plan.manual.lookSettings, command.lookSettings);
+      if (Object.keys(settings).length) plan.manual.lookSettings = settings; else delete plan.manual.lookSettings;
+    }
+    this.replanAfterPlacement();
+  }
+
+  /* A seeded random look, stored as ordinary choices (never re-drawn). Scope: segmentId, else trackId, else the project.
+     variation defaults to a number derived from the current choices, so pressing again gives another look and replaying gives the same one. */
+  randomizeCaptionLook(command) {
+    let scope, current, profileId;
+    if (command.segmentId != null) {
+      const { segment } = this.segment(command.segmentId); this.assertUnlocked(segment, 'look'); this.assertUnlocked(segment, 'look', 'visualPlan');
+      const stored = this.project.plans[segment.id], manual = stored && stored.manual || {};
+      scope = `segment:${segment.id}`; current = J.CAPTION_LOOK_KEYS.map(key => manual[J.CAPTION_LOOK_FIELDS[key].plan] || '');
+      profileId = J.captionStyleProfileId(this.project, J.captionTrack(this.project, segment.trackId));
+    } else if (command.trackId != null) {
+      const track = this.requireTrack(command.trackId);
+      if (!J.captionTrackSegments(this.project, track.id).some(segment => !segmentLocks(segment).visualPlan) && this.project.transcript.tokens.length) fail('TRACK_NOTHING_TO_REROLL', `Track "${track.name}" has no unlocked captions.`, { trackId: track.id });
+      scope = `track:${track.id}`; current = track.style && track.style.look || {}; profileId = J.captionStyleProfileId(this.project, track);
+    } else { scope = 'project'; current = this.project.style && this.project.style.look || {}; profileId = J.captionStyleProfileId(this.project); }
+    const variation = Number.isInteger(command.variation) ? command.variation : J.sid(JSON.stringify(current));
+    let fields = command.fields;
+    if (command.segmentId != null) {
+      const locked = new Set(segmentLocks(this.segment(command.segmentId).segment).fields);
+      fields = (Array.isArray(fields) && fields.length ? fields : ['layout', 'enter', 'hold', 'exit', 'active']).filter(key => !locked.has(J.CAPTION_LOOK_FIELDS[key] && J.CAPTION_LOOK_FIELDS[key].plan));
+    }
+    if (Array.isArray(fields) && !fields.length) return;
+    const look = J.randomCaptionLook(this.project, { scope, variation, profileId, fields });
+    if (command.segmentId != null) this.setSegmentLook({ segmentId: command.segmentId, look });
+    else this.setCaptionLook({ trackId: command.trackId, look });
+  }
+
+  /* Randomize the look of one track (kept as reroll-track). Locked captions keep theirs. */
+  rerollTrack(command) { this.randomizeCaptionLook({ trackId: this.requireTrack(command.trackId).id, variation: command.variation }); }
 
   setVisualOverride(command) {
     const { segment } = this.segment(command.segmentId);
@@ -686,21 +759,13 @@ class CaptionStore {
     if (command.locked === false) fields.delete(command.field); else fields.add(command.field);
     segment.locks.fields = Array.from(fields).sort();
   }
-
-  rerollSegment(command) {
-    const { segment } = this.segment(command.segmentId);
-    this.assertUnlocked(segment, 'visualPlan', 'visualPlan');
-    if (!plainObject(this.project.plans)) this.project.plans = {};
-    const plan = this.project.plans[segment.id] || (this.project.plans[segment.id] = { id: `plan_${segment.id}`, segmentId: segment.id, trackId: segment.trackId || J.CAPTION_PRIMARY_TRACK_ID, generated: {}, manual: {}, lockedFields: [] });
-    if (!plainObject(plan.generated)) plan.generated = {};
-    if (!plainObject(plan.manual)) plan.manual = {};
-    const count = Number.isInteger(plan.generated.rerollCount) ? plan.generated.rerollCount + 1 : 1;
-    const baseSeed = Number.isFinite(this.project.seed) ? this.project.seed : 0;
-    plan.generated.rerollCount = count;
-    plan.generated.seed = J.h(baseSeed, J.sid(segment.id), count);
-  }
 }
 
 J.CaptionStore = CaptionStore;
-J.captionResolvedPlan = plan => Object.assign({}, (plan && plan.generated) || {}, (plan && plan.manual) || {});
+J.captionResolvedPlan = plan => {
+  const generated = (plan && plan.generated) || {}, manual = (plan && plan.manual) || {}, resolved = Object.assign({}, generated, manual);
+  // Effect settings layer: the caption's own values on top of its track / project ones (planned into generated).
+  if (manual.lookSettings && generated.lookSettings) resolved.lookSettings = J.mergeCaptionLookSettings(generated.lookSettings, manual.lookSettings);
+  return resolved;
+};
 })();

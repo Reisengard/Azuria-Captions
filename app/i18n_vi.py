@@ -42,7 +42,6 @@ STYLES = {
 }
 
 BODY = {
-    '編集モード<select id="captionEditor"': 'Chế độ chỉnh sửa<select id="captionEditor"',
     '文字PV系の部品を使う': 'Dùng các thành phần kiểu chữ',
     'キネティックの部品を使う': 'Dùng các thành phần chuyển động chữ',
     'ホラーの演出も使う': 'Dùng cả hiệu ứng kinh dị',

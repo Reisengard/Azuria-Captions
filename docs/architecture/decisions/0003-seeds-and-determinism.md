@@ -21,3 +21,5 @@
 
 - A step that changes plan output for existing projects is a migration bug unless the delta plan says otherwise.
 - New planning code that needs randomness takes a seed argument; it never creates its own source.
+
+> Update 2026-09-29 (ADR 0009): the planner no longer draws effects from a seed. Layout, entrance, hold, exit and active-word treatment come from the user's look or the profile's fixed standard. Seeds now only feed the explicit "Randomize" action (`J.randomCaptionLook`), whose result is stored as plain choices.

@@ -13,10 +13,11 @@ for (const id of ['captionStyle', 'captionIntensity', 'captionMotion', 'captionD
 }
 assert.match(ui, /window\.confirm\('単語数を変えると/, 'segmentation replanning does not warn first');
 assert.match(ui, /J\.replanCaptionSegments/, 'density control does not replan segmentation');
-assert.match(ui, /J\.createCaptionVisualVariation/, 'visual variation is not wired');
+assert.match(ui, /randomize-caption-look/, 'randomize is not wired');
 assert.match(store, /set-segment-locks/, 'whole-segment locking is not atomic');
 assert.match(store, /set-segment-animation-disabled/, 'animation disable is not an undoable command');
-assert.match(body, /<label class="field">編集モード<select id="captionEditor"><option value="simple" selected>Simple<\/option><option value="advanced">Advanced<\/option><\/select><\/label>/);
+assert.match(body, /<button id="captionModeEasy" type="button" aria-pressed="true"[^>]*>かんたん<\/button>\s*<button id="captionModePro" type="button" aria-pressed="false"[^>]*>詳細<\/button>/);
+assert.equal(body.includes('id="captionEditor"'), false, 'the editor select was replaced by the bar toggle');
 const hostMarkup = body.match(/<div id="captionTechniqueHost" hidden>([\s\S]*?)<\/div>/);
 assert.equal(hostMarkup[1], '');
 assert.equal(ui.includes('setMode'), false);
@@ -213,7 +214,8 @@ for (const name of fs.readdirSync(path.join(root, 'src')).filter(name => name.en
 }
 
 assert.equal(J.captionWorkbench.store.project.style.editor, 'simple');
-assert.equal(document.getElementById('captionEditor').value, 'simple');
+assert.equal(document.getElementById('captionModeEasy').getAttribute('aria-pressed'), 'true');
+assert.equal(document.getElementById('captionModePro').getAttribute('aria-pressed'), 'false');
 assert.equal(document.getElementById('captionTechniqueHost').hidden, true);
 
 function domText(node) {
@@ -223,58 +225,34 @@ function domText(node) {
 }
 
 (async () => {
-  const editorSelect = document.getElementById('captionEditor');
-  editorSelect.value = 'advanced';
-  editorSelect.dispatchEvent(new Event('change'));
-  assert.equal(document.getElementById('captionTechniqueHost').hidden, false);
+  document.getElementById('captionModePro').dispatchEvent(new Event('click'));
+  assert.equal(document.getElementById('captionModePro').getAttribute('aria-pressed'), 'true');
+  assert.equal(document.getElementById('captionModeEasy').getAttribute('aria-pressed'), 'false');
+  assert.equal(document.getElementById('videoCaptionsWorkspace').classList.contains('is-easy'), false);
+  assert.equal(document.getElementById('captionTechniqueHost').hidden, true, 'the advanced editor no longer shows the per-technique checklist');
   assert.equal(J.captionWorkbench.store.project.style.editor, 'advanced');
   for (const id of ['captionStyle', 'captionIntensity', 'captionMotion', 'captionDensity', 'captionPosition', 'captionAccent', 'captionWritingMode', 'captionEmphasisStrength']) {
     const control = document.getElementById(id);
     assert.notEqual(control, null);
     assert.equal(control.hidden, false);
   }
-  const host = document.getElementById('captionTechniqueHost');
-  const hostText = domText(host);
-  const groupNames = ['レイアウト', '登場', '保持', '退場', '装飾', '文字の加工', '背景', 'カメラ', '画面効果', 'カット間のつなぎ'];
-  let at = -1;
-  for (const name of groupNames) {
-    const next = hostText.indexOf(name, at + 1);
-    assert.ok(next > at, `host text is missing ${name} in order`);
-    at = next;
-  }
-  const partBoxes = document.querySelectorAll('[data-technique-id]');
-  assert.ok(partBoxes.length > 0, 'advanced host has no technique parts');
-  const drawnGroups = new Set(['enter', 'hold', 'exit', 'treat']);
-  for (const box of partBoxes) {
-    const group = box.closest('[data-caption-group]');
-    assert.equal(box.disabled, !drawnGroups.has(group.dataset.captionGroup), group.dataset.captionGroup);
-  }
-  const setNames = ['extra', 'wa', 'typo', 'kinetic', 'horror'];
-  const setBoxes = document.querySelectorAll('[data-caption-set]');
-  assert.deepStrictEqual(setBoxes.map(box => box.dataset.captionSet), setNames);
-  for (const box of setBoxes) {
-    assert.equal(box.disabled, false);
-    assert.equal(box.checked, false);
-  }
-  for (const group of document.querySelectorAll('[data-caption-group]')) {
-    const drawn = drawnGroups.has(group.dataset.captionGroup);
-    assert.equal(group.open, false);
-    assert.equal(group.querySelector('.caption-tech-note').textContent, 'This group is not drawn on the video yet.');
-    assert.equal(group.querySelector('.caption-tech-note').hidden, drawn, group.dataset.captionGroup);
-    const buttons = group.querySelectorAll('button');
-    assert.deepStrictEqual(buttons.map(button => button.textContent), ['すべてON', 'すべてOFF', '反転']);
-    for (const button of buttons) assert.equal(button.disabled, !drawn, group.dataset.captionGroup);
-  }
+  // Advanced Effects tab: a chip per stage, and the picker offers every effect of the group (not the caption-safe subset) with an example card each.
+  const chips = document.querySelectorAll('.caption-look-chip');
+  assert.deepStrictEqual(chips.map(chip => chip.dataset.stage), ['layout', 'enter', 'hold', 'exit', 'active', 'treat']);
+  const enterChip = chips.find(chip => chip.dataset.stage === 'enter');
+  enterChip.dispatchEvent(new Event('click'));
+  assert.equal(document.getElementById('captionLookPick').hidden, false, 'clicking a chip opens its picker');
+  const cards = document.getElementById('captionLookPickGrid').querySelectorAll('canvas');
+  assert.ok(cards.length > 100, `advanced entrance picker lists ${cards.length} effects`);
+  assert.ok(cards.some(card => card.dataset.k === 'pop'), 'advanced picker offers the Lyric Motion entrances');
   const lyric = { enabled: { enter: { pop: true } } };
   const lyricBefore = JSON.stringify(lyric);
-  const extra = setBoxes[0];
-  extra.checked = true;
-  extra.dispatchEvent(new Event('change'));
+  J.captionWorkbench.store.execute({ type: 'set-technique', set: 'extra', value: true });
   assert.equal(J.captionWorkbench.store.project.techniques.extra, true);
   assert.equal(J.captionWorkbench.store.project.enabled, undefined);
   assert.equal(J.captionWorkbench.store.project.extra, undefined);
   assert.equal(JSON.stringify(lyric), lyricBefore);
-  document.getElementById('captionUndo').dispatchEvent(new Event('click'));
+  J.captionWorkbench.store.undo();
   assert.equal(J.captionTechniques(J.captionWorkbench.store.project).extra, false);
   assert.equal(J.captionWorkbench.store.project.techniques, undefined);
   const saved = JSON.parse(JSON.stringify(J.captionWorkbench.store.project));
@@ -283,7 +261,7 @@ function domText(node) {
   projectFile.files = [{ name: 'omit.json', text: () => Promise.resolve(JSON.stringify(saved)) }];
   projectFile.dispatchEvent(new Event('change'));
   await new Promise(resolve => setImmediate(resolve));
-  assert.equal(document.getElementById('captionEditor').value, 'simple');
+  assert.equal(document.getElementById('captionModeEasy').getAttribute('aria-pressed'), 'true');
   assert.equal(document.getElementById('captionTechniqueHost').hidden, true);
   assert.equal(J.captionWorkbench.store.project.style.editor, undefined);
 
@@ -320,17 +298,13 @@ function domText(node) {
   }
   assert.equal(store.project.techniques, undefined);
 
-  editorSelect.value = 'advanced';
-  editorSelect.dispatchEvent(new Event('change'));
+  document.getElementById('captionModePro').dispatchEvent(new Event('click'));
+  assert.equal(store.project.style.editor, 'advanced');
   assert.equal(store.project.plans.segment_000002.generated.layout, lockedLayout);
   store.project.plans.segment_000001.generated.layout = 'SENTINEL_LAYOUT';
-  const fade = document.querySelectorAll('[data-technique-id="captionFade"]');
-  assert.equal(fade.length, 1);
-  assert.equal(fade[0].disabled, false);
-  assert.equal(fade[0].checked, true);
+  assert.equal(J.captionTechniqueOn(store.project, 'enter', 'captionFade'), true);
   const history = store.undoStack.length;
-  fade[0].checked = false;
-  fade[0].dispatchEvent(new Event('change'));
+  store.execute({ type: 'set-technique', group: 'enter', entries: { captionFade: false } });   // an explicit off still wins over "everything is on"
   assert.equal(store.undoStack.length, history + 1);
   assert.equal(store.project.techniques.enabled.enter.captionFade, false);
   assert.notEqual(store.project.plans.segment_000001.generated.layout, 'SENTINEL_LAYOUT');
@@ -342,11 +316,7 @@ function domText(node) {
   assert.equal(store.undo(), true);
   assert.equal(store.project.plans.segment_000001.generated.layout, 'SENTINEL_LAYOUT');
   assert.equal(store.project.techniques && store.project.techniques.enabled && store.project.techniques.enabled.enter && store.project.techniques.enabled.enter.captionFade, undefined);
-  editorSelect.dispatchEvent(new Event('change'));
-  for (const box of document.querySelectorAll('[data-technique-id]')) {
-    const group = box.closest('[data-caption-group]');
-    assert.equal(box.disabled, !drawnGroups.has(group.dataset.captionGroup), group.dataset.captionGroup);
-  }
+  document.getElementById('captionPosition').dispatchEvent(new Event('change'));
   for (const key of ['layout', 'decor', 'bg', 'cam', 'fx', 'trans']) assert.equal(J.CAPTION_TECHNIQUE_DRAW[key], false, key);
   for (const key of ['enter', 'hold', 'exit', 'treat']) assert.equal(J.CAPTION_TECHNIQUE_DRAW[key], true, key);
   const source = fs.readFileSync(path.join(root, 'src', '12c_caption_workbench.js'), 'utf8');

@@ -65,10 +65,15 @@ const styleFor = (project, track) => {
     }),
   }) };
 };
-const frameFor = (project, media) => ({
-  width: Number(media && (media.width || media.videoWidth) || project.media && project.media.width) || 1080,
-  height: Number(media && (media.height || media.videoHeight) || project.media && project.media.height) || 1920,
-});
+// Fit and readability are measured in the output frame (post format), the one the preview and export draw.
+const frameFor = (project, media) => {
+  const out = J.videoOutputSize ? J.videoOutputSize(project) : null;
+  if (out && out.width > 0 && out.height > 0) return { width: out.width, height: out.height };
+  return {
+    width: Number(media && (media.width || media.videoWidth) || project.media && project.media.width) || 1080,
+    height: Number(media && (media.height || media.videoHeight) || project.media && project.media.height) || 1920,
+  };
+};
 const hasEmoji = text => /\p{Extended_Pictographic}/u.test(text);
 const resolvedStored = stored => Object.assign({}, stored && stored.generated || {}, stored && stored.manual || {});
 const fieldsLocked = (segment, stored) => new Set([...(segment.locks && segment.locks.fields || []), ...(stored && stored.lockedFields || [])]);
@@ -83,6 +88,8 @@ const automaticPoolOk = (project, group, id) => {
   if (!J.captionTechniqueOn || J.captionTechniqueOn(project, group, id) !== true) return false;
   const def = J.registry(group)[id];
   if (!def) return false;
+  if (group !== 'layout' && J.captionAdvancedOpen && J.captionAdvancedOpen(project, group)) return true;   // advanced: every effect is on; the set switches only narrow the simple pool
+  if (J.isCaptionPackDef && J.isCaptionPackDef(def)) return true;   // caption packs are not Lyric Motion's optional sets (11q_sets marks them "extra")
   const flags = J.captionTechniques(project);
   if (def.extra && flags.extra !== true) return false;
   if (def.wa && flags.wa !== true) return false;
@@ -90,6 +97,7 @@ const automaticPoolOk = (project, group, id) => {
   return true;
 };
 
+J.captionAutomaticPoolOk = automaticPoolOk;
 const eligible = (group, segment, text, frame, style, project) => {
   if (advancedEditor(style)) return J.order(group).filter(id => automaticPoolOk(project, group, id));
   if (!J.captionCandidates) return [];
@@ -101,11 +109,31 @@ const eligible = (group, segment, text, frame, style, project) => {
       return (!allowedProfiles || allowedProfiles.includes(style.profileId)) && (!profileList || profileList.includes(id));
     });
 };
-const optionList = (group, fallback, segment, text, frame, style, project) => {
-  const registered = eligible(group, segment, text, frame, style, project).map(id => ({ group, id }));
-  return registered.length ? registered : [fallback];
+/* The caption's look, stage by stage: this caption's own choice, else its track/project look, else the profile's standard.
+   Nothing here is drawn by chance. A choice that cannot be used on this caption (too short, safety, portrait) is replaced by the
+   safe default and reported in lookWarnings, never silently. */
+const usableChoice = (group, id, context, style, project) => {
+  if (group === 'active') return !!(J.CAPTION_ACTIVE && J.CAPTION_ACTIVE[id]);
+  if (!J.registry(group) || !J.registry(group)[id]) return false;
+  // The advanced editor works from the techniques the project enabled; the simple one from the caption-safe set.
+  return advancedEditor(style) ? automaticPoolOk(project, group, id) : J.captionComponentEligibility(group, id, context).allowed;
 };
-const choose = (list, seed, attempt, salt) => clone(list[J.h(seed, attempt, salt) % list.length]);
+const chooseLook = (segment, text, frame, style, project, oldPlan) => {
+  const { look } = J.resolveCaptionLook(style, style.profileId), manual = oldPlan && oldPlan.manual || {};
+  const context = { duration: segment.end - segment.start, wordCount: segment.tokenIds.length, portrait: frame.height > frame.width, hasEmoji: hasEmoji(text),
+    allowFullFrame: style.allowFullFrame === true, allowFlashes: false, allowCameraMotion: false };
+  const picked = {}, warnings = [];
+  for (const key of J.CAPTION_LOOK_KEYS) {
+    const { group, plan } = J.CAPTION_LOOK_FIELDS[key];
+    const own = typeof manual[plan] === 'string' && manual[plan] ? manual[plan] : null;
+    const id = own || look[key];
+    if (usableChoice(group, id, context, style, project)) { picked[key] = id; continue; }
+    if (id !== SAFE[group].id && !(group === 'treat' && id === SAFE.treat.id)) warnings.push({ field: key, id, code: 'look-unavailable' });
+    picked[key] = SAFE[group].id;
+  }
+  return { picked, warnings };
+};
+const componentFor = (group, id) => (J.registry && J.registry(group) && J.registry(group)[id]) ? { group, id } : clone(SAFE[group]);
 const metadataFor = component => component.metadata || (J.registry && J.registry(component.group)[component.id] && J.registry(component.group)[component.id].capabilities);
 const withMeta = (component, role) => {
   component.metadata = metadataFor(component);
@@ -149,26 +177,20 @@ const projectZones = (project, frame, style) => {
 const segmentText = (segment, tokenMap) => segment.tokenIds.map(id => tokenMap.get(id)).filter(Boolean).map(token => token.text).join(' ');
 const segmentEmphasis = (segment, tokenMap, strength = 1) => segment.tokenIds.map(id => tokenMap.get(id)).filter(Boolean).map(token => ({ id: token.id, score: Math.max(0, Math.min(1, (token.emphasis && token.emphasis.score || 0) * strength)), reasons: token.emphasis && token.emphasis.reasons || [] }));
 
-const candidateFor = (segment, text, emphasis, placement, style, seed, attempt, frame, project) => {
+const candidateFor = (segment, text, emphasis, placement, style, seed, frame, project, oldPlan) => {
   const zone = placement.zone;
-  const layout = choose(optionList('layout', SAFE.layout, segment, text, frame, style, project), seed, attempt, 11);
-  const entrance = choose(optionList('enter', SAFE.enter, segment, text, frame, style, project), seed, attempt, 12);
-  const hold = choose(optionList('hold', SAFE.hold, segment, text, frame, style, project), seed, attempt, 13);
-  const exit = choose(optionList('exit', SAFE.exit, segment, text, frame, style, project), seed, attempt, 14);
-  const treatment = choose(optionList('treat', SAFE.treat, segment, text, frame, style, project), seed, attempt, 15);
-  const decorations = eligible('decor', segment, text, frame, style, project);
-  const decoration = decorations.length && J.r(seed, attempt, 16) < 0.32 ? { group: 'decor', id: decorations[J.h(seed, attempt, 17) % decorations.length] } : null;
-  const activeIds = (style.activeTreatments || ['captionActiveColor']).filter(id => J.CAPTION_ACTIVE && J.CAPTION_ACTIVE[id]);
-  const activeId = activeIds.length ? activeIds[J.h(seed, attempt, 18) % activeIds.length] : SAFE.active.id;
+  const { picked, warnings } = chooseLook(segment, text, frame, style, project, oldPlan);
+  const layout = componentFor('layout', picked.layout), entrance = componentFor('enter', picked.enter), hold = componentFor('hold', picked.hold);
+  const exit = componentFor('exit', picked.exit), treatment = componentFor('treat', picked.treat);
+  const activeId = picked.active;
   const activeDefinition = J.CAPTION_ACTIVE && J.CAPTION_ACTIVE[activeId];
   const active = { group: 'active', id: activeId, metadata: activeDefinition && activeDefinition.capabilities || SAFE.active.metadata, role: 'secondary' };
   const components = [withMeta(layout), withMeta(entrance, 'primary'), withMeta(hold), withMeta(exit), active, withMeta(treatment)];
-  if (decoration) components.push(withMeta(decoration, 'secondary'));
   const strongest = emphasis.reduce((best, item) => !best || item.score > best.score ? item : best, null);
-  return {
+  return Object.assign({
     segmentId: segment.id, seed, text, tokenIds: segment.tokenIds.slice(), start: segment.start, end: segment.end,
     zoneId: zone.id, zone: clone(zone), box: clone(placement.box), layout: layout.id, entrance: entrance.id, hold: hold.id, exit: exit.id,
-    activeWordTreatment: activeId, textTreatment: treatment.id, decoration: decoration && decoration.id,
+    activeWordTreatment: activeId, textTreatment: treatment.id, decoration: null, lookWarnings: warnings,
     font: style.font, fontSize: style.fontSize, alignment: style.alignment, position: zone.kind, writingMode: style.writingMode || 'horizontal',
     treatment: treatment.id, accentColor: style.accentColor, animationFamily: entrance.id,
     textColor: style.textColor, backgroundColor: style.backgroundColor, contrastStrategy: style.contrastStrategy,
@@ -176,7 +198,7 @@ const candidateFor = (segment, text, emphasis, placement, style, seed, attempt, 
     motion: style.motion == null ? .6 : style.motion, intensity: style.intensity == null ? .6 : style.intensity, captionTreatment: style.captionTreatment || 'outline',
     styleProfile: style.profileId, allowFullFrame: style.allowFullFrame === true,
     components,
-  };
+  }, style.lookSettings && Object.keys(style.lookSettings).length ? { lookSettings: clone(style.lookSettings) } : {});
 };
 
 const applyLocks = (candidate, oldPlan, locked) => {
@@ -190,10 +212,11 @@ const completeStoredPlan = (segment, candidate, oldPlan, attempt, fallback, read
   manual: clone(oldPlan && oldPlan.manual || {}), lockedFields: clone(oldPlan && oldPlan.lockedFields || []),
 });
 
-const staticFallback = (segment, text, emphasis, placement, style, seed, frame, project) => {
+const staticFallback = (segment, text, emphasis, placement, style, seed, frame, project, oldPlan) => {
   let fontSize = style.fontSize, readability, candidate;
   do {
-    candidate = candidateFor(segment, text, emphasis, placement, style, seed, 999, frame, project);
+    candidate = candidateFor(segment, text, emphasis, placement, style, seed, frame, project, oldPlan);
+    candidate.lookWarnings = (candidate.lookWarnings || []).concat({ field: 'all', code: 'look-simplified' });
     const pooled = group => advancedEditor(style) ? eligible(group, segment, text, frame, style, project)[0] : null;
     const layoutId = pooled('layout') || (style.layouts && style.layouts.find(id => J.LAYOUTS && J.LAYOUTS[id] && J.LAYOUTS[id].capabilities)) || SAFE.layout.id;
     const entranceId = pooled('enter') || SAFE.enter.id;
@@ -223,23 +246,31 @@ const planOne = (segment, tokenMap, placement, style, project, projectSeed, oldP
   const text = segmentText(segment, tokenMap), emphasis = segmentEmphasis(segment, tokenMap, Number.isFinite(style.emphasisStrength) ? style.emphasisStrength : 1);
   const seed = hashSeed(projectSeed, segment.id, rerollCount, segment.trackId), locked = fieldsLocked(segment, oldPlan);
   const advanced = advancedEditor(style);
-  for (let attempt = 0; attempt < style.maxAttempts; attempt++) {
-    let candidate = candidateFor(segment, text, emphasis, placement, style, seed, attempt, frame, project);
-    candidate = applyLocks(candidate, oldPlan, locked);
-    if (!componentsCompatible(candidate.components, advanced)) continue;
+  // The look is the user's (or the standard). A caption that does not fit keeps it and gets a smaller font (reported); only when even
+  // the smallest font does not fit does it become a static plan. The motion budget only reports: it never swaps an effect.
+  const attempt = fontSize => {
+    const candidate = applyLocks(candidateFor(segment, text, emphasis, placement, style, seed, frame, project, oldPlan), oldPlan, locked);
+    if (!locked.has('fontSize')) candidate.fontSize = fontSize;
+    if (!componentsCompatible(candidate.components, advanced)) return null;
     const readability = J.evaluateCaptionReadability(candidate, { frame, constraints: { minFontSize: style.minFontSize, maxLines: 2 } });
-    if (!readability.allowed) continue;
-    // Explicit combinations use the existing manual motion policy; component eligibility
-    // and readability remain mandatory. Automatic styles retain their original budgets.
-    const motion = J.evaluateCaptionMotionPlan(motionCandidate(candidate, advanced), { profile: style.motionBudget, manualOverride: !!(style.holdEffect && style.holdEffect !== 'auto' || style.exitEffect && style.exitEffect !== 'auto'), recentPlans, previousPlan });
-    if (!motion.allowed) continue;
-    return completeStoredPlan(segment, candidate, oldPlan, attempt, false, readability, motion, rerollCount);
+    if (!readability.allowed) return { readability };
+    const motion = J.evaluateCaptionMotionPlan(motionCandidate(candidate, advanced), { profile: style.motionBudget, manualOverride: true, recentPlans, previousPlan });
+    if (!motion.allowed) return null;
+    candidate.overBudget = motion.reasons;
+    if (fontSize < style.fontSize) candidate.lookWarnings.push({ field: 'fontSize', code: 'font-reduced', from: style.fontSize, to: fontSize });
+    return { candidate, readability, motion };
+  };
+  for (let fontSize = style.fontSize; fontSize >= style.minFontSize; fontSize -= 2) {
+    const hit = attempt(fontSize);
+    if (hit && hit.candidate) return completeStoredPlan(segment, hit.candidate, oldPlan, 0, false, hit.readability, hit.motion, rerollCount);
+    // Only a smaller font can help when the text is the problem (size, width, lines); reading time and contrast are not font matters.
+    if (!hit || locked.has('fontSize') || !hit.readability.reasons.some(reason => ['horizontal-overflow', 'vertical-overflow', 'too-many-lines'].includes(reason))) break;
   }
   // The placement is the user's: an unreadable fit becomes a static plan with warnings, never a moved caption.
-  const fallback = staticFallback(segment, text, emphasis, placement, style, seed, frame, project);
+  const fallback = staticFallback(segment, text, emphasis, placement, style, seed, frame, project, oldPlan);
   const candidate = applyLocks(fallback.candidate, oldPlan, locked);
   const readability = J.evaluateCaptionReadability(candidate, { frame, constraints: { minFontSize: style.minFontSize, maxLines: 2 } });
-  const motion = J.evaluateCaptionMotionPlan(candidate, { profile: style.motionBudget, manualOverride: !!(style.holdEffect && style.holdEffect !== 'auto' || style.exitEffect && style.exitEffect !== 'auto'), recentPlans, previousPlan });
+  const motion = J.evaluateCaptionMotionPlan(candidate, { profile: style.motionBudget, manualOverride: true, recentPlans, previousPlan });
   return completeStoredPlan(segment, candidate, oldPlan, style.maxAttempts, true, readability, motion, rerollCount);
 };
 
@@ -250,6 +281,8 @@ const placementFor = (segment, oldPlan, project, frame, zones) => {
   if (box) return { box: clone(box), zone: J.captionBoxToZone(box, frame) };
   return { box: J.captionZoneToBox(zones[0], frame), zone: zones[0] };
 };
+
+J.captionStyleProfileId = (project, track) => styleFor(project, track).key;
 
 /* Zones the style offers as the default box (saved valid zones, else the style's kinds). */
 J.captionProjectZones = (project, frame) => projectZones(project, frame, styleFor(project).value);
@@ -280,21 +313,32 @@ J.planCaptions = (project, media, options = {}) => {
     seed: project.seed, profile: resolvedStyle.key, frame, zones, tokens: emphasized.tokens, segments: clone(segments), plans };
 };
 
+/* "Randomize" for the whole project: a seeded random look is written into the style as ordinary choices, then everything is planned.
+   The result is fixed until the user changes it again. Track looks and locked captions keep their own choices. */
 J.createCaptionVisualVariation = (project, options = {}) => {
-  const varied = clone(project), requestedSeed = options.seed;
-  varied.seed = Number.isFinite(requestedSeed) ? requestedSeed : J.h(Number(project.seed) || 0, 0x564152, Number(options.variation || 1));
+  const varied = clone(project), requestedSeed = options.seed, variation = Number(options.variation || 1);
+  varied.seed = Number.isFinite(requestedSeed) ? requestedSeed : J.h(Number(project.seed) || 0, 0x564152, variation);
+  const profileId = styleFor(varied).key;
+  varied.style = Object.assign({}, typeof varied.style === 'object' && varied.style || {}, { look: J.randomCaptionLook(varied, { scope: 'project', variation, profileId }) });
   const result = J.planCaptions(varied, options.media);
   varied.plans = result.plans;
   return varied;
 };
 
+/* Randomize one caption: its look becomes a seeded random choice stored as the caption's own overrides. */
 J.rerollCaptionVisual = (project, segmentId, options = {}) => {
   const segment = (project.segments || []).find(item => item.id === segmentId);
   if (!segment) { const error = new Error(`Segment "${segmentId}" was not found.`); error.code = 'SEGMENT_NOT_FOUND'; throw error; }
   if (segment.locks && segment.locks.visualPlan) { const error = new Error(`Segment "${segmentId}" visual plan is locked.`); error.code = 'SEGMENT_FIELD_LOCKED'; throw error; }
-  const current = project.plans && project.plans[segmentId], count = current && current.generated && current.generated.rerollCount || 0;
-  const result = J.planCaptions(project, options.media, { rerollCounts: { [segmentId]: count + 1 } });
-  const changed = clone(project); changed.plans = clone(project.plans || {}); changed.plans[segmentId] = result.plans[segmentId];
+  const current = project.plans && project.plans[segmentId], count = (current && current.generated && current.generated.rerollCount || 0) + 1;
+  const track = J.captionTrack(project, segment.trackId), profileId = styleFor(project, track).key;
+  const look = J.randomCaptionLook(project, { scope: `segment:${segmentId}`, variation: count, profileId });
+  const changed = clone(project); changed.plans = clone(project.plans || {});
+  const plan = changed.plans[segmentId] || (changed.plans[segmentId] = { id: `plan_${segmentId}`, segmentId, generated: {}, manual: {}, lockedFields: [] });
+  plan.manual = Object.assign({}, plan.manual);
+  for (const [key, id] of Object.entries(look)) plan.manual[J.CAPTION_LOOK_FIELDS[key].plan] = id;
+  plan.generated = Object.assign({}, plan.generated, { rerollCount: count });
+  changed.plans[segmentId] = J.planCaptions(changed, options.media, { rerollCounts: { [segmentId]: count } }).plans[segmentId];
   return changed;
 };
 })();

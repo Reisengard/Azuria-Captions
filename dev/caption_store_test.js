@@ -49,10 +49,11 @@ assert.throws(() => store.execute({ type: 'set-segment-boundary', segmentId: 'se
 store.execute({ type: 'set-segment-timing', segmentId: 'segment_000002', start: 3.3, end: 4.8, boundarySource: 'manual' });
 store.execute({ type: 'set-safe-zone', zoneId: 'zone_bottom', value: { x: 0.1, y: 0.7, width: 0.8, height: 0.2 } });
 
-const manualBeforeReroll = clone(store.project.plans.segment_000001.manual);
 store.execute({ type: 'reroll-segment', segmentId: 'segment_000001' });
-assert.deepStrictEqual(store.project.plans.segment_000001.manual, manualBeforeReroll, 'reroll changed manual overrides');
-assert.equal(store.project.plans.segment_000001.generated.rerollCount, 1);
+const rolled = store.project.plans.segment_000001.manual;
+for (const key of ['layout', 'entrance', 'hold', 'exit', 'activeWordTreatment']) assert.equal(typeof rolled[key], 'string', `randomize did not store ${key}`);
+assert.equal(J.captionResolvedPlan(store.project.plans.segment_000001).layout, rolled.layout, 'a randomized look is stored as a choice, not re-drawn');
+assert.deepStrictEqual(J.planCaptions(store.project, store.project.media).plans.segment_000001.manual, rolled, 're-planning changed a stored look');
 
 store.execute({ type: 'set-segment-animation-disabled', segmentId: 'segment_000001', disabled: true });
 assert.equal(J.captionResolvedPlan(store.project.plans.segment_000001).animationDisabled, true);
@@ -104,7 +105,11 @@ const narrowed = Object.assign({}, techniqueStore.project, {
 });
 assert.equal(J.captionTechniqueOn(narrowed, 'enter', 'captionFade'), true);
 assert.equal(J.captionTechniqueOn(narrowed, 'layout', 'captionCenterStack'), true);
-assert.equal(J.captionTechniqueOn(narrowed, 'enter', 'captionImpact'), false);
+assert.equal(J.captionTechniqueOn(narrowed, 'enter', 'captionImpact'), true, 'advanced: every entrance is on');
+assert.equal(J.captionTechniqueOn(narrowed, 'enter', 'pop'), true, 'advanced: legacy Lyric entrances are on');
+assert.equal(J.captionTechniqueOn(narrowed, 'layout', 'knSlamStack'), false, 'advanced: layouts stay caption layouts');
+assert.equal(J.captionTechniqueOn(narrowed, 'bg', J.order('bg')[0]), false, 'advanced: the background stays off');
+assert.equal(J.captionTechniqueOn(Object.assign({}, narrowed, { style: { preset: 'creator', editor: 'simple' } }), 'enter', 'pop'), false, 'simple stays on the caption-safe set');
 assert.equal(J.captionTechniqueOn(Object.assign({}, techniqueStore.project, { style: 'punchy' }), 'enter', 'captionImpact'), true);
 assert.equal(J.captionTechniqueOn(Object.assign({}, techniqueStore.project, { style: { preset: 'jizura' } }), 'hold', 'captionBreathe'), true);
 assert.equal(J.captionTechniqueOn(Object.assign({}, techniqueStore.project, { style: { preset: 'mv' } }), 'enter', 'captionImpact'), true);

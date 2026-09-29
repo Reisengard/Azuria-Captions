@@ -33,3 +33,19 @@ J.drawVideoEdit(ctx, { width: 1920, height: 1080 }, 1080, 1920, store.project);
 const draw = calls[0]; assert.equal(draw.length, 9); assert.ok(draw[1] >= 960); assert.ok(Math.abs(draw[3] / draw[4] - draw[7] / draw[8]) < 1e-9, 'crop must preserve the source aspect ratio');
 assert.throws(() => J.validateVideoEdits({ ...edits, panels: [{ source: { x: .9, y: 0, w: .5, h: 1 }, target: { x: 0, y: 0, w: 1, h: 1 } }] }, 10));
 console.log('Video edits: time mapping, validation, history, persistence, overlapping notes, and aspect-preserving crops passed.');
+
+// Overlays (transparent PNG frames/templates)
+{
+  const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+  const overlay = { id: 'overlay_1', name: 'frame.png', src: PNG, x: 0, y: 0, w: 1, h: 1, opacity: 1, layer: 'below' };
+  const base = { format: 'shorts', clips: [], panels: [], notes: [] };
+  J.validateVideoEdits(base, 10);                                       // old edits without overlays stay valid
+  J.validateVideoEdits({ ...base, overlays: [overlay] }, 10);
+  for (const bad of [{ src: 'data:text/html;base64,AA==' }, { opacity: 2 }, { w: 0 }, { layer: 'middle' }, { id: '' }])
+    assert.throws(() => J.validateVideoEdits({ ...base, overlays: [{ ...overlay, ...bad }] }, 10), undefined, JSON.stringify(bad));
+  assert.throws(() => J.validateVideoEdits({ ...base, overlays: Array.from({ length: 5 }, (_, i) => ({ ...overlay, id: 'o' + i })) }, 10));
+  const calls = [], ctx = { save() {}, restore() {}, globalAlpha: 1, drawImage: (...args) => calls.push(args) };
+  const project = { settings: { videoEdit: { ...base, overlays: [overlay, { ...overlay, id: 'overlay_2', layer: 'above', x: .5, w: .5, opacity: .5 }] } } };
+  J.drawVideoOverlays(ctx, project, 'below', { designWidth: 1080, designHeight: 1920 });
+  assert.equal(calls.length, 0, 'an image that is not decoded yet is skipped, not a crash');
+}

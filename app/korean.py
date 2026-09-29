@@ -1,7 +1,6 @@
 """Korean copy for the browser edition. The Japanese source stays authoritative."""
 
 BODY = {
-    '編集モード<select id="captionEditor"': '편집 모드<select id="captionEditor"',
     '後景（背景のグラフィックと歌詞の後ろの装飾）と前景（歌詞とその装飾・ゴースト）を、別々のフォルダ（back / front）に透過PNGで書き出します。画面全体の演出は両方にかかるので、前景を後景の上に重ねると通常の見た目になります': '후경(배경 그래픽과 가사 뒤 장식)과 전경(가사, 장식, 고스트)을 각각 back / front 폴더에 투명 PNG로 내보냅니다. 화면 전체 효과는 양쪽에 적용되므로 전경을 후경 위에 겹치면 일반 화면과 같은 모습이 됩니다.',
     '透過PNG 前景／後景（ZIP）': '투명 PNG 전경/후경 (ZIP)',
     'title="クリックで消音／解除（プレビューだけ。書き出しの音量は変わりません）">音量</button>': 'title="클릭하여 음소거/해제 (미리보기 전용이며 내보내기 음량은 바뀌지 않습니다)">음량</button>',

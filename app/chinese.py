@@ -3,7 +3,6 @@ Only the browser UI is localized here; the After Effects panels (ScriptUI / CEP)
 import re
 
 BODY = {
-    '編集モード<select id="captionEditor"': '編輯模式<select id="captionEditor"',
     '後景（背景のグラフィックと歌詞の後ろの装飾）と前景（歌詞とその装飾・ゴースト）を、別々のフォルダ（back / front）に透過PNGで書き出します。画面全体の演出は両方にかかるので、前景を後景の上に重ねると通常の見た目になります': '將後景（背景圖形與歌詞後方的裝飾）和前景（歌詞及其裝飾、殘影）分別匯出為透明 PNG，存放在不同資料夾（back / front）。全畫面效果會同時套用在兩者，把前景疊在後景上就是一般的畫面。',
     '透過PNG 前景／後景（ZIP）': '透明 PNG 前景／後景（ZIP）',
     'title="クリックで消音／解除（プレビューだけ。書き出しの音量は変わりません）">音量</button>': 'title="點一下切換靜音（只影響預覽，不會改變匯出的音量）">音量</button>',
