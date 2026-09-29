@@ -218,6 +218,19 @@ assert.equal(document.getElementById('captionModeEasy').getAttribute('aria-press
 assert.equal(document.getElementById('captionModePro').getAttribute('aria-pressed'), 'false');
 assert.equal(document.getElementById('captionTechniqueHost').hidden, true);
 
+// Video settings: a shape tile commits one undoable command at once (no draft / Apply step).
+{
+  const host = document.getElementById('captionVideoEditor'), wb = J.captionWorkbench;
+  assert.equal(fs.readFileSync(path.join(root, 'src', '12a_video_edit_ui.js'), 'utf8').includes('data-action="apply"'), false, 'the Apply button is gone');
+  const tiles = host.querySelector('[data-edit="shapes"]').children;
+  assert.equal(tiles.length, 4, 'four output shapes (9:16, 4:5, 1:1, 16:9)');
+  const before = wb.store.serialize();
+  tiles[3].onclick();
+  assert.equal(wb.store.project.settings.videoEdit.format, 'youtube');
+  assert.equal(host.querySelector('[data-edit="shapes"]').children[3].getAttribute('aria-checked'), 'true');
+  wb.store.undo(); assert.equal(wb.store.serialize(), before, 'one undo step restores the project');
+}
+
 function domText(node) {
   if (!node) return '';
   if (node.children && node.children.length) return node.children.map(domText).join('');
