@@ -20,7 +20,7 @@ const effectControls = ['captionEffect', 'captionHoldEffect', 'captionExitEffect
 const PRESET_LABELS = { captionFade: 'Fade', captionSoftRise: 'Rise', captionSoftScale: 'Zoom', captionWordFade: 'Letter Fade', captionSoftReplace: 'Replace', captionImpact: 'Impact',
   captionType: 'Typewriter', captionBlur: 'Blur Reveal', captionWipe: 'Wipe', captionPop: 'Lyric Pop', captionDrop: 'Letter Drop', captionStill: 'Still', captionBreathe: 'Breathe',
   captionWave: 'MV Wave', captionFadeOut: 'Fade out', captionShrinkOut: 'Shrink out', captionBlurOut: 'Blur out',
-  captionBottomStack: 'Stack', captionBottomTwoLine: 'Two lines', captionCenterStack: 'Centered stack', captionLeftAnchor: 'Left anchor', captionRightAnchor: 'Right anchor', captionTwoLinePunch: 'Two-line punch', captionSingleWordHero: 'One-word hero',
+  captionBottomStack: 'Stack', captionBottomTwoLine: 'Two lines', captionCenterStack: 'Centered stack', captionLeftAnchor: 'Left anchor', captionRightAnchor: 'Right anchor', captionTwoLinePunch: 'Two-line punch', captionSingleWordHero: 'One-word hero', captionOutlined: 'Outlined text',
   captionBackplate: 'Backplate', captionActiveColor: 'Color', captionActiveScale: 'Scale', captionActiveLift: 'Lift', captionActiveWeight: 'Weight', captionActiveUnderline: 'Underline' };
 const LOOK_CONTROLS = { layout: 'captionLookLayout', enter: 'captionLookEnter', hold: 'captionLookHold', exit: 'captionLookExit', active: 'captionLookActive' };
 const LOOK_FIELD_NAMES = { layout: 'レイアウト', enter: '登場', hold: '表示中', exit: '退場', active: '話している単語', treat: '文字の加工' };
@@ -251,7 +251,7 @@ function renderLookPanel() {
 }
 
 /* ---- effect pickers with animated examples: three rows in Simple, a chip bar plus a full grid in Advanced ---- */
-const LOOK_STAGES_SIMPLE = ['enter', 'hold', 'exit'];
+const LOOK_STAGES_SIMPLE = ['enter', 'hold', 'exit', 'treat'];
 const LOOK_STAGES_ADVANCED = ['layout', 'enter', 'hold', 'exit', 'active', 'treat'];
 function setLook(key, value) { const scope = lookScope(); return runCommand(lookCommand({ look: { [key]: value || null } }), scope.segment && scope.segment.id); }
 function lookChoices(key, project, own, inheritLook) {
@@ -282,7 +282,7 @@ function renderLookPickers(project, scope, own, inherit, locked) {
   J.captionEffectPreviewMotion = !(project.settings && project.settings.reducedMotionPreview) && !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   const stages = advanced ? LOOK_STAGES_ADVANCED : LOOK_STAGES_SIMPLE;
   if (!stages.includes(ui.lookPick)) ui.lookPick = 'enter';   // one sub-tab is always open
-  const signature = JSON.stringify([advanced, scope.kind, stages.map(key => [own[key], inherit.look[key]]), locked, ui.lookPick, inherit.text, J.captionEffectPreviewMotion, advanced && inherit.settings]);
+  const signature = JSON.stringify([advanced, scope.kind, stages.map(key => [own[key], inherit.look[key]]), locked, ui.lookPick, inherit.text, J.captionEffectPreviewMotion, inherit.settings]);
   if (signature === ui.lookSignature) return;
   ui.lookSignature = signature;
   if (J.resetCaptionEffectWatch) J.resetCaptionEffectWatch();
@@ -296,7 +296,9 @@ function renderLookPickers(project, scope, own, inherit, locked) {
       tab.type = 'button'; tab.setAttribute('role', 'tab'); tab.dataset.stage = key; tab.setAttribute('aria-selected', String(ui.lookPick === key)); tab.textContent = LOOK_FIELD_NAMES[key];
       tab.addEventListener('click', () => select(key)); bar.appendChild(tab);
     }
-    fillLookGrid(grid, ui.lookPick, project, own, inherit, locked); simple.append(bar, grid);
+    const settings = document.createElement('div'); settings.className = 'caption-look-settings';
+    fillLookGrid(grid, ui.lookPick, project, own, inherit, locked); simple.append(bar, settings, grid);
+    renderLookSettings(settings, ui.lookPick, own[ui.lookPick] || inherit.look[ui.lookPick], project, inherit, locked);
   } else {
     for (const key of stages) {
       const chip = document.createElement('button'), name = document.createElement('span'), value = document.createElement('b'), shown = own[key] || inherit.look[key];
@@ -307,12 +309,12 @@ function renderLookPickers(project, scope, own, inherit, locked) {
     }
     $('captionLookPickTitle').textContent = LOOK_FIELD_NAMES[ui.lookPick]; pick.hidden = false; $('captionLookPickClose').hidden = true;
     fillLookGrid($('captionLookPickGrid'), ui.lookPick, project, own, inherit, locked);
-    renderLookSettings(ui.lookPick, own[ui.lookPick] || inherit.look[ui.lookPick], project, inherit, locked);
+    renderLookSettings($('captionLookSettings'), ui.lookPick, own[ui.lookPick] || inherit.look[ui.lookPick], project, inherit, locked);
   }
   (advanced ? pick : simple).querySelectorAll('canvas[data-g]').forEach(canvas => J.watchCaptionEffect && J.watchCaptionEffect(canvas));
 }
 
-/* ---- settings of the effect shown in the Advanced sub-tab (colours, lengths, sizes); unset values stay automatic ---- */
+/* ---- settings of the effect shown in the sub-tab, Simple and Advanced (colours, lengths, sizes); unset values stay automatic ---- */
 const LOOK_SETTING_LABELS = {
   'all.duration': '長さ（秒）',
   'all.strength': '動きの強さ',
@@ -338,6 +340,7 @@ const LOOK_SETTING_LABELS = {
   'glow.color': '光の色',
   'outline.color': '線の色',
   'outlineFill.color': '縁の色',
+  'captionOutlined.color': '縁の色',
   'captionActiveScale.scale': '拡大',
   'captionActiveLift.lift': '持ち上げ',
   'captionActiveWeight.weight': '太さ（ウェイト）',
@@ -349,8 +352,8 @@ function setLookSetting(stage, scope, key, value) {
   const scopeState = lookScope();
   return runCommand(lookCommand({ lookSettings: { [stage]: { [scope]: { [key]: value } } } }), scopeState.segment && scopeState.segment.id);
 }
-function renderLookSettings(stage, effectId, project, inherit, locked) {
-  const host = $('captionLookSettings'), spec = J.captionLookSettingsSpec(stage, effectId);
+function renderLookSettings(host, stage, effectId, project, inherit, locked) {
+  const spec = J.captionLookSettingsSpec(stage, effectId);
   host.replaceChildren(); host.hidden = false;
   const title = document.createElement('h4'); title.textContent = `${lookLabel(stage, effectId)} の設定`; host.appendChild(title);
   if (!spec.length) { const note = document.createElement('p'); note.className = 'muted'; note.textContent = 'このエフェクトには調整できる設定がありません。'; host.appendChild(note); return; }

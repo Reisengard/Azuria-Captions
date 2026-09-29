@@ -33,5 +33,5 @@ The planner picked layout, entrance, hold, exit, text treatment, decoration and 
 - The schema is `J.CAPTION_LOOK_SETTINGS` (`08m`): shared per stage (`enter`/`exit` length, `hold` strength) plus hand-picked effects (two-tone split, gradient, outlines, shadows, glow, active-word colour/scale/lift/weight). Other effects show "no adjustable settings" until added there.
 - Treatment settings are merged into the treatment's params (`cut.treatP`); the curated treatments read explicit colours (`color`, `colorA`, `colorB`) before their automatic colour rules. Lyric Motion never sets these keys, so it renders as before.
 - Commands: `set-caption-look` / `set-segment-look` take `lookSettings` (a `null` value clears one setting); `reset` clears settings with the look. Undoable like every command.
-- Shown only in the Advanced editor, under the effect grid's sub-tab.
+- Shown in both editors, above the effect grid of the open sub-tab. The Simple editor also has a Text treatment tab; its only treatment besides the backplate is `captionOutlined`, a caption-safe wrapper of Lyric Motion's `outlineFill` (registered in the caption-expressive pack, like `captionPop` wraps `pop`).
 

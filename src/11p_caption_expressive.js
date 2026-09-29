@@ -151,4 +151,11 @@ J.registerAll('exit', {
 ].forEach(([id, wrapper]) => {
   J.reviewCaptionComponent('layout', id, { status: 'rejected', captionSafe: false, reason: 'not-zone-aware', wrapper });
 });
+
+// Outlined text (縁取り) for captions: a border under the letters. It does not move, flash or change the layout, so it is caption-safe.
+// Lyric Motion's outlineFill loads later (11p_looks), so it is looked up when used.
+J.register('treat', 'captionOutlined', Object.assign({ name: '字幕・縁取り',
+  plan: (rng, st) => J.TREAT.outlineFill.plan(rng, st),
+  apply(env, item, params) { J.TREAT.outlineFill.apply(env, item, params); },
+}, meta(1, 0, .08, .3, 12)), PACK);
 })();

@@ -178,4 +178,19 @@ assert.equal(code(() => storeOf().execute({ type: 'set-caption-look', lookSettin
   const off = J.captionLookOptions('layout', { mode: 'video-captions', style: { preset: 'creator', editor: 'advanced' }, techniques: { enabled: { layout: { captionLeftAnchor: false } } } });
   assert.ok(!off.includes('captionLeftAnchor'), 'a layout switched off stays off');
 }
+/* ---- Simple mode offers Outlined text (caption-safe wrapper) and keeps it when planning; its settings apply ---- */
+{
+  assert.ok(J.captionLookOptions('treat', { style: { preset: 'creator' } }).includes('captionOutlined'), 'Simple offers Outlined text');
+  const store = storeOf({ preset: 'creator', editor: 'simple', look: { treat: 'captionOutlined' } });
+  for (const stored of Object.values(store.project.plans)) {
+    assert.equal(stored.generated.textTreatment, 'captionOutlined', 'the simple planner keeps the chosen outline');
+    assert.ok(!stored.generated.lookWarnings.some(item => item.field === 'treat'), 'no look-unavailable warning');
+  }
+  store.execute({ type: 'set-caption-look', lookSettings: { treat: { captionOutlined: { color: '#ffffff', k: .3 } } } });
+  const ctx = { save() {}, restore() {}, beginPath() {}, rect() {}, clip() {}, fillRect() {} }, seen = [], drawFx = J.drawFx;
+  J.drawFx = (env, item) => { seen.push(item); return null; };
+  try { const segment = store.project.segments[0]; J.drawCaptionOverlay(ctx, store.project, (segment.start + segment.end) / 2); } finally { J.drawFx = drawFx; }
+  const item = seen.at(-1);
+  assert.equal(item.strokeColor, '#ffffff', 'edge colour setting'); assert.ok(item.strokeUnder, 'the border sits under the letters');
+}
 console.log('Caption look tests passed.');

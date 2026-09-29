@@ -603,6 +603,7 @@ CAPTION_UI = {
     "'glow.color': '光の色'": "'glow.color': 'Glow color'",
     "'outline.color': '線の色'": "'outline.color': 'Line color'",
     "'outlineFill.color': '縁の色'": "'outlineFill.color': 'Edge color'",
+    "'captionOutlined.color': '縁の色'": "'captionOutlined.color': 'Edge color'",
     "'captionActiveScale.scale': '拡大'": "'captionActiveScale.scale': 'Scale'",
     "'captionActiveLift.lift': '持ち上げ'": "'captionActiveLift.lift': 'Lift'",
     "'captionActiveWeight.weight': '太さ（ウェイト）'": "'captionActiveWeight.weight': 'Weight'",
