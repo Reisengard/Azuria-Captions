@@ -15,13 +15,17 @@ for (const name of fs.readdirSync(path.join(root, 'src')).filter(name => name.en
 
 const raw = fs.readFileSync(path.join(__dirname, 'fixtures', 'captions', 'word-timestamps.json'), 'utf8');
 const scenes = [];
-for (const [format, width, height] of [['portrait', 1080, 1920], ['landscape', 1920, 1080]]) {
-  for (const preset of ['creator', 'punchy', 'jizura-mv']) {
+/* Plans are measured in the output frame (post format). "landscape" posts a landscape video as 16:9;
+   "landscape-shorts" posts the same video on the default Shorts format (9:16 box and safe area). */
+for (const [format, width, height, output, presets] of [['portrait', 1080, 1920, null, ['creator', 'punchy', 'jizura-mv']],
+  ['landscape', 1920, 1080, 'youtube', ['creator', 'punchy', 'jizura-mv']], ['landscape-shorts', 1920, 1080, null, ['creator']]]) {
+  for (const preset of presets) {
     const media = { duration: 15, width, height };
     const transcript = J.importWordJson(raw, { duration: 15 });
     const segmented = J.segmentCaptions(transcript, { duration: 15, safeZone: { width: Math.round(width * 0.78) } });
     const project = { schemaVersion: 2, generatorVersion: 'snapshot', mode: 'video-captions', id: `snapshot-${format}-${preset}`, media, transcript,
-      segments: segmented.segments, style: { preset }, plans: {}, safeZones: [], seed: 3107, settings: {} };
+      segments: segmented.segments, style: { preset }, plans: {}, safeZones: [], seed: 3107,
+      settings: output ? { videoEdit: { format: output, clips: [], panels: [], notes: [] } } : {} };
     const plan = J.planCaptions(project, media);
     assert.deepStrictEqual(J.planCaptions(project, media), plan, `${format}/${preset} is not deterministic`);
     scenes.push([`${format}/${preset}`, { segments: project.segments, plans: plan.plans }]);

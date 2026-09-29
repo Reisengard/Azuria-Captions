@@ -114,12 +114,16 @@ edited.execute({ type: 'set-track-box', trackId: J.CAPTION_PRIMARY_TRACK_ID, box
 edited.execute({ type: 'set-caption-style', style: Object.assign({}, edited.project.style, { position: 'top', zones: ['top'] }) });
 near(edited.project.tracks[0].box.y, 0.2, 'a user-edited box must not follow the preset');
 
-/* An untouched default box follows a new frame (media import); an edited one does not. */
-const landscape = clone(project); landscape.media = { duration: 15, width: 1920, height: 1080 };
+/* An untouched default box follows the output frame (post format), not the source video; an edited one does not. */
+const landscapeSource = clone(project); landscapeSource.media = { duration: 15, width: 1920, height: 1080 };
+J.captionSyncDefaultBoxes(landscapeSource);
+assert.deepStrictEqual(landscapeSource.tracks[0].box, project.tracks[0].box, 'a landscape source on the Shorts format keeps the 9:16 box');
+const landscape = clone(landscapeSource); landscape.settings = { videoEdit: { format: 'youtube', clips: [], panels: [], notes: [] } };
 J.captionSyncDefaultBoxes(landscape);
 const landscapeZone = J.createCaptionZone('bottom', { width: 1920, height: 1080 });
 near(landscape.tracks[0].box.x * 1920, landscapeZone.x, 'default box follows the frame');
-const editedLandscape = clone(edited.project); editedLandscape.media = landscape.media; J.captionSyncDefaultBoxes(editedLandscape);
+near(landscape.tracks[0].box.width * 1920, landscapeZone.width, 'default box follows the frame (width)');
+const editedLandscape = clone(edited.project); editedLandscape.media = landscape.media; editedLandscape.settings = landscape.settings; J.captionSyncDefaultBoxes(editedLandscape);
 assert.deepStrictEqual(editedLandscape.tracks[0].box, edited.project.tracks[0].box);
 
 /* Problems are warnings, never silent movement. */
