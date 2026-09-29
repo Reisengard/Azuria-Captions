@@ -104,41 +104,73 @@
         </section>
         </div>
         <div id="captionLeftPane_caption" class="caption-panel caption-left-pane" role="tabpanel" aria-labelledby="captionLeftTab_caption" hidden>
-        <div class="caption-panel-head segment-head"><h2>選択中の字幕</h2></div>
-        <div id="captionInspectorEmpty" class="caption-empty">字幕を選択すると詳細が表示されます。</div>
+        <div class="caption-panel-head segment-head"><h2>字幕の編集</h2></div>
+        <div id="captionInspectorEmpty" class="caption-empty">字幕を選択すると、ここで文字やタイミングを直せます。</div>
         <div id="captionSegmentInspector" hidden>
-          <strong id="captionSelectedText"></strong>
+          <nav class="caption-nav" aria-label="字幕の移動">
+            <button id="captionPrev" type="button" class="ghost" aria-label="前の字幕">◀</button>
+            <div class="caption-nav-info"><strong id="captionNavPosition">—</strong><span id="captionNavMeta"></span></div>
+            <button id="captionNext" type="button" class="ghost" aria-label="次の字幕">▶</button>
+          </nav>
           <div id="captionEditError" class="caption-validation" role="alert" hidden></div>
-          <div class="caption-time-fields">
-            <label>開始（秒）<input id="captionSelectedStart" type="number" min="0" step="0.01"></label>
-            <label>終了（秒）<input id="captionSelectedEnd" type="number" min="0" step="0.01"></label>
-          </div>
-          <dl class="caption-meta"><dt>精度</dt><dd id="captionSelectedQuality">—</dd><dt>レイアウト</dt><dd id="captionSelectedLayout">—</dd></dl>
-          <div class="caption-edit-group">
-            <label>分割位置<select id="captionSplitPoint"></select></label>
-            <button id="captionSplit" type="button">単語の前で分割</button>
-            <button id="captionMerge" type="button">次の字幕と結合</button>
-          </div>
-          <div id="captionBlockEditor" class="caption-edit-group caption-block-editor" hidden>
-            <strong class="caption-block-title">テキストブロック</strong>
-            <label>ブロックのテキスト<textarea id="captionBlockText" rows="2"></textarea></label>
-            <button id="captionBlockApply" type="button">テキストを更新</button>
-            <button id="captionBlockDelete" type="button" class="danger">ブロックを削除</button>
-            <label>ブロックの登場<select id="captionBlockEnter"></select></label>
-            <label>ブロックの表示中<select id="captionBlockHold"></select></label>
-            <label>ブロックの退場<select id="captionBlockExit"></select></label>
-          </div>
-          <div class="caption-edit-group caption-move-group">
-            <label>移動先のトラック<select id="captionMoveTrack"></select></label>
-            <button id="captionMoveSegment" type="button">この字幕を移動</button>
-            <button id="captionMoveTokens" type="button">選んだ単語を移動</button>
-          </div>
-          <div class="caption-token-head"><strong>単語</strong><span>文字を修正・強調を指定</span></div>
-          <div id="captionTokenList" class="caption-token-list"></div>
           <div id="captionAccessibility" class="caption-accessibility" aria-live="polite"></div>
-          <button id="captionLock" type="button" aria-pressed="false">セグメントをロック</button>
-          <button id="captionReroll" type="button">この字幕をランダムに決める</button>
-          <button id="captionDisableAnimation" type="button" aria-pressed="false">アニメーションを無効化</button>
+
+          <section class="caption-section" aria-labelledby="captionTextHeading">
+            <h3 id="captionTextHeading">文字</h3>
+            <div id="captionBlockEditor" class="caption-block-editor" hidden>
+              <label>ブロックのテキスト<textarea id="captionBlockText" rows="2"></textarea></label>
+              <div class="caption-button-row"><button id="captionBlockApply" type="button" class="small">テキストを更新</button><button id="captionBlockDelete" type="button" class="small danger">ブロックを削除</button></div>
+            </div>
+            <p id="captionWordHint" class="caption-section-hint">単語を押すと修正・強調できます。✂ で字幕を分けます。</p>
+            <div id="captionTokenList" class="caption-word-chips" role="group" aria-label="字幕の単語"></div>
+            <div id="captionWordEditor" class="caption-word-editor" hidden>
+              <label id="captionWordTextField">単語の文字<input id="captionWordText" type="text"></label>
+              <div class="caption-emphasis-toggle" role="group" aria-labelledby="captionWordEmphasisLabel">
+                <span id="captionWordEmphasisLabel">強調</span>
+                <button type="button" data-emphasis="auto" aria-pressed="true">自動</button><button type="button" data-emphasis="on" aria-pressed="false">する</button><button type="button" data-emphasis="off" aria-pressed="false">しない</button>
+              </div>
+              <p id="captionWordMeta" class="caption-token-meta"></p>
+            </div>
+          </section>
+
+          <section class="caption-section" aria-labelledby="captionTimingHeading">
+            <h3 id="captionTimingHeading">タイミング</h3>
+            <div class="caption-time-fields">
+              <label>開始（秒）<span class="caption-time-input"><button type="button" class="small" data-nudge="start" data-step="-0.1" aria-label="開始を0.1秒早く">−</button><input id="captionSelectedStart" type="number" min="0" step="0.01"><button type="button" class="small" data-nudge="start" data-step="0.1" aria-label="開始を0.1秒遅く">＋</button></span></label>
+              <label>終了（秒）<span class="caption-time-input"><button type="button" class="small" data-nudge="end" data-step="-0.1" aria-label="終了を0.1秒早く">−</button><input id="captionSelectedEnd" type="number" min="0" step="0.01"><button type="button" class="small" data-nudge="end" data-step="0.1" aria-label="終了を0.1秒遅く">＋</button></span></label>
+            </div>
+            <div class="caption-button-row"><button id="captionStartAtPlayhead" type="button" class="small">開始を再生位置に</button><button id="captionEndAtPlayhead" type="button" class="small">終了を再生位置に</button></div>
+            <div class="caption-button-row"><button id="captionMergePrev" type="button" class="small">⇤ 前の字幕と結合</button><button id="captionMerge" type="button" class="small">次の字幕と結合 ⇥</button></div>
+          </section>
+
+          <details id="captionMoveSection" class="caption-section caption-more">
+            <summary>トラック</summary>
+            <label class="field">移動先のトラック<select id="captionMoveTrack"></select></label>
+            <button id="captionMoveSegment" type="button" class="small">この字幕をまるごと移動</button>
+            <div id="captionMoveWords" class="caption-move-words">
+              <p class="caption-section-hint">一部の単語だけ移すときは、単語を選んでから移動します。</p>
+              <div id="captionMoveWordPicker" class="caption-word-chips is-picker" role="group" aria-label="移動する単語"></div>
+              <button id="captionMoveTokens" type="button" class="small">選んだ単語を移動</button>
+            </div>
+          </details>
+
+          <details id="captionLookSection" class="caption-section caption-more">
+            <summary>見た目と動き</summary>
+            <p id="captionLookSummary" class="caption-section-hint"></p>
+            <div class="caption-button-row"><button id="captionEditLook" type="button" class="small">この字幕のエフェクトを変える</button><button id="captionReroll" type="button" class="small">ランダムに決める</button></div>
+            <div id="captionBlockAnimation" class="caption-block-animation" hidden>
+              <label class="field">ブロックの登場<select id="captionBlockEnter"></select></label>
+              <label class="field">ブロックの表示中<select id="captionBlockHold"></select></label>
+              <label class="field">ブロックの退場<select id="captionBlockExit"></select></label>
+            </div>
+            <label class="caption-switch"><input id="captionDisableAnimation" type="checkbox"> <span>動かさない<small>この字幕だけアニメーションなしで表示します。</small></span></label>
+            <label class="caption-switch"><input id="captionLock" type="checkbox"> <span>この字幕を固定する<small>スタイルの変更やランダムでも、区切りと見た目が変わらなくなります。</small></span></label>
+          </details>
+
+          <details class="caption-section caption-more">
+            <summary>詳細</summary>
+            <dl class="caption-meta"><dt>タイミング</dt><dd id="captionSelectedQuality">—</dd><dt>レイアウト</dt><dd id="captionSelectedLayout">—</dd></dl>
+          </details>
         </div>
         </div>
 
