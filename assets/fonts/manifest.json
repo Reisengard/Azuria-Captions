@@ -1,0 +1,115 @@
+{
+  "_comment": "Fonts embedded into every edition by build.py. Add a woff2 file (SIL OFL 1.1 or similar redistributable licence) and one entry per file; `key` is a J.FONTS key. Missing files are skipped and the face keeps loading from Google Fonts. Subset with tools/subset_font.py.",
+  "fonts": [
+    {
+      "key": "round",
+      "family": "M PLUS Rounded 1c",
+      "weight": 800,
+      "file": "MPLUSRounded1c-ExtraBold.subset.woff2",
+      "license": "SIL OFL 1.1",
+      "licenseFile": "licenses/OFL-mplusrounded1c.txt",
+      "copyright": "Copyright 2016 The Rounded M+ Project Authors.",
+      "source": "https://github.com/google/fonts/tree/main/ofl/mplusrounded1c",
+      "subset": "ASCII, Latin-1/Extended, general punctuation, kana, CJK symbols, fullwidth forms, JIS X 0208 level 1 kanji"
+    },
+    {
+      "key": "gothic_med",
+      "family": "Noto Sans JP",
+      "weight": 500,
+      "file": "NotoSansJP-Medium.subset.woff2",
+      "license": "SIL OFL 1.1",
+      "licenseFile": "licenses/OFL-notosansjp.txt",
+      "copyright": "Copyright 2014-2021 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source'",
+      "source": "https://github.com/google/fonts/tree/main/ofl/notosansjp",
+      "subset": "ASCII, Latin-1/Extended, general punctuation, kana, CJK symbols, fullwidth forms, JIS X 0208 level 1 kanji"
+    },
+    {
+      "key": "gothic_bold",
+      "family": "Noto Sans JP",
+      "weight": 700,
+      "file": "NotoSansJP-Bold.subset.woff2",
+      "license": "SIL OFL 1.1",
+      "licenseFile": "licenses/OFL-notosansjp.txt",
+      "copyright": "Copyright 2014-2021 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source'",
+      "source": "https://github.com/google/fonts/tree/main/ofl/notosansjp",
+      "subset": "ASCII, Latin-1/Extended, general punctuation, kana, CJK symbols, fullwidth forms, JIS X 0208 level 1 kanji"
+    },
+    {
+      "key": "gothic_black",
+      "family": "Noto Sans JP",
+      "weight": 900,
+      "file": "NotoSansJP-Black.subset.woff2",
+      "license": "SIL OFL 1.1",
+      "licenseFile": "licenses/OFL-notosansjp.txt",
+      "copyright": "Copyright 2014-2021 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source'",
+      "source": "https://github.com/google/fonts/tree/main/ofl/notosansjp",
+      "subset": "ASCII, Latin-1/Extended, general punctuation, kana, CJK symbols, fullwidth forms, JIS X 0208 level 1 kanji"
+    },
+    {
+      "key": "mincho_bold",
+      "family": "Noto Serif JP",
+      "weight": 700,
+      "file": "NotoSerifJP-Bold.subset.woff2",
+      "license": "SIL OFL 1.1",
+      "licenseFile": "licenses/OFL-notoserifjp.txt",
+      "copyright": "Copyright 2012 Google Inc. All Rights Reserved.",
+      "source": "https://github.com/google/fonts/tree/main/ofl/notoserifjp",
+      "subset": "ASCII, Latin-1/Extended, general punctuation, kana, CJK symbols, fullwidth forms, JIS X 0208 level 1 kanji"
+    },
+    {
+      "key": "zenkaku",
+      "family": "Zen Kaku Gothic New",
+      "weight": 900,
+      "file": "ZenKakuGothicNew-Black.subset.woff2",
+      "license": "SIL OFL 1.1",
+      "licenseFile": "licenses/OFL-zenkakugothicnew.txt",
+      "copyright": "Copyright 2022 The Zen Kaku Gothic Project Authors",
+      "source": "https://github.com/google/fonts/tree/main/ofl/zenkakugothicnew",
+      "subset": "ASCII, Latin-1/Extended, general punctuation, kana, CJK symbols, fullwidth forms, JIS X 0208 level 1 kanji"
+    },
+    {
+      "key": "mincho_black",
+      "family": "Zen Old Mincho",
+      "weight": 900,
+      "file": "ZenOldMincho-Black.subset.woff2",
+      "license": "SIL OFL 1.1",
+      "licenseFile": "licenses/OFL-zenoldmincho.txt",
+      "copyright": "Copyright 2021 The Zen Old Mincho Project Authors",
+      "source": "https://github.com/google/fonts/tree/main/ofl/zenoldmincho",
+      "subset": "ASCII, Latin-1/Extended, general punctuation, kana, CJK symbols, fullwidth forms, JIS X 0208 level 1 kanji"
+    },
+    {
+      "key": "dela",
+      "family": "Dela Gothic One",
+      "weight": 400,
+      "file": "DelaGothicOne-Regular.subset.woff2",
+      "license": "SIL OFL 1.1",
+      "licenseFile": "licenses/OFL-delagothicone.txt",
+      "copyright": "Copyright 2020 The Dela Gothic Project Authors",
+      "source": "https://github.com/google/fonts/tree/main/ofl/delagothicone",
+      "subset": "ASCII, Latin-1/Extended, general punctuation, kana, CJK symbols, fullwidth forms, JIS X 0208 level 1 kanji"
+    },
+    {
+      "key": "sansui",
+      "family": "IBM Plex Sans JP",
+      "weight": 500,
+      "file": "IBMPlexSansJP-Medium.subset.woff2",
+      "license": "SIL OFL 1.1",
+      "licenseFile": "licenses/OFL-ibmplexsansjp.txt",
+      "copyright": "Copyright © 2017 IBM Corp. with Reserved Font Name \"Plex\"",
+      "source": "https://github.com/google/fonts/tree/main/ofl/ibmplexsansjp",
+      "subset": "ASCII, Latin-1/Extended, general punctuation, kana, CJK symbols, fullwidth forms, JIS X 0208 level 1 kanji"
+    },
+    {
+      "key": "mono",
+      "family": "IBM Plex Mono",
+      "weight": 500,
+      "file": "IBMPlexMono-Medium.subset.woff2",
+      "license": "SIL OFL 1.1",
+      "licenseFile": "licenses/OFL-ibmplexmono.txt",
+      "copyright": "Copyright © 2017 IBM Corp. with Reserved Font Name \"Plex\"",
+      "source": "https://github.com/google/fonts/tree/main/ofl/ibmplexmono",
+      "subset": "ASCII, Latin-1/Extended, general punctuation, kana, CJK symbols, fullwidth forms, JIS X 0208 level 1 kanji"
+    }
+  ]
+}

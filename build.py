@@ -1,7 +1,7 @@
 """Build the single-file browser editions from src/, app/ and vendor/: Japanese, English, 繁體中文, 简体中文, 한국어, Bahasa Indonesia, Tiếng Việt.
 usage: python3 build.py            -> index.html, en/, zh-hant/, zh-hans/, ko/, id/, vi/ index.html (GitHub Pages)
        python3 build.py --dev      -> also dev/www/jizura.js + dev/www/test.html for the test tools"""
-import glob, os, sys
+import base64, glob, json, os, sys
 from app.english import localize_body, localize_js
 from app import i18n
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -12,6 +12,19 @@ sources = sorted(glob.glob('src/*.js'))
 js = '\n'.join(read(f) for f in sources)
 mux = '/*! mp4-muxer v5.2.2 | MIT License | (c) 2023 Vanilagy | see THIRD_PARTY_NOTICES.md */\n' + read('vendor/mp4-muxer.min.js')
 media = '/*! Mediabunny v1.60.0 | MPL-2.0 | see THIRD_PARTY_NOTICES.md */\n' + read('vendor/mediabunny-1.60.0.min.js')
+def bundled_fonts():
+    """@font-face rules for assets/fonts/manifest.json entries whose file exists, plus the list of bundled J.FONTS keys."""
+    manifest = json.loads(read('assets/fonts/manifest.json')).get('fonts', [])
+    rules, keys = [], []
+    for f in manifest:
+        path = os.path.join('assets/fonts', f['file'])
+        if not os.path.exists(path):
+            print('skip font', f['key'], '(file missing)'); continue
+        data = base64.b64encode(open(path, 'rb').read()).decode('ascii')
+        rules.append('@font-face{font-family:%s;font-weight:%s;font-style:normal;font-display:block;src:url(data:font/woff2;base64,%s) format("woff2")}' % (json.dumps(f['family']), f.get('weight', 400), data))
+        if f['key'] not in keys: keys.append(f['key'])
+    return chr(10).join(rules), keys
+font_css, font_keys = bundled_fonts()
 def build(lang):
     english = lang == 'en'
     local = lang in i18n.MODULES
@@ -53,10 +66,14 @@ def build(lang):
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <style>
 {read('app/style.css')}
+{font_css}
 </style>
 </head>
 <body>
 {body}
+<script>
+window.JIZURA_BUNDLED_FONTS = {json.dumps(font_keys)};
+</script>
 <script>
 {mux}
 </script>

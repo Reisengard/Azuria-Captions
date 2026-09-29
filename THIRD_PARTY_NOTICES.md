@@ -41,3 +41,15 @@ The web app loads the following typefaces at runtime from Google Fonts (https://
 included in this repository. They are distributed by their authors under the SIL Open Font License 1.1:
 Noto Sans JP, Noto Serif JP, Dela Gothic One, Zen Kaku Gothic New, Zen Old Mincho, Kaisei Tokumin,
 M PLUS Rounded 1c, Mochiy Pop One, DotGothic16, Yuji Syuku, IBM Plex Mono, IBM Plex Sans JP.
+
+### Bundled fonts
+
+`assets/fonts/*.subset.woff2` are subsets (ASCII, Latin, kana, punctuation, JIS X 0208 level 1 kanji) of the faces listed in
+`assets/fonts/manifest.json`, embedded in every edition. All are licensed under the SIL Open Font License 1.1
+(https://openfontlicense.org/); the license text and copyright line of each family is in `assets/fonts/licenses/`.
+They were obtained from https://github.com/google/fonts (`ofl/<family>`), variable fonts pinned to one weight and everything
+subset with `tools/subset_font.py`; characters outside the subset fall back to the other faces in the font stack.
+Faces: M PLUS Rounded 1c (ExtraBold), Noto Sans JP (500/700/900), Noto Serif JP (700), Zen Kaku Gothic New (Black),
+Zen Old Mincho (Black), Dela Gothic One, IBM Plex Sans JP (Medium), IBM Plex Mono (Medium).
+Noto Sans JP and the IBM Plex families declare Reserved Font Names ("Source", "Plex"); the subsets keep their original
+internal names and are referenced by CSS family name only.
