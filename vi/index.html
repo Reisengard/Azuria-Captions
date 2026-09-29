@@ -71,7 +71,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .caption-project-name { display: block; min-width: 0; overflow: hidden; color: var(--text); font: 500 12px var(--mono); text-overflow: ellipsis; white-space: nowrap; }
 .caption-bar .proj { flex: 1 1 120px; align-items: center; }
 .caption-help-steps { margin: 0 0 12px; padding-left: 20px; line-height: 1.7; }
-/* Transcript (with Text roles / Selected caption tabs) | Style (the wide one, with the Video settings tab) | video (width follows the output aspect, set as --caption-video-w by the workbench), then the timeline strip */
+/* Transcript (with Word styles / Caption tabs) | Style (the wide one, with the Video settings tab) | video (width follows the output aspect, set as --caption-video-w by the workbench), then the timeline strip */
 .caption-workbench { --caption-left-w: 312px; --caption-style-min: 380px; flex: 1 1 auto; min-height: 0; display: grid;
   grid-template-columns: var(--caption-left-w) minmax(var(--caption-style-min), 1fr) min(var(--caption-video-w, 400px), calc(100% - var(--caption-left-w) - var(--caption-style-min)));
   grid-template-rows: minmax(0, 1fr) auto; }
@@ -127,11 +127,26 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .caption-track-item small { color: var(--muted); font: 10px var(--mono); }
 .caption-track-buttons { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
 .caption-segment-track-tag { margin-right: 4px; padding: 0 4px; border: 1px solid var(--line); border-radius: 3px; color: var(--muted); font: 9px var(--mono); }
-.caption-token-row .caption-token-move { display: flex; align-items: center; gap: 3px; min-height: 32px; padding: 0 6px; border: 1px solid var(--line); border-radius: var(--r); color: var(--muted); font-size: 9px; }
 .caption-box-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .caption-box-warnings:empty { display: none; }
 .caption-role { margin: 8px 0 0; padding: 6px 8px 8px; border: 1px solid var(--line); border-radius: 6px; }
 .caption-role legend { padding: 0 4px; color: var(--muted); font-size: 11px; }
+/* Word styles: one row per value (name | control | what it resolves to | reset), a still sample on top */
+.caption-role-sample { display: block; width: 100%; aspect-ratio: 16 / 5; margin: 0 0 8px; border: 1px solid var(--line); border-radius: 6px; background: #0d1826; }
+.caption-role-note { margin: 4px 0 6px; color: var(--muted); font-size: 10px; }
+.caption-role-note.is-warn { color: #e8c47e; }
+.caption-role-note button { padding: 1px 6px; font-size: 10px; }
+.caption-roles-panel > .caption-role-note { margin-top: 0; }
+.caption-role-row { display: grid; grid-template-columns: minmax(64px, 6.5em) minmax(0, 1fr) auto auto; align-items: center; gap: 6px; min-height: 30px; font-size: 11px; color: var(--muted); }
+.caption-role-row select { grid-column: 2 / 4; width: 100%; min-width: 0; }
+.caption-role-row input[type=range] { width: 100%; min-width: 0; }
+.caption-left .caption-role-row input[type=color] { width: 44px; height: 24px; padding: 0; border: 1px solid var(--line); border-radius: var(--r); background: none; }
+.caption-role-row output { min-width: 3.6em; color: var(--faint); font: 10px var(--mono); text-align: right; font-variant-numeric: tabular-nums; }
+.caption-role-row.is-set output, .caption-role-row.is-set > span { color: var(--text); }
+.caption-role-row button { padding: 2px 6px; }
+.caption-role-override { display: grid; gap: 6px; margin-top: 4px; }
+.caption-role-override button { justify-self: start; }
+#captionRolesReset { margin-top: 10px; }
 .caption-role-pair { display: flex; gap: 6px; align-items: center; }
 .caption-role-pair input[type=color][data-unset="1"] { opacity: .45; }
 .caption-transport { display: flex; align-items: center; gap: 9px; }
@@ -169,26 +184,14 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .caption-meta { display: grid; grid-template-columns: 65px 1fr; gap: 5px 8px; margin: 12px 0; }
 .caption-meta dt { color: var(--muted); }
 .caption-meta dd { margin: 0; font: 11px var(--mono); }
-.caption-time-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin: 12px 0; }
-.caption-time-fields label, .caption-edit-group label { display: grid; gap: 4px; color: var(--muted); font-size: 10px; }
+.caption-time-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin: 0; }
+.caption-time-fields label { display: grid; gap: 4px; color: var(--muted); font-size: 10px; }
 .caption-time-fields input { width: 100%; }
 .caption-validation { margin: 9px 0; padding: 7px 8px; border: 1px solid rgba(255,90,106,.45); border-radius: var(--r); background: rgba(255,90,106,.08); color: var(--danger); font-size: 11px; }
-.caption-edit-group { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 10px 0; border-top: 1px solid var(--line); }
-.caption-edit-group label { grid-column: 1 / -1; }
-.caption-edit-group select, .caption-edit-group button { width: 100%; min-width: 0; }
-.caption-token-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin: 12px 0 6px; }
-.caption-token-head span { color: var(--muted); font-size: 9px; }
-.caption-token-list { display: grid; gap: 5px; margin-bottom: 10px; }
-.caption-token-row { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 5px; align-items: center; }
-.caption-token-row input[type=text] { width: 100%; }
-.caption-token-row .caption-token-emphasis { display: flex; align-items: center; gap: 3px; min-height: 32px; padding: 0 6px; border: 1px solid var(--line); border-radius: var(--r); color: var(--muted); font-size: 9px; }
-.caption-token-meta { grid-column: 1 / -1; display: flex; justify-content: space-between; color: var(--faint); font: 9px var(--mono); }
-.caption-token-error { grid-column: 1 / -1; color: var(--danger); font-size: 10px; }
 .caption-accessibility { display: grid; gap: 5px; margin: 10px 0; }
 .caption-accessibility:empty { display: none; }
 .caption-warning { padding: 7px 8px; border-left: 3px solid var(--amber); background: rgba(245,165,12,.08); color: #e8c47e; font-size: 10px; }
 .caption-segment-warning { color: var(--amber); font-size: 10px; }
-#captionSegmentInspector button { width: 100%; margin-top: 6px; }
 .caption-status { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; }
 .caption-status.danger-text { color: var(--danger); }
 #captionTechniqueHost:not([hidden]) { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
@@ -679,8 +682,54 @@ button.small.primary { padding: 4px 12px; }
 .caption-manual-entry p { font-size: 12px; opacity: .7; }
 .caption-manual-track { display: grid; gap: 4px; margin-bottom: 8px; font-size: 12px; }
 .caption-manual-track select { width: 100%; }
-.caption-block-title { grid-column: 1 / -1; font-size: 12px; }
+.caption-block-editor { display: grid; gap: 6px; margin-bottom: 10px; }
+.caption-block-editor label { display: grid; gap: 4px; color: var(--muted); font-size: 10px; }
 .caption-block-editor textarea { width: 100%; box-sizing: border-box; }
+/* Caption tab: header with previous / next, sections, word chips, folded rare actions */
+.caption-nav { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px; margin: 0 0 10px; padding: 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--raised); }
+.caption-nav button { width: 32px; height: 32px; padding: 0; }
+.caption-nav-info { display: grid; min-width: 0; text-align: center; }
+.caption-nav-info strong { font: 600 12px var(--mono); }
+.caption-nav-info span { overflow: hidden; color: var(--muted); font: 10px var(--mono); text-overflow: ellipsis; white-space: nowrap; }
+.caption-section { margin: 0 0 12px; padding: 0 0 12px; border-bottom: 1px solid var(--line); }
+.caption-section h3, .caption-more > summary { margin: 0 0 8px; color: var(--muted); font: 600 10px var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+.caption-more > summary { margin: 0; padding: 2px 0; cursor: pointer; }
+.caption-more[open] > summary { margin-bottom: 8px; }
+.caption-section-hint { margin: 0 0 8px; color: var(--muted); font-size: 10px; }
+.caption-button-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; }
+.caption-button-row button { min-width: 0; }
+.caption-word-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.caption-word-chip { padding: 4px 8px; border: 1px solid var(--line2); border-radius: var(--r); background: var(--raised2); color: var(--text); font-size: 13px; line-height: 1.3; cursor: pointer; }
+.caption-word-chip:hover { border-color: var(--muted); }
+.caption-word-chip[aria-pressed=true] { border-color: var(--cyan); box-shadow: 0 0 0 1px var(--cyan); }
+.caption-word-chip.is-emphasized { color: var(--amber); text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; }
+.caption-word-chip[data-emphasis=on] { border-color: var(--amber); }
+.caption-word-chip[data-emphasis=off] { border-style: dashed; }
+.caption-word-chip.has-error { border-color: var(--danger); }
+.caption-word-chips.is-picker .caption-word-chip { font-size: 11px; }
+.caption-word-chips.is-picker .caption-word-chip[aria-pressed=true] { border-color: var(--amber); box-shadow: none; background: rgba(245,165,12,.14); }
+.caption-word-cut { width: 18px; height: 24px; padding: 0; border: 0; border-radius: var(--r); background: transparent; color: var(--faint); font-size: 11px; cursor: pointer; }
+.caption-word-cut:hover, .caption-word-cut:focus-visible { background: rgba(22,244,212,.12); color: var(--cyan); }
+.caption-word-editor { display: grid; gap: 8px; margin-top: 10px; padding: 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--raised); }
+.caption-word-editor label { display: grid; gap: 4px; color: var(--muted); font-size: 10px; }
+.caption-word-editor input[type=text] { width: 100%; }
+.caption-emphasis-toggle { display: flex; align-items: center; gap: 0; font-size: 11px; }
+.caption-emphasis-toggle span { margin-right: 8px; color: var(--muted); font-size: 10px; }
+.caption-emphasis-toggle button { flex: 1 1 0; padding: 4px 6px; border-radius: 0; font-size: 11px; }
+.caption-emphasis-toggle button:nth-of-type(1) { border-radius: var(--r) 0 0 var(--r); }
+.caption-emphasis-toggle button:last-child { border-radius: 0 var(--r) var(--r) 0; }
+.caption-emphasis-toggle button[aria-pressed=true] { border-color: var(--amber); background: rgba(245,165,12,.14); color: var(--text); }
+.caption-token-meta { margin: 0; color: var(--faint); font: 9px var(--mono); }
+.caption-token-meta.danger-text { color: var(--danger); font-size: 10px; }
+.caption-time-input { display: grid; grid-template-columns: 26px minmax(0, 1fr) 26px; gap: 3px; }
+.caption-time-input button { padding: 0; }
+.caption-time-input input { min-width: 0; text-align: center; }
+.caption-move-words { margin-top: 10px; }
+.caption-move-words > button, #captionMoveSegment { width: 100%; margin-top: 6px; }
+.caption-switch { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 8px; margin-top: 10px; font-size: 12px; cursor: pointer; }
+.caption-switch input { margin-top: 2px; }
+.caption-switch small { display: block; color: var(--muted); font-size: 10px; }
+.caption-block-animation { margin-top: 10px; }
 .caption-effects { margin: 14px 0; padding: 14px; border: 1px solid var(--border, #383c49); border-radius: 12px; background: rgba(128,128,160,.045); }
 .caption-effects-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .caption-effects-heading h3 { margin: 0; font-size: 15px; }
@@ -774,8 +823,8 @@ button.small.primary { padding: 4px 12px; }
       <div class="caption-left" data-left-tab="transcript">
       <div class="caption-left-tabs" role="tablist" aria-label="左パネルのタブ">
         <button id="captionLeftTab_transcript" type="button" role="tab" data-left-tab="transcript" aria-selected="true" aria-controls="captionLeftPane_transcript">文字起こし</button>
-        <button id="captionLeftTab_roles" type="button" role="tab" data-left-tab="roles" aria-selected="false" aria-controls="captionLeftPane_roles">文字の役割</button>
-        <button id="captionLeftTab_caption" type="button" role="tab" data-left-tab="caption" aria-selected="false" aria-controls="captionLeftPane_caption">選択中の字幕</button>
+        <button id="captionLeftTab_roles" type="button" role="tab" data-left-tab="roles" aria-selected="false" aria-controls="captionLeftPane_roles">文字Phong cách</button>
+        <button id="captionLeftTab_caption" type="button" role="tab" data-left-tab="caption" aria-selected="false" aria-controls="captionLeftPane_caption">字幕の編集</button>
       </div>
       <aside id="captionLeftPane_transcript" class="caption-panel caption-transcript caption-left-pane" aria-label="文字起こしと字幕セグメント">
         <div class="caption-panel-head"><h2>文字起こし</h2><span id="captionTimingBadge" class="caption-badge">未読込</span></div>
@@ -808,64 +857,102 @@ button.small.primary { padding: 4px 12px; }
         <div id="captionTranscriptEmpty" class="caption-empty">動画と単語タイムスタンプ JSON、SRT、または VTT を読み込むと字幕が表示されます。</div>
       </aside>
         <div id="captionLeftPane_roles" class="caption-panel caption-left-pane" role="tabpanel" aria-labelledby="captionLeftTab_roles" hidden>
-        <section id="captionRolesPanel" class="caption-box-panel caption-roles-panel" aria-label="文字の役割">
-          <div class="caption-panel-head segment-head"><h2>文字の役割</h2></div>
-          <p class="caption-profile-note">通常の文字でレイアウトが決まります。話している単語と強調語は、位置や改行を動かさずに見た目だけ変わります。</p>
-          <fieldset class="caption-role" data-caption-role="base"><legend>通常の文字</legend>
-            <label class="field">フォント<select id="captionRoleBaseFont"></select></label>
-            <label class="field">色<span class="caption-role-pair"><input id="captionRoleBaseColor" type="color" value="#ffffff"><button type="button" class="small" data-role-clear="captionRoleBaseColor">既定</button></span></label>
-            <label class="field">サイズ<input id="captionRoleBaseFontSize" type="number" min="24" max="200" step="1" placeholder="Phong cáchに合わせる"></label>
+        <section id="captionRolesPanel" class="caption-box-panel caption-roles-panel" aria-label="文字Phong cách">
+          <div class="caption-panel-head segment-head"><h2>文字Phong cách</h2></div>
+          <label id="captionRoleTrackField" class="field" hidden>編集するトラック<select id="captionRoleTrack"></select></label>
+          <canvas id="captionRoleSample" class="caption-role-sample" width="800" height="250" role="img" aria-label="文字Phong cáchの見本（2語目が話している単語、最後の語が強調する単語）"></canvas>
+          <p class="caption-role-note">並びと改行は「すべての文字」で決まります。話している単語と強調する単語は、位置を動かさずに見た目だけ変わります。</p>
+          <fieldset class="caption-role" data-caption-role="base"><legend>すべての文字</legend>
+            <label class="caption-role-row"><span>フォント</span><select id="captionRoleBaseFont"></select><button type="button" class="ghost small" data-role-clear="captionRoleBaseFont" title="Tự độngに戻す" aria-label="フォントをTự độngに戻す">↺</button></label>
+            <label class="caption-role-row"><span>色</span><input id="captionRoleBaseColor" type="color" value="#ffffff"><output data-role-value="captionRoleBaseColor"></output><button type="button" class="ghost small" data-role-clear="captionRoleBaseColor" title="Tự độngに戻す" aria-label="色をTự độngに戻す">↺</button></label>
+            <label class="caption-role-row"><span>大きさ</span><input id="captionRoleBaseFontSize" type="range" min="24" max="200" step="2"><output data-role-value="captionRoleBaseFontSize"></output><button type="button" class="ghost small" data-role-clear="captionRoleBaseFontSize" title="Tự độngに戻す" aria-label="大きさをTự độngに戻す">↺</button></label>
           </fieldset>
           <fieldset class="caption-role" data-caption-role="active"><legend>話している単語</legend>
-            <label class="field">Hiệu ứng<select id="captionRoleActiveTreatment"></select></label>
-            <label class="field">色<span class="caption-role-pair"><input id="captionRoleActiveColor" type="color" value="#f5a50c"><button type="button" class="small" data-role-clear="captionRoleActiveColor">既定</button></span></label>
+            <label class="caption-role-row"><span>色</span><input id="captionRoleActiveColor" type="color" value="#f5a50c"><output data-role-value="captionRoleActiveColor"></output><button type="button" class="ghost small" data-role-clear="captionRoleActiveColor" title="Tự độngに戻す" aria-label="色をTự độngに戻す">↺</button></label>
+            <p id="captionRoleActiveColorNote" class="caption-role-note" hidden>エフェクトの設定で話している単語の色が指定されているため、ここで選んだ色は使われません。</p>
+            <p class="caption-role-note"><span id="captionRoleActiveHint"></span> <button id="captionRoleActiveOpen" type="button" class="ghost small" hidden>エフェクトをMở dự án</button></p>
+            <div id="captionRoleActiveOverride" class="caption-warning caption-role-override" hidden><span id="captionRoleActiveOverrideText"></span><button id="captionRoleActiveOverrideClear" type="button" class="small">固定を外す</button></div>
           </fieldset>
-          <fieldset class="caption-role" data-caption-role="emphasis"><legend>強調語</legend>
-            <label class="field">第2フォント<select id="captionRoleEmphasisFont"></select></label>
-            <label class="field">色<span class="caption-role-pair"><input id="captionRoleEmphasisColor" type="color" value="#ffde59"><button type="button" class="small" data-role-clear="captionRoleEmphasisColor">既定</button></span></label>
-            <label class="field">拡大率<input id="captionRoleEmphasisScale" type="number" min="0.9" max="1.15" step="0.01" placeholder="1"></label>
-            <label class="field">強調の基準 (0〜1)<input id="captionRoleEmphasisThreshold" type="number" min="0" max="1" step="0.05" placeholder="0.6"></label>
+          <fieldset class="caption-role" data-caption-role="emphasis"><legend>強調する単語</legend>
+            <p class="caption-role-note">数字や「!」のある単語がTự độngで選ばれます。単語ごとの指定は「字幕の編集」タブで変えられます。</p>
+            <label class="caption-role-row"><span>色</span><input id="captionRoleEmphasisColor" type="color" value="#ffde59"><output data-role-value="captionRoleEmphasisColor"></output><button type="button" class="ghost small" data-role-clear="captionRoleEmphasisColor" title="元に戻す" aria-label="色を戻す">↺</button></label>
+            <label class="caption-role-row"><span>2つ目のフォント</span><select id="captionRoleEmphasisFont"></select><button type="button" class="ghost small" data-role-clear="captionRoleEmphasisFont" title="使わない" aria-label="2つ目のフォントを使わない">↺</button></label>
+            <label class="caption-role-row"><span>大きさ</span><input id="captionRoleEmphasisScale" type="range" min="0.9" max="1.15" step="0.01"><output data-role-value="captionRoleEmphasisScale"></output><button type="button" class="ghost small" data-role-clear="captionRoleEmphasisScale" title="元に戻す" aria-label="大きさを戻す">↺</button></label>
+            <label class="caption-role-row"><span>強調する量</span><input id="captionRoleEmphasisAmount" type="range" min="0" max="1" step="0.05" aria-describedby="captionRoleEmphasisCount"><output id="captionRoleEmphasisCount" data-role-value="captionRoleEmphasisAmount"></output><button type="button" class="ghost small" data-role-clear="captionRoleEmphasisAmount" title="Tự độngに戻す" aria-label="強調する量をTự độngに戻す">↺</button></label>
+            <p id="captionRoleEmphasisHint" class="caption-role-note is-warn" hidden>色・2つ目のフォント・大きさのどれかを選ぶと、強調する単語が目立つようになります。</p>
           </fieldset>
-          <button id="captionRolesReset" type="button" class="small">役割を初期値に戻す</button>
+          <button id="captionRolesReset" type="button" class="small">文字Phong cáchをすべて初期値に戻す</button>
           <div id="captionRolesWarnings" class="caption-box-warnings" role="status"></div>
         </section>
         </div>
         <div id="captionLeftPane_caption" class="caption-panel caption-left-pane" role="tabpanel" aria-labelledby="captionLeftTab_caption" hidden>
-        <div class="caption-panel-head segment-head"><h2>選択中の字幕</h2></div>
-        <div id="captionInspectorEmpty" class="caption-empty">字幕を選択するとNâng caoが表示されます。</div>
+        <div class="caption-panel-head segment-head"><h2>字幕の編集</h2></div>
+        <div id="captionInspectorEmpty" class="caption-empty">字幕を選択すると、ここで文字やタイミングを直せます。</div>
         <div id="captionSegmentInspector" hidden>
-          <strong id="captionSelectedText"></strong>
+          <nav class="caption-nav" aria-label="字幕の移動">
+            <button id="captionPrev" type="button" class="ghost" aria-label="前の字幕">◀</button>
+            <div class="caption-nav-info"><strong id="captionNavPosition">—</strong><span id="captionNavMeta"></span></div>
+            <button id="captionNext" type="button" class="ghost" aria-label="次の字幕">▶</button>
+          </nav>
           <div id="captionEditError" class="caption-validation" role="alert" hidden></div>
-          <div class="caption-time-fields">
-            <label>開始（秒）<input id="captionSelectedStart" type="number" min="0" step="0.01"></label>
-            <label>終了（秒）<input id="captionSelectedEnd" type="number" min="0" step="0.01"></label>
-          </div>
-          <dl class="caption-meta"><dt>精度</dt><dd id="captionSelectedQuality">—</dd><dt>レイアウト</dt><dd id="captionSelectedLayout">—</dd></dl>
-          <div class="caption-edit-group">
-            <label>分割位置<select id="captionSplitPoint"></select></label>
-            <button id="captionSplit" type="button">単語の前で分割</button>
-            <button id="captionMerge" type="button">次の字幕と結合</button>
-          </div>
-          <div id="captionBlockEditor" class="caption-edit-group caption-block-editor" hidden>
-            <strong class="caption-block-title">テキストブロック</strong>
-            <label>ブロックのテキスト<textarea id="captionBlockText" rows="2"></textarea></label>
-            <button id="captionBlockApply" type="button">テキストを更新</button>
-            <button id="captionBlockDelete" type="button" class="danger">ブロックを削除</button>
-            <label>ブロックの登場<select id="captionBlockEnter"></select></label>
-            <label>ブロックの表示中<select id="captionBlockHold"></select></label>
-            <label>ブロックの退場<select id="captionBlockExit"></select></label>
-          </div>
-          <div class="caption-edit-group caption-move-group">
-            <label>移動先のトラック<select id="captionMoveTrack"></select></label>
-            <button id="captionMoveSegment" type="button">この字幕を移動</button>
-            <button id="captionMoveTokens" type="button">選んだ単語を移動</button>
-          </div>
-          <div class="caption-token-head"><strong>単語</strong><span>文字を修正・強調を指定</span></div>
-          <div id="captionTokenList" class="caption-token-list"></div>
           <div id="captionAccessibility" class="caption-accessibility" aria-live="polite"></div>
-          <button id="captionLock" type="button" aria-pressed="false">セグメントをロック</button>
-          <button id="captionReroll" type="button">この字幕をランダムに決める</button>
-          <button id="captionDisableAnimation" type="button" aria-pressed="false">アニメーションを無効化</button>
+
+          <section class="caption-section" aria-labelledby="captionTextHeading">
+            <h3 id="captionTextHeading">文字</h3>
+            <div id="captionBlockEditor" class="caption-block-editor" hidden>
+              <label>ブロックのテキスト<textarea id="captionBlockText" rows="2"></textarea></label>
+              <div class="caption-button-row"><button id="captionBlockApply" type="button" class="small">テキストを更新</button><button id="captionBlockDelete" type="button" class="small danger">ブロックを削除</button></div>
+            </div>
+            <p id="captionWordHint" class="caption-section-hint">単語を押すと修正・強調できます。✂ で字幕を分けます。</p>
+            <div id="captionTokenList" class="caption-word-chips" role="group" aria-label="字幕の単語"></div>
+            <div id="captionWordEditor" class="caption-word-editor" hidden>
+              <label id="captionWordTextField">単語の文字<input id="captionWordText" type="text"></label>
+              <div class="caption-emphasis-toggle" role="group" aria-labelledby="captionWordEmphasisLabel">
+                <span id="captionWordEmphasisLabel">強調</span>
+                <button type="button" data-emphasis="auto" aria-pressed="true">Tự động</button><button type="button" data-emphasis="on" aria-pressed="false">する</button><button type="button" data-emphasis="off" aria-pressed="false">しない</button>
+              </div>
+              <p id="captionWordMeta" class="caption-token-meta"></p>
+            </div>
+          </section>
+
+          <section class="caption-section" aria-labelledby="captionTimingHeading">
+            <h3 id="captionTimingHeading">タイミング</h3>
+            <div class="caption-time-fields">
+              <label>開始（秒）<span class="caption-time-input"><button type="button" class="small" data-nudge="start" data-step="-0.1" aria-label="開始を0.1秒早く">−</button><input id="captionSelectedStart" type="number" min="0" step="0.01"><button type="button" class="small" data-nudge="start" data-step="0.1" aria-label="開始を0.1秒遅く">＋</button></span></label>
+              <label>終了（秒）<span class="caption-time-input"><button type="button" class="small" data-nudge="end" data-step="-0.1" aria-label="終了を0.1秒早く">−</button><input id="captionSelectedEnd" type="number" min="0" step="0.01"><button type="button" class="small" data-nudge="end" data-step="0.1" aria-label="終了を0.1秒遅く">＋</button></span></label>
+            </div>
+            <div class="caption-button-row"><button id="captionStartAtPlayhead" type="button" class="small">開始をVị trí phát lạiに</button><button id="captionEndAtPlayhead" type="button" class="small">終了をVị trí phát lạiに</button></div>
+            <div class="caption-button-row"><button id="captionMergePrev" type="button" class="small">⇤ 前の字幕と結合</button><button id="captionMerge" type="button" class="small">次の字幕と結合 ⇥</button></div>
+          </section>
+
+          <details id="captionMoveSection" class="caption-section caption-more">
+            <summary>トラック</summary>
+            <label class="field">移動先のトラック<select id="captionMoveTrack"></select></label>
+            <button id="captionMoveSegment" type="button" class="small">この字幕をまるごと移動</button>
+            <div id="captionMoveWords" class="caption-move-words">
+              <p class="caption-section-hint">一部の単語だけ移すときは、単語を選んでから移動します。</p>
+              <div id="captionMoveWordPicker" class="caption-word-chips is-picker" role="group" aria-label="移動する単語"></div>
+              <button id="captionMoveTokens" type="button" class="small">選んだ単語を移動</button>
+            </div>
+          </details>
+
+          <details id="captionLookSection" class="caption-section caption-more">
+            <summary>見た目と動き</summary>
+            <p id="captionLookSummary" class="caption-section-hint"></p>
+            <div class="caption-button-row"><button id="captionEditLook" type="button" class="small">この字幕のエフェクトを変える</button><button id="captionReroll" type="button" class="small">ランダムに決める</button></div>
+            <div id="captionBlockAnimation" class="caption-block-animation" hidden>
+              <label class="field">ブロックの登場<select id="captionBlockEnter"></select></label>
+              <label class="field">ブロックの表示中<select id="captionBlockHold"></select></label>
+              <label class="field">ブロックの退場<select id="captionBlockExit"></select></label>
+            </div>
+            <label class="caption-switch"><input id="captionDisableAnimation" type="checkbox"> <span>動かさない<small>この字幕だけアニメーションなしで表示します。</small></span></label>
+            <label class="caption-switch"><input id="captionLock" type="checkbox"> <span>この字幕を固定する<small>Phong cáchの変更やランダムでも、区切りと見た目が変わらなくなります。</small></span></label>
+          </details>
+
+          <details class="caption-section caption-more">
+            <summary>Nâng cao</summary>
+            <dl class="caption-meta"><dt>タイミング</dt><dd id="captionSelectedQuality">—</dd><dt>レイアウト</dt><dd id="captionSelectedLayout">—</dd></dl>
+          </details>
         </div>
         </div>
 
@@ -6595,21 +6682,42 @@ J.captionTrackStyle = (style, track) => {
   return next;
 };
 
+/* Which of a segment's tokens count as emphasised: a manual on/off wins, else the planned score against the
+   track's threshold (`threshold` overrides it, for previews). Independent of whether the role styles anything. */
+J.captionEmphasizedTokenIds = (project, segment, plan, tokens, threshold) => {
+  const track = J.captionTrack(project, segment && segment.trackId), emphasis = track && track.roles && track.roles.emphasis || {};
+  const limit = Number.isFinite(threshold) ? threshold : Number.isFinite(emphasis.threshold) ? emphasis.threshold : J.CAPTION_EMPHASIS_THRESHOLD;
+  const scores = new Map(((plan && plan.emphasis) || []).map(item => [item.id, item.score]));
+  return (tokens || []).filter(token => {
+    const manual = token.manualEmphasis;
+    if (manual && typeof manual.enabled === 'boolean') return manual.enabled;
+    return (scores.get(token.id) || 0) >= limit;
+  }).map(token => token.id);
+};
+
 /* Draw-time description of a segment's roles: which tokens are emphasised and how. */
 J.captionRoleRender = (project, segment, plan, tokens) => {
   const track = J.captionTrack(project, segment && segment.trackId), roles = track && track.roles || {};
   const active = roles.active || {}, emphasis = roles.emphasis || {};
   const out = { active: { treatment: active.treatment || null, color: active.color || null }, emphasis: null };
-  if (!(emphasis.font || emphasis.color || emphasis.scale)) return out;
-  const threshold = Number.isFinite(emphasis.threshold) ? emphasis.threshold : J.CAPTION_EMPHASIS_THRESHOLD;
-  const scores = new Map(((plan && plan.emphasis) || []).map(item => [item.id, item.score]));
-  const tokenIds = (tokens || []).filter(token => {
-    const manual = token.manualEmphasis;
-    if (manual && typeof manual.enabled === 'boolean') return manual.enabled;
-    return (scores.get(token.id) || 0) >= threshold;
-  }).map(token => token.id);
+  if (!J.captionRoleStylesEmphasis(track)) return out;
+  const tokenIds = J.captionEmphasizedTokenIds(project, segment, plan, tokens);
   if (tokenIds.length) out.emphasis = { tokenIds, font: emphasis.font || null, color: emphasis.color || null, scale: emphasis.scale || null };
   return out;
+};
+
+/* Emphasis is only drawn once the role changes something (colour, second font or size). */
+J.captionRoleStylesEmphasis = track => { const emphasis = track && track.roles && track.roles.emphasis || {}; return !!(emphasis.font || emphasis.color || emphasis.scale); };
+
+/* How many of a track's words count as emphasised (for the editor's "how many" readout). */
+J.captionEmphasisCount = (project, trackId, threshold) => {
+  const tokens = new Map((project && project.transcript && project.transcript.tokens || []).map(token => [token.id, token]));
+  let count = 0, total = 0;
+  for (const segment of J.captionTrackSegments(project, trackId)) {
+    const list = segment.tokenIds.map(id => tokens.get(id)).filter(Boolean), plan = J.captionResolvedPlan(project.plans && project.plans[segment.id]);
+    count += J.captionEmphasizedTokenIds(project, segment, plan, list, threshold).length; total += list.length;
+  }
+  return { count, total };
 };
 
 /* Fonts a project's roles draw with (for loading and availability warnings). */
@@ -43204,14 +43312,39 @@ const cache = new Map();
 
 /* A one-caption project. `plan` holds the effect choices; unset stages stay still / plain. */
 J.captionSampleProject = (plan = {}, options = {}) => {
-  const duration = options.duration || 2.4, words = options.words || SAMPLE_WORDS, per = duration / words.length;
-  const tokens = words.map((text, index) => ({ id: `w${index}`, text, start: index * per, end: (index + 1) * per, source: 'sample' }));
+  const duration = options.duration || 2.4, words = options.words || SAMPLE_WORDS, per = duration / words.length, frame = options.frame || FRAME;
+  const emphasize = new Set(options.emphasize || []);
+  const tokens = words.map((text, index) => Object.assign({ id: `w${index}`, text, start: index * per, end: (index + 1) * per, source: 'sample' },
+    emphasize.has(index) ? { manualEmphasis: { enabled: true } } : {}));
   const segment = { id: 's1', start: 0, end: duration, tokenIds: tokens.map(token => token.id), trackId: J.CAPTION_PRIMARY_TRACK_ID };
   const box = { x: .05, y: .1, width: .9, height: .8 };
   const generated = Object.assign({ id: 'p1', segmentId: 's1', trackId: J.CAPTION_PRIMARY_TRACK_ID, layout: 'captionCenterStack', entrance: 'cut', hold: 'captionStill', exit: 'cut',
     activeWordTreatment: 'captionActiveColor', captionTreatment: 'outline', motion: .7, seed: 7, fontSize: 56, box, accentColor: '#4fd6ff', textColor: '#ffffff' }, plan);
-  return { mode: 'video-captions', media: { width: FRAME.width, height: FRAME.height, duration }, transcript: { tokens }, tracks: [{ id: J.CAPTION_PRIMARY_TRACK_ID, primary: true, box }],
+  const track = Object.assign({ id: J.CAPTION_PRIMARY_TRACK_ID, primary: true, box }, options.roles ? { roles: options.roles } : {});
+  return { mode: 'video-captions', media: { width: frame.width, height: frame.height, duration }, transcript: { tokens }, tracks: [track],
     segments: [segment], plans: { s1: { id: 'p1', segmentId: 's1', generated, manual: {}, lockedFields: [] } }, style: { preset: 'creator' }, settings: {}, seed: 1 };
+};
+
+/* A still sample of a track's word styles: the second word is being spoken, the last one is emphasised.
+   `plan` carries what the track resolves to (font, colours, spoken-word effect, text finish); `roles` are the track's roles. */
+const ROLE_SAMPLE_WORDS = ['Every', 'word', 'counts', '100%'];
+const ROLE_SAMPLE_FRAME = { width: 400, height: 125 };
+J.paintCaptionRoleSample = (canvas, roles, plan = {}) => {
+  const ctx = canvas.getContext('2d'), per = .6, words = ROLE_SAMPLE_WORDS;
+  const project = J.captionSampleProject(Object.assign({ fontSize: 34, box: { x: .03, y: .06, width: .94, height: .88 } }, plan),
+    { words, duration: words.length * per, frame: ROLE_SAMPLE_FRAME, roles, emphasize: [words.length - 1] });
+  const scale = canvas.width / ROLE_SAMPLE_FRAME.width;
+  try {
+    ctx.save(); ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#0d1826'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.scale(scale, scale);
+    J.drawCaptionOverlay(ctx, project, per * 1.5, { designWidth: ROLE_SAMPLE_FRAME.width, designHeight: ROLE_SAMPLE_FRAME.height, scale: 1, reducedMotion: true });
+    ctx.restore();
+  } catch (error) {
+    try { ctx.restore(); } catch (ignored) { /* nothing was saved */ }
+    ctx.fillStyle = '#131316'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+  canvas.dataset.ready = '1';
 };
 
 /* Which stage of the sample to loop for a group: the entrance, the middle, or the exit. */
@@ -43296,7 +43429,7 @@ if (typeof document === 'undefined' || typeof document.getElementById !== 'funct
 
 const $ = id => document.getElementById(id);
 const clone = value => JSON.parse(JSON.stringify(value));
-const ui = { store: null, media: null, preview: null, selectedId: null, trackId: null, moveTokens: new Set(), variation: 0, lookScope: 'project', errors: {}, timelineZoom: 1, boundaryDrag: null,
+const ui = { store: null, media: null, preview: null, selectedId: null, trackId: null, wordId: null, moveTokens: new Set(), variation: 0, lookScope: 'project', errors: {}, timelineZoom: 1, boundaryDrag: null,
   exporter: null, exportAbort: null };
 const captionLooks = {
   clean: ['captionSoftRise', 'captionStill', 'captionFadeOut', 'outline'],
@@ -43414,59 +43547,108 @@ function renderSegments() {
   $('captionTimingBadge').textContent = project.transcript.tokens.length ? (quality === 'estimated' ? '推定タイミング' : '単語タイミング') : '未読込';
 }
 
+/* ---- Caption tab: the selected caption ----
+   Header with previous / next, warnings first, then the words as chips (press one to fix its text or emphasis,
+   ✂ between two words splits there), timing with nudges and "at playhead", and the rarer actions folded away. */
+const tokenEmphasisState = token => { const manual = token && token.manualEmphasis; return manual && typeof manual.enabled === 'boolean' ? (manual.enabled ? 'on' : 'off') : 'auto'; };
+const EMPHASIS_VALUES = { auto: null, on: { enabled: true, reason: 'editor' }, off: { enabled: false, reason: 'editor' } };
+
 function renderInspector() {
   const segment = selectedSegment(), empty = $('captionInspectorEmpty'), panel = $('captionSegmentInspector');
   empty.hidden = !!segment; panel.hidden = !segment;
   if (!segment) return;
-  const plan = ui.store.project.plans[segment.id], resolved = J.captionResolvedPlan(plan);
+  const project = ui.store.project, plan = project.plans[segment.id], resolved = J.captionResolvedPlan(plan), tracks = project.tracks || [];
   const tokens = tokenMap(), segmentTokens = segment.tokenIds.map(id => tokens.get(id)).filter(Boolean);
-  $('captionSelectedText').textContent = segmentText(segment); $('captionSelectedStart').value = segment.start.toFixed(2);
-  $('captionSelectedEnd').value = segment.end.toFixed(2); $('captionSelectedLayout').textContent = resolved.layout || '—';
-  const frame = ui.store.project.media || {}, zone = frame.width > 0 && frame.height > 0 ? J.captionPlanZone(resolved, frame) : null;
+  const isBlock = J.isCaptionTextBlock(project, segment), locked = !!(segment.locks && segment.locks.visualPlan), cutLocked = !!(segment.locks && segment.locks.segmentation);
+  if (!segment.tokenIds.includes(ui.wordId)) ui.wordId = null;
+  // Header: where this caption is, in time order across every track.
+  const order = project.segments, at = order.indexOf(segment), tags = [`${fmt(segment.start)}–${fmt(segment.end)}`];
+  if (tracks.length > 1) tags.push(trackName(segmentTrackId(segment)));
+  if (isBlock) tags.push('テキストブロック');
+  if (locked) tags.push('固定中');
+  $('captionNavPosition').textContent = `${at + 1} / ${order.length}`; $('captionNavMeta').textContent = tags.join(' · ');
+  $('captionPrev').disabled = at <= 0; $('captionNext').disabled = at < 0 || at >= order.length - 1;
+  const frame = project.media || {}, zone = frame.width > 0 && frame.height > 0 ? J.captionPlanZone(resolved, frame) : null;
   if (zone) Object.assign(document.querySelector('.caption-safe-zone').style, {
     left: `${zone.x / frame.width * 100}%`, top: `${zone.y / frame.height * 100}%`, width: `${zone.width / frame.width * 100}%`, height: `${zone.height / frame.height * 100}%`, right: 'auto', bottom: 'auto',
   });
-  const qualities = new Set(segmentTokens.map(token => token.timingQuality));
-  $('captionSelectedQuality').textContent = qualities.has('estimated') ? '推定' : qualities.has('segment') ? 'セグメント単位' : '単語単位';
   const error = ui.errors[segment.id], errorEl = $('captionEditError'); errorEl.hidden = !error; errorEl.textContent = error || '';
-  const split = $('captionSplitPoint'); split.replaceChildren();
-  segmentTokens.slice(1).forEach(token => { const option = document.createElement('option'); option.value = token.id; option.textContent = `「${token.text}」の前`; split.appendChild(option); });
+  const warningBox = $('captionAccessibility'); warningBox.replaceChildren();
+  for (const warning of accessibilityWarnings(segment)) { const item = document.createElement('div'); item.className = 'caption-warning'; item.textContent = warning; warningBox.appendChild(item); }
+  // Text
   renderBlockEditor(segment, plan);
-  $('captionSplit').disabled = segmentTokens.length < 2 || !!(segment.locks && segment.locks.segmentation);
-  $('captionMerge').disabled = !J.captionTrackNeighbor(ui.store.project, segment, 1) || !!(segment.locks && segment.locks.segmentation);
-  const moveTargets = (ui.store.project.tracks || []).filter(item => item.id !== segmentTrackId(segment)), moveSelect = $('captionMoveTrack'), keptTarget = moveSelect.value;
+  renderWordChips(segment, segmentTokens, resolved, isBlock, cutLocked);
+  renderWordEditor(segment, segmentTokens, resolved, isBlock);
+  // Timing
+  const start = $('captionSelectedStart'), end = $('captionSelectedEnd');
+  if (document.activeElement !== start) start.value = segment.start.toFixed(2);
+  if (document.activeElement !== end) end.value = segment.end.toFixed(2);
+  const previous = J.captionTrackNeighbor(project, segment, -1), next = J.captionTrackNeighbor(project, segment, 1), cutFixed = item => !!(item && item.locks && item.locks.segmentation);
+  $('captionMergePrev').disabled = !previous || cutLocked || cutFixed(previous);
+  $('captionMerge').disabled = !next || cutLocked || cutFixed(next);
+  $('captionStartAtPlayhead').disabled = $('captionEndAtPlayhead').disabled = !sourceVideo();
+  // Track (only with somewhere to move to)
+  const moveTargets = tracks.filter(item => item.id !== segmentTrackId(segment)), moveSelect = $('captionMoveTrack'), keptTarget = moveSelect.value;
+  $('captionMoveSection').hidden = !moveTargets.length;
   moveSelect.replaceChildren();
   for (const item of moveTargets) { const option = document.createElement('option'); option.value = item.id; option.textContent = item.name || item.id; moveSelect.appendChild(option); }
   if (moveTargets.some(item => item.id === keptTarget)) moveSelect.value = keptTarget;
+  $('captionMoveSegment').disabled = !moveTargets.length;
   // A text block moves whole; its words are not split off to another track.
-  $('captionMoveSegment').disabled = !moveTargets.length; $('captionMoveTokens').disabled = !moveTargets.length || J.isCaptionTextBlock(ui.store.project, segment);
-  const tokenList = $('captionTokenList'); tokenList.replaceChildren();
+  $('captionMoveWords').hidden = isBlock;
+  const picker = $('captionMoveWordPicker'); picker.replaceChildren();
   for (const token of segmentTokens) {
-    const row = document.createElement('div'); row.className = 'caption-token-row'; row.dataset.tokenId = token.id;
-    const input = document.createElement('input'); input.type = 'text'; input.value = token.text; input.setAttribute('aria-label', `${token.text} の表示文字`); input.dataset.tokenText = token.id;
-    const emphasis = document.createElement('label'); emphasis.className = 'caption-token-emphasis';
-    const check = document.createElement('input'); check.type = 'checkbox'; check.checked = !!(token.manualEmphasis && token.manualEmphasis.enabled); check.dataset.tokenEmphasis = token.id;
-    emphasis.append(check, document.createTextNode(' 強調'));
-    const meta = document.createElement('span'); meta.className = 'caption-token-meta'; meta.innerHTML = `<span>${fmt(token.start)}–${fmt(token.end)}</span><span>${token.timingQuality === 'estimated' ? '推定' : '単語'}</span>`;
-    const moveLabel = document.createElement('label'); moveLabel.className = 'caption-token-move';
-    const moveCheck = document.createElement('input'); moveCheck.type = 'checkbox'; moveCheck.checked = ui.moveTokens.has(token.id); moveCheck.dataset.tokenMove = token.id;
-    moveLabel.append(moveCheck, document.createTextNode(' 移動'));
-    row.append(input, emphasis, moveLabel, meta);
-    if (ui.errors[token.id]) { const tokenError = document.createElement('span'); tokenError.className = 'caption-token-error'; tokenError.textContent = ui.errors[token.id]; row.appendChild(tokenError); }
-    tokenList.appendChild(row);
+    const chip = document.createElement('button'); chip.type = 'button'; chip.className = 'caption-word-chip'; chip.dataset.moveWord = token.id; chip.textContent = token.text;
+    chip.setAttribute('aria-pressed', String(ui.moveTokens.has(token.id))); picker.appendChild(chip);
   }
-  const warningBox = $('captionAccessibility'); warningBox.replaceChildren();
-  for (const warning of accessibilityWarnings(segment)) { const item = document.createElement('div'); item.className = 'caption-warning'; item.textContent = warning; warningBox.appendChild(item); }
-  const locked = !!(segment.locks && segment.locks.visualPlan); $('captionLock').setAttribute('aria-pressed', String(locked));
-  $('captionLock').textContent = locked ? 'ロックを解除' : 'セグメントをロック'; $('captionReroll').disabled = locked;
-  const animationDisabled = !!resolved.animationDisabled; $('captionDisableAnimation').setAttribute('aria-pressed', String(animationDisabled));
-  $('captionDisableAnimation').textContent = animationDisabled ? 'アニメーションを有効化' : 'アニメーションを無効化'; $('captionDisableAnimation').disabled = locked;
+  const picked = segmentTokens.filter(token => ui.moveTokens.has(token.id)).length;
+  $('captionMoveTokens').disabled = !moveTargets.length || isBlock || !picked; $('captionMoveTokens').textContent = picked ? `選んだ単語を移動（${picked}）` : '選んだ単語を移動';
+  // Look and motion
+  $('captionLookSummary').textContent = `登場: ${lookLabel('enter', resolved.entrance) || '—'} · 表示中: ${lookLabel('hold', resolved.hold) || '—'} · 退場: ${lookLabel('exit', resolved.exit) || '—'}`;
+  $('captionReroll').disabled = locked; $('captionEditLook').disabled = locked;
+  $('captionDisableAnimation').checked = !!resolved.animationDisabled; $('captionDisableAnimation').disabled = locked;
+  $('captionLock').checked = locked;
+  // Details
+  const qualities = new Set(segmentTokens.map(token => token.timingQuality));
+  $('captionSelectedQuality').textContent = qualities.has('estimated') ? '推定（SRT/VTT・手入力）' : qualities.has('segment') ? '字幕単位' : '単語単位';
+  $('captionSelectedLayout').textContent = lookLabel('layout', resolved.layout) || '—';
 }
 
-/* Text blocks (typed captions): whole-text edit, delete, and preset animations from the track's style. */
+function renderWordChips(segment, segmentTokens, resolved, isBlock, cutLocked) {
+  const list = $('captionTokenList'), emphasized = new Set(J.captionEmphasizedTokenIds(ui.store.project, segment, resolved, segmentTokens));
+  list.replaceChildren();
+  segmentTokens.forEach((token, index) => {
+    if (index > 0 && !isBlock && !cutLocked) {
+      const cut = document.createElement('button'); cut.type = 'button'; cut.className = 'caption-word-cut'; cut.dataset.splitBefore = token.id; cut.textContent = '✂';
+      cut.title = `「${token.text}」の前で分割`; cut.setAttribute('aria-label', cut.title); list.appendChild(cut);
+    }
+    const chip = document.createElement('button'); chip.type = 'button'; chip.className = 'caption-word-chip'; chip.dataset.wordId = token.id; chip.textContent = token.text;
+    chip.dataset.emphasis = tokenEmphasisState(token); chip.classList.toggle('is-emphasized', emphasized.has(token.id)); chip.classList.toggle('has-error', !!ui.errors[token.id]);
+    chip.setAttribute('aria-pressed', String(ui.wordId === token.id)); chip.title = `${fmt(token.start)}–${fmt(token.end)}${emphasized.has(token.id) ? ' · 強調' : ''}`;
+    list.appendChild(chip);
+  });
+  $('captionWordHint').textContent = isBlock ? '文字は上の欄でまとめて書き換えます。単語を押すと強調を変えられます。'
+    : cutLocked ? '単語を押すと修正・強調できます。この字幕は固定中のため分割できません。' : '単語を押すと修正・強調できます。✂ で字幕を分けます。';
+}
+
+function renderWordEditor(segment, segmentTokens, resolved, isBlock) {
+  const token = segmentTokens.find(item => item.id === ui.wordId), editor = $('captionWordEditor');
+  editor.hidden = !token; if (!token) return;
+  $('captionWordTextField').hidden = isBlock;
+  const input = $('captionWordText'); if (document.activeElement !== input) input.value = token.text;
+  const state = tokenEmphasisState(token);
+  editor.querySelectorAll('[data-emphasis]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.emphasis === state)));
+  const project = ui.store.project, on = J.captionEmphasizedTokenIds(project, segment, resolved, [token]).length > 0, track = J.captionTrack(project, segmentTrackId(segment));
+  const meta = $('captionWordMeta');
+  meta.textContent = [`${fmt(token.start)}–${fmt(token.end)}`, token.timingQuality === 'estimated' ? '推定タイミング' : '単語タイミング', on ? '強調されています' : '強調されていません'].join(' · ');
+  if (on && !J.captionRoleStylesEmphasis(track)) meta.textContent += '（強調の見た目は「文字スタイル」で設定します）';
+  meta.classList.toggle('danger-text', !!ui.errors[token.id]); if (ui.errors[token.id]) meta.textContent = ui.errors[token.id];
+}
+
+/* Text blocks (typed captions): whole-text edit and delete in the text section; preset animations in "Look and motion". */
 function renderBlockEditor(segment, plan) {
   const project = ui.store.project, isBlock = J.isCaptionTextBlock(project, segment), editor = $('captionBlockEditor');
-  editor.hidden = !isBlock; if (!isBlock) return;
+  editor.hidden = !isBlock; $('captionBlockAnimation').hidden = !isBlock; if (!isBlock) return;
   const text = $('captionBlockText'); if (document.activeElement !== text) text.value = segmentText(segment);
   const locked = !!(segment.locks && segment.locks.visualPlan), chosen = J.captionTextBlockAnimation(plan), options = J.captionTextBlockAnimationOptions(project, segmentTrackId(segment));
   for (const [key, id] of Object.entries(BLOCK_ANIMATION_CONTROLS)) {
@@ -43476,6 +43658,47 @@ function renderBlockEditor(segment, plan) {
     for (const value of ids) { const def = J.registry(J.CAPTION_TEXT_BLOCK_ANIMATION[key].group)[value], option = document.createElement('option'); option.value = value; option.textContent = PRESET_LABELS[value] || def && def.name || value; select.appendChild(option); }
     select.value = chosen[key] || ''; select.disabled = locked;
   }
+}
+
+function selectWord(tokenId) {
+  const token = tokenMap().get(tokenId); if (!token) return;
+  ui.wordId = ui.wordId === tokenId ? null : tokenId;
+  if (ui.wordId) seekTimeline(token.start);
+  renderInspector();
+  if (ui.wordId && !$('captionWordTextField').hidden) $('captionWordText').focus();
+}
+
+function splitBefore(tokenId) {
+  const segment = selectedSegment(); if (!segment || !tokenId) return;
+  const nextId = ui.store.nextSegmentId();
+  if (runCommand({ type: 'split-segment', segmentId: segment.id, beforeTokenId: tokenId, newSegmentId: nextId, boundarySource: 'manual' }, segment.id, nextId)) { selectSegment(nextId, true); status('字幕を2つに分けました。元に戻すで戻せます。'); }
+}
+
+function mergeWith(direction) {
+  const segment = selectedSegment(); if (!segment) return;
+  const other = J.captionTrackNeighbor(ui.store.project, segment, direction); if (!other) return;
+  const [first, second] = direction < 0 ? [other, segment] : [segment, other];
+  if (runCommand({ type: 'merge-segments', segmentId: first.id, nextSegmentId: second.id, boundarySource: 'manual' }, segment.id, first.id)) status('字幕を結合しました。');
+}
+
+function stepCaption(direction) {
+  const order = ui.store.project.segments, at = order.indexOf(selectedSegment()), target = at < 0 ? null : order[at + direction];
+  if (target) selectSegment(target.id, true);
+}
+
+function nudgeTiming(key, step) {
+  const input = $(key === 'start' ? 'captionSelectedStart' : 'captionSelectedEnd');
+  input.value = Math.max(0, Number(input.value) + step).toFixed(2); applyTiming();
+}
+
+function timingAtPlayhead(key) {
+  const video = sourceVideo(); if (!video) return;
+  $(key === 'start' ? 'captionSelectedStart' : 'captionSelectedEnd').value = Number(video.currentTime).toFixed(2); applyTiming();
+}
+
+function openSegmentLook() {
+  if (!selectedSegment()) return;
+  ui.lookScope = 'segment'; ui.lookSignature = null; selectStyleTab('effects'); renderLookPanel();
 }
 
 function applyBlockText() {
@@ -43963,7 +44186,7 @@ function escapeHtml(value) { const node = document.createElement('span'); node.t
 
 function selectSegment(id, seek) {
   const segment = ui.store.project.segments.find(item => item.id === id); if (!segment) return;
-  if (id !== ui.selectedId) ui.moveTokens.clear();
+  if (id !== ui.selectedId) { ui.moveTokens.clear(); ui.wordId = null; }
   ui.selectedId = id; ui.trackId = segmentTrackId(segment); if (seek && sourceVideo()) { sourceVideo().currentTime = segment.start; if (ui.preview) ui.preview.renderNow(segment.start); }
   const overridden = ui.store.project.plans[id] && ui.store.project.plans[id].manual && ui.store.project.plans[id].manual.box;
   $('captionBoxScope').value = overridden ? 'segment' : 'track';
@@ -44112,39 +44335,69 @@ function resetBox() {
   else runCommand({ type: 'set-track-box', trackId: context.track.id, reset: true });
 }
 
-/* ---- roles (base / active / emphasis) ----
-   Values are stored on the track. Only the base role re-plans (it changes what fits); the others restyle words in place. */
+/* ---- word styles (roles: base / active / emphasis) ----
+   Values are stored on the track. Only the base role re-plans (it changes what fits); the others restyle words in place.
+   Unset values show what the track uses instead ("Auto"); every row has its own reset. The spoken word's effect is
+   chosen in Effects; a treatment stored on the role by older versions still wins and is shown with a button to remove it. */
 const ROLE_CONTROLS = {
   captionRoleBaseFont: ['base', 'font'], captionRoleBaseColor: ['base', 'color'], captionRoleBaseFontSize: ['base', 'fontSize'],
-  captionRoleActiveTreatment: ['active', 'treatment'], captionRoleActiveColor: ['active', 'color'],
+  captionRoleActiveColor: ['active', 'color'],
   captionRoleEmphasisFont: ['emphasis', 'font'], captionRoleEmphasisColor: ['emphasis', 'color'],
-  captionRoleEmphasisScale: ['emphasis', 'scale'], captionRoleEmphasisThreshold: ['emphasis', 'threshold'],
+  captionRoleEmphasisScale: ['emphasis', 'scale'], captionRoleEmphasisAmount: ['emphasis', 'threshold'],
 };
+// "How much is emphasised" runs the other way from the stored threshold: more = a lower threshold.
+const roleInputValue = (id, value) => id === 'captionRoleEmphasisAmount' ? +(1 - value).toFixed(2) : value;
+const roleStoredValue = (id, value) => id === 'captionRoleEmphasisAmount' ? +(1 - value).toFixed(2) : value;
 let roleFontsLoaded = '';
 const roleTrack = () => activeTrack();
 
 function fillRoleOptions() {
   const option = (value, label) => { const node = document.createElement('option'); node.value = value; node.textContent = label; return node; };
-  for (const [id, emptyLabel] of [['captionRoleBaseFont', 'スタイルに合わせる'], ['captionRoleEmphasisFont', '使わない']]) {
+  for (const [id, emptyLabel] of [['captionRoleBaseFont', '自動（スタイルに合わせる）'], ['captionRoleEmphasisFont', '使わない']]) {
     const select = $(id); select.replaceChildren(option('', emptyLabel));
     for (const key of J.CAPTION_FONTS) select.appendChild(option(key, J.FONTS[key] ? J.FONTS[key].label : key));
   }
-  const treatment = $('captionRoleActiveTreatment'); treatment.replaceChildren(option('', 'スタイルに合わせる'));
-  for (const id of Object.keys(J.CAPTION_ACTIVE || {})) treatment.appendChild(option(id, J.CAPTION_ACTIVE[id].name || id));
+}
+
+/* What the track draws with when a role leaves a value unset. */
+function roleDefaults(project, track) {
+  const style = J.captionTrackProjectStyle(project, track) || {}, profile = J.CAPTION_STYLE_PROFILES[J.captionStyleProfileId(project, track)] || {};
+  const look = J.resolveCaptionLook(style, J.captionStyleProfileId(project, track)).look;
+  return { style, textColor: (profile.textColor || '#ffffff').toLowerCase(), fontSize: profile.fontSize || 76, accentColor: (style.accentColor || profile.accentColor || '#f5a50c').toLowerCase(), active: look.active };
+}
+
+function roleValueText(id, value, set, count) {
+  if (id === 'captionRoleEmphasisAmount') return `${count.count} / ${count.total} 語`;
+  if (!set) return id === 'captionRoleEmphasisColor' ? 'なし' : id === 'captionRoleEmphasisScale' ? '同じ' : '自動';
+  if (id === 'captionRoleBaseFontSize') return `${value}px`;
+  if (id === 'captionRoleEmphasisScale') return `×${Number(value).toFixed(2)}`;
+  return String(value);
 }
 
 function renderRolesPanel() {
-  const track = roleTrack(), roles = track && track.roles || {}, enabled = !!track;
+  const project = ui.store.project, tracks = project.tracks || [], track = roleTrack(), roles = track && track.roles || {}, enabled = !!track;
+  const trackSelect = $('captionRoleTrack'); trackSelect.replaceChildren();
+  for (const item of tracks) { const option = document.createElement('option'); option.value = item.id; option.textContent = item.name || item.id; trackSelect.appendChild(option); }
+  trackSelect.value = track ? track.id : ''; $('captionRoleTrackField').hidden = tracks.length < 2;
+  const defaults = track ? roleDefaults(project, track) : { textColor: '#ffffff', fontSize: 76, accentColor: '#f5a50c' };
+  const baseColor = roles.base && roles.base.color || defaults.textColor;
+  const shown = { captionRoleBaseColor: defaults.textColor, captionRoleBaseFontSize: defaults.fontSize, captionRoleActiveColor: defaults.accentColor,
+    captionRoleEmphasisColor: baseColor, captionRoleEmphasisScale: 1, captionRoleEmphasisAmount: J.CAPTION_EMPHASIS_THRESHOLD };
+  const count = track ? J.captionEmphasisCount(project, track.id) : { count: 0, total: 0 };
   for (const [id, [role, field]] of Object.entries(ROLE_CONTROLS)) {
-    const input = $(id), value = roles[role] && roles[role][field];
+    const input = $(id), value = roles[role] && roles[role][field], set = value != null && value !== '';
     input.disabled = !enabled;
-    if (input.type === 'color') { if (value) input.value = value; input.dataset.unset = value ? '' : '1'; }
-    else input.value = value == null ? '' : value;
+    input.value = input.tagName === 'SELECT' ? (set ? value : '') : roleInputValue(id, set ? value : shown[id]);
+    const row = input.closest('.caption-role-row'); if (row) row.classList.toggle('is-set', set);
+    const out = document.querySelector(`[data-role-value="${id}"]`); if (out) out.textContent = roleValueText(id, value, set, count);
+    const clear = document.querySelector(`[data-role-clear="${id}"]`); if (clear) clear.disabled = !enabled || !set;
   }
-  document.querySelectorAll('[data-role-clear]').forEach(button => { button.disabled = !enabled; });
-  $('captionRolesReset').disabled = !enabled;
+  $('captionRolesReset').disabled = !enabled || !['base', 'active', 'emphasis'].some(role => Object.keys(roles[role] || {}).length);
+  $('captionRoleEmphasisHint').hidden = !enabled || J.captionRoleStylesEmphasis(track);
+  renderRoleActiveNotes(project, track, roles, defaults);
+  paintRoleSample(project, track, roles, defaults);
   const warnings = $('captionRolesWarnings'); warnings.replaceChildren();
-  const project = ui.store.project, used = J.captionRoleFonts(project);
+  const used = J.captionRoleFonts(project);
   for (const font of J.captionFontStatus(project).filter(item => used.includes(item.key))) {
     const message = !font.ready ? '指定フォントを読み込めませんでした。ネットワークを確認するか、別のフォントを選んでください。'
       : !font.bundled ? `${font.label}: アプリに同梱されていないため、環境によって文字幅が変わる場合があります。` : null;
@@ -44157,12 +44410,48 @@ function renderRolesPanel() {
   }
 }
 
+/* The spoken word: where its effect is chosen, and the older role override that still wins over Effects. */
+function renderRoleActiveNotes(project, track, roles, defaults) {
+  const advanced = project.style && project.style.editor === 'advanced', active = roles.active || {}, effect = lookLabel('active', active.treatment || defaults.active) || '—';
+  $('captionRoleActiveHint').textContent = advanced ? `動き方は「${effect}」です。エフェクトの「話している単語」で変えられます。`
+    : `動き方は「${effect}」です。詳細モードにすると、エフェクトで変えられます。`;
+  $('captionRoleActiveOpen').hidden = !advanced || !track;
+  $('captionRoleActiveOverride').hidden = !active.treatment;
+  $('captionRoleActiveOverrideText').textContent = active.treatment ? `このトラックでは話している単語の動きが「${lookLabel('active', active.treatment)}」に固定され、エフェクトの設定より優先されています。` : '';
+  // An effect setting's colour is drawn before the role colour (compositor), so say when the role colour cannot show.
+  const effectColor = !!track && J.captionTrackSegments(project, track.id).some(segment => {
+    const plan = J.captionResolvedPlan(project.plans[segment.id]);
+    return !!J.captionLookSettingsFor(plan.lookSettings, 'active', active.treatment || plan.activeWordTreatment).color;
+  });
+  $('captionRoleActiveColorNote').hidden = !effectColor;
+}
+
+/* A still sample drawn by the caption compositor with what this track resolves to. */
+function paintRoleSample(project, track, roles, defaults) {
+  const canvas = $('captionRoleSample'); if (!canvas || !J.paintCaptionRoleSample || !canvas.getContext) return;
+  const base = roles.base || {}, style = defaults.style || {};
+  J.paintCaptionRoleSample(canvas, roles, { font: base.font || style.font, textColor: base.color || defaults.textColor, accentColor: defaults.accentColor,
+    activeWordTreatment: defaults.active || 'captionActiveColor', captionTreatment: style.captionTreatment || 'outline' });
+}
+
 function applyRoleInput(input) {
   const track = roleTrack(); if (!track) return;
   const [role, field] = ROLE_CONTROLS[input.id];
-  let value = input.value === '' ? null : input.type === 'number' ? Number(input.value) : input.value;
-  if (input.type === 'color') input.dataset.unset = '';
+  const value = input.value === '' ? null : input.type === 'range' ? roleStoredValue(input.id, Number(input.value)) : input.value;
   runCommand({ type: 'set-track-roles', trackId: track.id, roles: { [role]: { [field]: value } } });
+}
+
+/* While a slider moves, only its readout follows (the command runs on release). */
+function previewRoleInput(input) {
+  const track = roleTrack(), out = document.querySelector(`[data-role-value="${input.id}"]`); if (!track || !out) return;
+  const value = roleStoredValue(input.id, Number(input.value));
+  out.textContent = roleValueText(input.id, value, true, input.id === 'captionRoleEmphasisAmount' ? J.captionEmphasisCount(ui.store.project, track.id, value) : null);
+}
+
+function openActiveEffect() {
+  const track = roleTrack(), tracks = ui.store.project.tracks || [];
+  ui.lookScope = tracks.length > 1 && track ? `track:${track.id}` : 'project'; ui.lookPick = 'active'; ui.lookSignature = null;
+  selectStyleTab('effects'); renderLookPanel();
 }
 
 function clearRoleInput(button) {
@@ -44400,6 +44689,7 @@ function bind() {
     const id = ui.store.nextSegmentId();
     if (runCommand({ type: 'create-text-block', text: $('captionManualText').value, trackId: $('captionManualTrack').value || undefined,
       start: startText === '' ? NaN : Number(startText), end: endText === '' ? NaN : Number(endText) }, id, id)) {
+      selectSegment(id, true);   // seek there too, or the playhead would select the caption under it again
       $('captionManualText').value = '';
       $('captionManualStart').value = endText;
       $('captionManualEnd').value = Number(endText) + 3;
@@ -44428,22 +44718,31 @@ function bind() {
   $('captionSave').addEventListener('click', () => J.saveFile(`jizura-${ui.store.project.id}.json`, ui.store.serialize()));
   for (const id of ['captionExport', 'captionExportPanel']) $(id).addEventListener('click', () => exportCaptions().catch(error => status(error.message, true)));
   $('captionNew').addEventListener('click', () => { if (ui.preview) ui.preview.disconnect(); if (ui.media) ui.media.close(); ui.media = null; ui.preview = null; ui.selectedId = null; setProject(emptyProject()); $('captionProjectName').textContent = '無題の字幕プロジェクト'; $('captionRelinkNotice').hidden = true; $('captionPreviewEmpty').hidden = false; $('captionMediaName').textContent = '動画未選択'; $('captionPlay').disabled = true; $('captionScrub').disabled = true; status('新しいプロジェクトを作成しました。'); });
-  $('captionLock').addEventListener('click', () => { const segment = selectedSegment(); if (!segment) return; const locked = !!(segment.locks && segment.locks.visualPlan); runCommand({ type: 'set-segment-locks', segmentId: segment.id, locked: !locked }, segment.id); });
+  $('captionLock').addEventListener('change', event => { const segment = selectedSegment(); if (!segment) return; runCommand({ type: 'set-segment-locks', segmentId: segment.id, locked: event.target.checked }, segment.id); });
   $('captionReroll').addEventListener('click', () => { const segment = selectedSegment(); if (!segment) return; ui.variation += 1; if (runCommand({ type: 'randomize-caption-look', segmentId: segment.id, variation: ui.variation }, segment.id)) status('選択した字幕をランダムに決めました。'); });
-  $('captionDisableAnimation').addEventListener('click', () => { const segment = selectedSegment(); if (!segment) return; const plan = J.captionResolvedPlan(ui.store.project.plans[segment.id]);
-    runCommand({ type: 'set-segment-animation-disabled', segmentId: segment.id, disabled: !plan.animationDisabled }, segment.id); });
+  $('captionDisableAnimation').addEventListener('change', event => { const segment = selectedSegment(); if (!segment) return;
+    runCommand({ type: 'set-segment-animation-disabled', segmentId: segment.id, disabled: event.target.checked }, segment.id); });
+  $('captionEditLook').addEventListener('click', openSegmentLook);
   $('captionBlockApply').addEventListener('click', applyBlockText); $('captionBlockDelete').addEventListener('click', deleteBlock);
   for (const [key, id] of Object.entries(BLOCK_ANIMATION_CONTROLS)) $(id).addEventListener('change', event => setBlockAnimation(key, event.target.value));
   $('captionSelectedStart').addEventListener('change', applyTiming); $('captionSelectedEnd').addEventListener('change', applyTiming);
-  $('captionSplit').addEventListener('click', () => { const segment = selectedSegment(), beforeTokenId = $('captionSplitPoint').value; if (!segment || !beforeTokenId) return;
-    const nextId = ui.store.nextSegmentId(); if (runCommand({ type: 'split-segment', segmentId: segment.id, beforeTokenId, newSegmentId: nextId, boundarySource: 'manual' }, segment.id, nextId)) selectSegment(nextId, true); });
-  $('captionMerge').addEventListener('click', () => { const segment = selectedSegment(); if (!segment) return; const next = J.captionTrackNeighbor(ui.store.project, segment, 1);
-    if (next) runCommand({ type: 'merge-segments', segmentId: segment.id, nextSegmentId: next.id, boundarySource: 'manual' }, segment.id, segment.id); });
-  $('captionTokenList').addEventListener('change', event => {
-    const textId = event.target.dataset.tokenText, emphasisId = event.target.dataset.tokenEmphasis, moveId = event.target.dataset.tokenMove;
-    if (moveId) { if (event.target.checked) ui.moveTokens.add(moveId); else ui.moveTokens.delete(moveId); }
-    else if (textId) runCommand({ type: 'edit-token-text', tokenId: textId, text: event.target.value.trim() }, textId);
-    else if (emphasisId) runCommand({ type: 'set-manual-emphasis', tokenId: emphasisId, value: event.target.checked ? { enabled: true, reason: 'editor' } : null }, emphasisId);
+  document.querySelectorAll('[data-nudge]').forEach(button => button.addEventListener('click', event => { event.preventDefault(); nudgeTiming(button.dataset.nudge, Number(button.dataset.step)); }));
+  $('captionStartAtPlayhead').addEventListener('click', () => timingAtPlayhead('start')); $('captionEndAtPlayhead').addEventListener('click', () => timingAtPlayhead('end'));
+  $('captionMergePrev').addEventListener('click', () => mergeWith(-1)); $('captionMerge').addEventListener('click', () => mergeWith(1));
+  $('captionPrev').addEventListener('click', () => stepCaption(-1)); $('captionNext').addEventListener('click', () => stepCaption(1));
+  $('captionTokenList').addEventListener('click', event => {
+    const cut = event.target.closest('[data-split-before]'), chip = event.target.closest('[data-word-id]');
+    if (cut) splitBefore(cut.dataset.splitBefore); else if (chip) selectWord(chip.dataset.wordId);
+  });
+  $('captionWordText').addEventListener('change', event => { if (ui.wordId) runCommand({ type: 'edit-token-text', tokenId: ui.wordId, text: event.target.value.trim() }, ui.wordId); });
+  $('captionWordText').addEventListener('keydown', event => { if (event.key === 'Escape') { ui.wordId = null; renderInspector(); } });
+  document.querySelectorAll('#captionWordEditor [data-emphasis]').forEach(button => button.addEventListener('click', () => {
+    if (ui.wordId) runCommand({ type: 'set-manual-emphasis', tokenId: ui.wordId, value: EMPHASIS_VALUES[button.dataset.emphasis] }, ui.wordId);
+  }));
+  $('captionMoveWordPicker').addEventListener('click', event => {
+    const chip = event.target.closest('[data-move-word]'); if (!chip) return;
+    if (ui.moveTokens.has(chip.dataset.moveWord)) ui.moveTokens.delete(chip.dataset.moveWord); else ui.moveTokens.add(chip.dataset.moveWord);
+    renderInspector();
   });
   $('captionEffect').addEventListener('change', () => {
     if ($('captionEffect').value !== 'auto') {
@@ -44493,8 +44792,14 @@ function bind() {
   $('captionTrackAccentClear').addEventListener('click', () => applyTrackStyle('accentColor', null));
   $('captionMoveSegment').addEventListener('click', () => moveToTrack(true)); $('captionMoveTokens').addEventListener('click', () => moveToTrack(false));
   fillRoleOptions();
-  for (const id of Object.keys(ROLE_CONTROLS)) $(id).addEventListener('change', () => applyRoleInput($(id)));
-  document.querySelectorAll('[data-role-clear]').forEach(button => button.addEventListener('click', () => clearRoleInput(button)));
+  for (const id of Object.keys(ROLE_CONTROLS)) {
+    $(id).addEventListener('change', () => applyRoleInput($(id)));
+    if ($(id).type === 'range') $(id).addEventListener('input', () => previewRoleInput($(id)));
+  }
+  document.querySelectorAll('[data-role-clear]').forEach(button => button.addEventListener('click', event => { event.preventDefault(); clearRoleInput(button); }));
+  $('captionRoleTrack').addEventListener('change', event => selectTrack(event.target.value));
+  $('captionRoleActiveOpen').addEventListener('click', event => { event.preventDefault(); openActiveEffect(); });
+  $('captionRoleActiveOverrideClear').addEventListener('click', () => { const track = roleTrack(); if (track) runCommand({ type: 'set-track-roles', trackId: track.id, roles: { active: { treatment: null } } }); });
   $('captionRolesReset').addEventListener('click', () => { const track = roleTrack(); if (track) runCommand({ type: 'set-track-roles', trackId: track.id, reset: true }); });
   window.addEventListener('resize', onWorkbenchResize);
   if (typeof ResizeObserver === 'function') { const observer = new ResizeObserver(onWorkbenchResize); observer.observe(document.querySelector('.caption-stage')); }   // strip height changes with the track count

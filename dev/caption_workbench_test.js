@@ -25,6 +25,16 @@ const css = fs.readFileSync(path.join(root, 'app', 'style.css'), 'utf8');
 assert.match(css, /\.caption-left \{ grid-column: 1;[\s\S]*\.caption-inspector \{ grid-column: 2;[\s\S]*\.caption-stage \{ grid-column: 3;/, 'desktop order must be transcript | style | video');
 assert.ok(body.indexOf('id="captionVideoEditor"') > body.indexOf('id="captionStylePane_video"') && body.indexOf('id="captionVideoEditor"') < body.indexOf('id="captionStylePane_export"'), 'video editor is not in the Video settings tab of the Style panel');
 assert.ok(['roles', 'caption'].every(name => body.indexOf(`id="captionLeftPane_${name}"`) > 0 && body.indexOf(`id="captionLeftPane_${name}"`) < body.indexOf('class="caption-stage"')), 'Text roles and Selected caption are not tabs of the transcript column');
+/* Word styles (roles): a track picker, a compositor-drawn sample, a reset per value; the spoken word's effect lives in Effects only */
+const rolesPane = body.slice(body.indexOf('id="captionLeftPane_roles"'), body.indexOf('id="captionLeftPane_caption"'));
+for (const id of ['captionRoleTrack', 'captionRoleSample', 'captionRoleEmphasisAmount', 'captionRoleEmphasisHint', 'captionRoleActiveOverride', 'captionRoleActiveOverrideClear', 'captionRoleActiveOpen', 'captionRolesReset']) {
+  assert.match(rolesPane, new RegExp(`id="${id}"`), `Word styles is missing #${id}`);
+}
+assert.doesNotMatch(body, /id="captionRoleActiveTreatment"/, 'the spoken-word effect is chosen in Effects, not in Word styles');
+for (const id of ['captionRoleBaseFont', 'captionRoleBaseColor', 'captionRoleBaseFontSize', 'captionRoleActiveColor', 'captionRoleEmphasisColor', 'captionRoleEmphasisFont', 'captionRoleEmphasisScale', 'captionRoleEmphasisAmount']) {
+  assert.match(rolesPane, new RegExp(`data-role-clear="${id}"`), `#${id} has no reset button`);
+}
+assert.match(source, /J\.paintCaptionRoleSample\(/, 'the Word styles sample is not drawn by the caption compositor');
 assert.ok(body.indexOf('id="captionTimeline"') > body.indexOf('caption-timeline-strip') && body.indexOf('id="captionPlay"') > body.indexOf('caption-timeline-strip'), 'transport and timeline are not in the bottom strip');
 assert.match(source, /function fitVideoColumn[\s\S]*J\.videoOutputSize[\s\S]*--caption-video-w/, 'video column width does not follow the output format');
 assert.match(source, /const boxFrame = \(\) => \{[\s\S]*J\.videoOutputSize/, 'box editor frame must be the output frame, not the source video');

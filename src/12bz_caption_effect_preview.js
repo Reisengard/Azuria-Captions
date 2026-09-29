@@ -13,14 +13,39 @@ const cache = new Map();
 
 /* A one-caption project. `plan` holds the effect choices; unset stages stay still / plain. */
 J.captionSampleProject = (plan = {}, options = {}) => {
-  const duration = options.duration || 2.4, words = options.words || SAMPLE_WORDS, per = duration / words.length;
-  const tokens = words.map((text, index) => ({ id: `w${index}`, text, start: index * per, end: (index + 1) * per, source: 'sample' }));
+  const duration = options.duration || 2.4, words = options.words || SAMPLE_WORDS, per = duration / words.length, frame = options.frame || FRAME;
+  const emphasize = new Set(options.emphasize || []);
+  const tokens = words.map((text, index) => Object.assign({ id: `w${index}`, text, start: index * per, end: (index + 1) * per, source: 'sample' },
+    emphasize.has(index) ? { manualEmphasis: { enabled: true } } : {}));
   const segment = { id: 's1', start: 0, end: duration, tokenIds: tokens.map(token => token.id), trackId: J.CAPTION_PRIMARY_TRACK_ID };
   const box = { x: .05, y: .1, width: .9, height: .8 };
   const generated = Object.assign({ id: 'p1', segmentId: 's1', trackId: J.CAPTION_PRIMARY_TRACK_ID, layout: 'captionCenterStack', entrance: 'cut', hold: 'captionStill', exit: 'cut',
     activeWordTreatment: 'captionActiveColor', captionTreatment: 'outline', motion: .7, seed: 7, fontSize: 56, box, accentColor: '#4fd6ff', textColor: '#ffffff' }, plan);
-  return { mode: 'video-captions', media: { width: FRAME.width, height: FRAME.height, duration }, transcript: { tokens }, tracks: [{ id: J.CAPTION_PRIMARY_TRACK_ID, primary: true, box }],
+  const track = Object.assign({ id: J.CAPTION_PRIMARY_TRACK_ID, primary: true, box }, options.roles ? { roles: options.roles } : {});
+  return { mode: 'video-captions', media: { width: frame.width, height: frame.height, duration }, transcript: { tokens }, tracks: [track],
     segments: [segment], plans: { s1: { id: 'p1', segmentId: 's1', generated, manual: {}, lockedFields: [] } }, style: { preset: 'creator' }, settings: {}, seed: 1 };
+};
+
+/* A still sample of a track's word styles: the second word is being spoken, the last one is emphasised.
+   `plan` carries what the track resolves to (font, colours, spoken-word effect, text finish); `roles` are the track's roles. */
+const ROLE_SAMPLE_WORDS = ['Every', 'word', 'counts', '100%'];
+const ROLE_SAMPLE_FRAME = { width: 400, height: 125 };
+J.paintCaptionRoleSample = (canvas, roles, plan = {}) => {
+  const ctx = canvas.getContext('2d'), per = .6, words = ROLE_SAMPLE_WORDS;
+  const project = J.captionSampleProject(Object.assign({ fontSize: 34, box: { x: .03, y: .06, width: .94, height: .88 } }, plan),
+    { words, duration: words.length * per, frame: ROLE_SAMPLE_FRAME, roles, emphasize: [words.length - 1] });
+  const scale = canvas.width / ROLE_SAMPLE_FRAME.width;
+  try {
+    ctx.save(); ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#0d1826'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.scale(scale, scale);
+    J.drawCaptionOverlay(ctx, project, per * 1.5, { designWidth: ROLE_SAMPLE_FRAME.width, designHeight: ROLE_SAMPLE_FRAME.height, scale: 1, reducedMotion: true });
+    ctx.restore();
+  } catch (error) {
+    try { ctx.restore(); } catch (ignored) { /* nothing was saved */ }
+    ctx.fillStyle = '#131316'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+  canvas.dataset.ready = '1';
 };
 
 /* Which stage of the sample to loop for a group: the entrance, the middle, or the exit. */

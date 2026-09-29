@@ -77,21 +77,42 @@ J.captionTrackStyle = (style, track) => {
   return next;
 };
 
+/* Which of a segment's tokens count as emphasised: a manual on/off wins, else the planned score against the
+   track's threshold (`threshold` overrides it, for previews). Independent of whether the role styles anything. */
+J.captionEmphasizedTokenIds = (project, segment, plan, tokens, threshold) => {
+  const track = J.captionTrack(project, segment && segment.trackId), emphasis = track && track.roles && track.roles.emphasis || {};
+  const limit = Number.isFinite(threshold) ? threshold : Number.isFinite(emphasis.threshold) ? emphasis.threshold : J.CAPTION_EMPHASIS_THRESHOLD;
+  const scores = new Map(((plan && plan.emphasis) || []).map(item => [item.id, item.score]));
+  return (tokens || []).filter(token => {
+    const manual = token.manualEmphasis;
+    if (manual && typeof manual.enabled === 'boolean') return manual.enabled;
+    return (scores.get(token.id) || 0) >= limit;
+  }).map(token => token.id);
+};
+
 /* Draw-time description of a segment's roles: which tokens are emphasised and how. */
 J.captionRoleRender = (project, segment, plan, tokens) => {
   const track = J.captionTrack(project, segment && segment.trackId), roles = track && track.roles || {};
   const active = roles.active || {}, emphasis = roles.emphasis || {};
   const out = { active: { treatment: active.treatment || null, color: active.color || null }, emphasis: null };
-  if (!(emphasis.font || emphasis.color || emphasis.scale)) return out;
-  const threshold = Number.isFinite(emphasis.threshold) ? emphasis.threshold : J.CAPTION_EMPHASIS_THRESHOLD;
-  const scores = new Map(((plan && plan.emphasis) || []).map(item => [item.id, item.score]));
-  const tokenIds = (tokens || []).filter(token => {
-    const manual = token.manualEmphasis;
-    if (manual && typeof manual.enabled === 'boolean') return manual.enabled;
-    return (scores.get(token.id) || 0) >= threshold;
-  }).map(token => token.id);
+  if (!J.captionRoleStylesEmphasis(track)) return out;
+  const tokenIds = J.captionEmphasizedTokenIds(project, segment, plan, tokens);
   if (tokenIds.length) out.emphasis = { tokenIds, font: emphasis.font || null, color: emphasis.color || null, scale: emphasis.scale || null };
   return out;
+};
+
+/* Emphasis is only drawn once the role changes something (colour, second font or size). */
+J.captionRoleStylesEmphasis = track => { const emphasis = track && track.roles && track.roles.emphasis || {}; return !!(emphasis.font || emphasis.color || emphasis.scale); };
+
+/* How many of a track's words count as emphasised (for the editor's "how many" readout). */
+J.captionEmphasisCount = (project, trackId, threshold) => {
+  const tokens = new Map((project && project.transcript && project.transcript.tokens || []).map(token => [token.id, token]));
+  let count = 0, total = 0;
+  for (const segment of J.captionTrackSegments(project, trackId)) {
+    const list = segment.tokenIds.map(id => tokens.get(id)).filter(Boolean), plan = J.captionResolvedPlan(project.plans && project.plans[segment.id]);
+    count += J.captionEmphasizedTokenIds(project, segment, plan, list, threshold).length; total += list.length;
+  }
+  return { count, total };
 };
 
 /* Fonts a project's roles draw with (for loading and availability warnings). */
