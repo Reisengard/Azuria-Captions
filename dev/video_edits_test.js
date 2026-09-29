@@ -1,7 +1,7 @@
 'use strict';
 const assert = require('node:assert/strict'), fs = require('node:fs'), vm = require('node:vm'), path = require('node:path');
 const context = vm.createContext({ J: {}, console });
-for (const file of ['08a_project.js', '08g_caption_zones.js', '10a_video_edits.js', '10d_media_preview.js', '11d_media_audio.js', '12b_caption_store.js']) vm.runInContext(fs.readFileSync(path.join(__dirname, '../src', file), 'utf8'), context);
+for (const file of ['08a_project.js', '08g_caption_zones.js', '08i_caption_boxes.js', '10a_video_edits.js', '10d_media_preview.js', '11d_media_audio.js', '12b_caption_store.js']) vm.runInContext(fs.readFileSync(path.join(__dirname, '../src', file), 'utf8'), context);
 const J = context.J;
 const project = { schemaVersion: 2, generatorVersion: 'test', mode: 'video-captions', id: 'edits', media: { duration: 10, width: 1920, height: 1080 }, transcript: { tokens: [] }, segments: [], plans: {}, settings: {} };
 const edits = { format: 'youtube', clips: [{ start: 1, end: 3 }, { start: 5, end: 8 }], panels: [], notes: [] };
@@ -48,4 +48,22 @@ console.log('Video edits: time mapping, validation, history, persistence, overla
   const project = { settings: { videoEdit: { ...base, overlays: [overlay, { ...overlay, id: 'overlay_2', layer: 'above', x: .5, w: .5, opacity: .5 }] } } };
   J.drawVideoOverlays(ctx, project, 'below', { designWidth: 1080, designHeight: 1920 });
   assert.equal(calls.length, 0, 'an image that is not decoded yet is skipped, not a crash');
+}
+
+// The output format decides the untouched default box (boxes live in the output frame); undo restores it exactly.
+{
+  const plain = value => JSON.parse(JSON.stringify(value));   // objects from the vm context have another realm's prototypes
+  const tracked = plain(project); tracked.tracks = [J.defaultCaptionTrack(tracked)];
+  const portraitBox = plain(tracked.tracks[0].box);
+  assert.deepEqual(portraitBox, plain(J.captionZoneToBox(J.createCaptionZone('bottom', { width: 1080, height: 1920 }), { width: 1080, height: 1920 })), 'no format yet: the Shorts frame');
+  const boxes = new J.CaptionStore(tracked);
+  boxes.execute({ type: 'set-video-edits', value: { format: 'youtube', clips: [], panels: [], notes: [] } });
+  const wide = { width: 1920, height: 1080 };
+  assert.deepEqual(plain(boxes.project.tracks[0].box), plain(J.captionZoneToBox(J.createCaptionZone('bottom', wide), wide)), 'default box follows the output format');
+  boxes.undo(); assert.deepEqual(plain(boxes.project.tracks[0].box), portraitBox);
+  const keep = new J.CaptionStore(plain(tracked));
+  keep.execute({ type: 'set-track-box', trackId: J.CAPTION_PRIMARY_TRACK_ID, box: { x: .1, y: .1, width: .5, height: .2 } });
+  const editedBox = plain(keep.project.tracks[0].box);
+  keep.execute({ type: 'set-video-edits', value: { format: 'youtube', clips: [], panels: [], notes: [] } });
+  assert.deepEqual(plain(keep.project.tracks[0].box), editedBox, 'an edited box never follows the format');
 }
