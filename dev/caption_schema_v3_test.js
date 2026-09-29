@@ -15,10 +15,12 @@ const clone = value => JSON.parse(JSON.stringify(value));
 const stripTrack = value => { const copy = clone(value); const strip = item => { delete item.trackId; }; (copy.segments || []).forEach(strip); Object.values(copy.plans || {}).forEach(strip); return copy; };
 const transcript = J.importWordJson(fs.readFileSync(path.join(__dirname, 'fixtures', 'captions', 'word-timestamps.json'), 'utf8'), { duration: 15 });
 
-for (const [width, height] of [[1080, 1920], [1920, 1080]]) {
+/* Boxes live in the output frame (post format), not the source video's frame: a landscape video on the default Shorts format gets the 9:16 box. */
+for (const [width, height, format] of [[1080, 1920, null], [1920, 1080, null], [1920, 1080, 'youtube']]) {
   /* Build a genuine v2 project: planned segments and plans without any track data. */
-  const seedProject = { schemaVersion: 2, generatorVersion: 'test', mode: 'video-captions', id: `v3-${width}`, media: { duration: 15, width, height },
-    transcript, segments: [], plans: {}, safeZones: [], seed: 3107, style: { preset: 'creator' }, settings: {}, createdAt: '2026-09-27T00:00:00.000Z', updatedAt: '2026-09-27T00:00:00.000Z' };
+  const settings = format ? { videoEdit: { format, clips: [], panels: [], notes: [] } } : {};
+  const seedProject = { schemaVersion: 2, generatorVersion: 'test', mode: 'video-captions', id: `v3-${width}-${format || 'default'}`, media: { duration: 15, width, height },
+    transcript, segments: [], plans: {}, safeZones: [], seed: 3107, style: { preset: 'creator' }, settings, createdAt: '2026-09-27T00:00:00.000Z', updatedAt: '2026-09-27T00:00:00.000Z' };
   const planned = J.planCaptions(seedProject, seedProject.media);
   const v2 = Object.assign(clone(seedProject), stripTrack({ segments: planned.segments, plans: planned.plans }));
   const v2Before = JSON.stringify(v2);
@@ -30,9 +32,9 @@ for (const [width, height] of [[1080, 1920], [1920, 1080]]) {
   const track = v3.tracks[0];
   assert.equal(track.id, J.CAPTION_PRIMARY_TRACK_ID); assert.equal(track.primary, true);
   for (const field of ['x', 'y', 'width', 'height']) assert.ok(track.box[field] >= 0 && track.box[field] <= 1, `box.${field} is not normalized`);
-  const zone = J.captionProjectZones(v2, { width, height })[0];
-  assert.ok(Math.abs(track.box.x * width - zone.x) < 1e-3 && Math.abs(track.box.y * height - zone.y) < 1e-3
-    && Math.abs(track.box.width * width - zone.width) < 1e-3 && Math.abs(track.box.height * height - zone.height) < 1e-3, 'box is not derived from the current zone');
+  const out = J.videoOutputSize(v2), zone = J.captionProjectZones(v2, out)[0];
+  assert.ok(Math.abs(track.box.x * out.width - zone.x) < 1e-3 && Math.abs(track.box.y * out.height - zone.y) < 1e-3
+    && Math.abs(track.box.width * out.width - zone.width) < 1e-3 && Math.abs(track.box.height * out.height - zone.height) < 1e-3, 'box is not derived from the current zone');
 
   /* Existing content is untouched apart from the new trackId. */
   assert.deepStrictEqual(stripTrack({ segments: v3.segments }).segments, clone(v2.segments));

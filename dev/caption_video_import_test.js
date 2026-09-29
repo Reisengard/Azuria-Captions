@@ -14,8 +14,11 @@ class Element {
   appendChild(child) { return child; }
   append() {}
   querySelectorAll() { return []; }
+  closest() { return null; }
   get childElementCount() { return 0; }
 }
+// Only for font measurement while the modules load; page elements have no 2D context, so canvas painting is skipped.
+class Canvas extends Element { getContext() { return { measureText: text => ({ width: String(text).length * 30 }) }; } }
 class Video extends Element {
   constructor() { super(); this.duration = 15; this.videoWidth = 1920; this.videoHeight = 1080; this.currentTime = 0; this.paused = true; }
   load() { if (this.src) queueMicrotask(() => this.emit('loadedmetadata')); }
@@ -27,16 +30,20 @@ const elements = new Map();
 const el = id => { if (!elements.has(id)) elements.set(id, new Element()); return elements.get(id); };
 let previews = 0;
 const context = vm.createContext({ console, Uint8Array, Set, Map, queueMicrotask,
-  document: { querySelectorAll: () => [], getElementById: el, createElement: tag => tag === 'video' ? new Video() : new Element() },
+  document: { querySelector: () => null, querySelectorAll: () => [], getElementById: el, createElement: tag => tag === 'video' ? new Video() : tag === 'canvas' ? new Canvas() : new Element() },
   URL: { createObjectURL: () => 'blob:test', revokeObjectURL() {} },
-  J: { captionStyleProfileId: () => 'creator', resolveCaptionLook: () => ({ look: {}, explicit: {} }), captionTrackProjectStyle: style => style, captionLookOptions: () => [], CAPTION_STANDARD_LOOKS: { creator: {} },
-    CAPTION_LOOK_KEYS: ['layout', 'enter', 'hold', 'exit', 'active'], CAPTION_LOOK_FIELDS: { layout: { group: 'layout', plan: 'layout' }, enter: { group: 'enter', plan: 'entrance' }, hold: { group: 'hold', plan: 'hold' }, exit: { group: 'exit', plan: 'exit' }, active: { group: 'active', plan: 'activeWordTreatment' } },
-    defaultCaptionTrack: () => ({ id: 'track_main', primary: true }), captionTrack: () => null, captionEffectiveBox: () => null, captionBoxWarnings: () => [], captionSyncDefaultBoxes: project => project, captionSyncTrackBoxes: project => project, captionBoxCollisions: () => [], captionTrackSegments: () => [], captionTrackNeighbor: () => null, captionSegmentsAt: () => [], CAPTION_MAX_TRACKS: 3, CAPTION_PRIMARY_TRACK_ID: 'track_main', CAPTION_FONTS: [], FONTS: {}, CAPTION_ACTIVE: {}, captionRoleFonts: () => [], captionFontStatus: () => [], CaptionStore: class { constructor(project) { this.project = project; } canUndo() { return false; } canRedo() { return false; } },
-    MediaPreviewController: class { constructor(options) { this.video = options.video; } connect() { previews++; return this; } renderNow() {} disconnect() {} } },
+  J: {},
   addEventListener() {}
 });
 context.window = context;
-for (const file of ['10a_video_edits.js', '10c_media_import.js', '12c_caption_workbench.js']) vm.runInContext(fs.readFileSync(path.join(root, 'src', file), 'utf8'), context);
+/* The real modules (store, planner, looks, boxes, tracks) so the workbench never runs against a stale hand-made J.
+   Left out: the Lyric Motion UI, the product shell and the video editor panel (DOM-heavy, not under test here).
+   Only the preview controller is replaced: it needs a real canvas and video frames. */
+for (const file of fs.readdirSync(path.join(root, 'src')).filter(name => name.endsWith('.js') && !/^(12_ui|11z_product_shell|12a_video_edit_ui|12c_caption_workbench)\.js$/.test(name)).sort()) {
+  vm.runInContext(fs.readFileSync(path.join(root, 'src', file), 'utf8'), context, { filename: file });
+}
+context.J.MediaPreviewController = class { constructor(options) { this.video = options.video; } connect() { previews++; return this; } renderNow() {} disconnect() {} };
+vm.runInContext(fs.readFileSync(path.join(root, 'src', '12c_caption_workbench.js'), 'utf8'), context, { filename: '12c_caption_workbench.js' });
 const file = { name: 'clip.mp4', type: 'video/mp4', size: 1, lastModified: 1, slice: () => ({ arrayBuffer: async () => new ArrayBuffer(1) }) };
 async function select(id, selected) { el(id).files = [selected]; el(id).emit('change'); await new Promise(resolve => setImmediate(resolve)); }
 (async () => {

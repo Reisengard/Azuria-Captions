@@ -5250,12 +5250,18 @@ const round9 = value => Math.round(value * 1e9) / 1e9;
 const FALLBACK_FRAME = Object.freeze({ width: 1080, height: 1920 });
 /* Boxes, guides and safe areas live in the OUTPUT frame (the post format the preview and export use), not in the source video's frame:
    a landscape video posted as a 9:16 Short has to be placed inside the Shorts safe area. */
-const frameOf = project => {
-  const out = project && J.videoOutputSize ? J.videoOutputSize(project) : null;
-  if (out && out.width > 0 && out.height > 0) return { width: out.width, height: out.height };
+const sourceFrameOf = project => {
   const media = project && project.media;
   return media && media.width > 0 && media.height > 0 ? { width: media.width, height: media.height } : FALLBACK_FRAME;
 };
+const frameOf = project => {
+  const out = project && J.videoOutputSize ? J.videoOutputSize(project) : null;
+  if (out && out.width > 0 && out.height > 0) return { width: out.width, height: out.height };
+  return sourceFrameOf(project);
+};
+/* Saved pixel safe zones (schema 2) are in source-video pixels: the compositor draws legacy zones rescaled from the source frame,
+   so they are normalized against it to keep existing projects where they were. */
+const savedZoneFor = (project, zone) => !!zone && (Array.isArray(project.safeZones) ? project.safeZones : []).some(saved => plainObject(saved) && saved.id === zone.id && saved.kind);
 const normalizedRect = (rect, frame) => ({
   x: round9(rect.x / frame.width), y: round9(rect.y / frame.height),
   width: round9(rect.width / frame.width), height: round9(rect.height / frame.height),
@@ -5263,7 +5269,7 @@ const normalizedRect = (rect, frame) => ({
 
 /* Pixel safe zones become advisory, normalized guides (they no longer decide placement). */
 J.captionGuidesFromZones = project => {
-  const frame = frameOf(project), guides = [];
+  const frame = sourceFrameOf(project), guides = [];
   for (const zone of Array.isArray(project.safeZones) ? project.safeZones : []) {
     if (!plainObject(zone) || typeof zone.id !== 'string' || !zone.id) continue;
     if (!['x', 'y', 'width', 'height'].every(field => Number.isFinite(zone[field])) || zone.width <= 0 || zone.height <= 0) continue;
@@ -5274,9 +5280,13 @@ J.captionGuidesFromZones = project => {
 
 /* The primary track's box is the first zone the planner would consider today. */
 J.defaultCaptionTrack = project => {
-  const frame = frameOf(project);
-  let zone = null;
-  try { zone = typeof J.captionProjectZones === 'function' ? J.captionProjectZones(project, frame)[0] : null; } catch (_) { zone = null; }
+  const source = sourceFrameOf(project);
+  let frame = frameOf(project), zone = null;
+  try {
+    const saved = typeof J.captionProjectZones === 'function' ? J.captionProjectZones(project, source)[0] : null;
+    if (savedZoneFor(project, saved)) { zone = saved; frame = source; }
+    else zone = typeof J.captionProjectZones === 'function' ? J.captionProjectZones(project, frame)[0] : null;
+  } catch (_) { zone = null; }
   if (!zone) zone = J.createCaptionZone('bottom', frame);
   return {
     id: J.CAPTION_PRIMARY_TRACK_ID, name: 'Main', primary: true,
