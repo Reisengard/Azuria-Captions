@@ -1,7 +1,7 @@
 'use strict';
 const assert = require('node:assert/strict'), fs = require('node:fs'), vm = require('node:vm'), path = require('node:path');
 const context = vm.createContext({ J: {}, console });
-for (const file of ['08a_project.js', '10a_video_edits.js', '10d_media_preview.js', '11d_media_audio.js', '12b_caption_store.js']) vm.runInContext(fs.readFileSync(path.join(__dirname, '../src', file), 'utf8'), context);
+for (const file of ['08a_project.js', '08g_caption_zones.js', '10a_video_edits.js', '10d_media_preview.js', '11d_media_audio.js', '12b_caption_store.js']) vm.runInContext(fs.readFileSync(path.join(__dirname, '../src', file), 'utf8'), context);
 const J = context.J;
 const project = { schemaVersion: 2, generatorVersion: 'test', mode: 'video-captions', id: 'edits', media: { duration: 10, width: 1920, height: 1080 }, transcript: { tokens: [] }, segments: [], plans: {}, settings: {} };
 const edits = { format: 'youtube', clips: [{ start: 1, end: 3 }, { start: 5, end: 8 }], panels: [], notes: [] };

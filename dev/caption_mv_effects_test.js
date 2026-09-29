@@ -3,7 +3,7 @@
 require('./caption_preview_integration_test');
 const assert = require('node:assert/strict');
 const transcript = J.importSrt('1\n00:00:00,000 --> 00:00:03,000\nMake words move\n\n2\n00:00:03,000 --> 00:00:06,000\nKeep this look\n', { timingQuality: 'estimated' });
-const base = { schemaVersion: J.PROJECT_SCHEMA_VERSION, generatorVersion: J.PROJECT_GENERATOR_VERSION, mode: 'video-captions', id: 'mv-effects', media: { width: 1280, height: 720, duration: 6 }, transcript, segments: [], plans: {}, safeZones: [], settings: {}, seed: 3107, style: { preset: 'creator' } };
+const base = { schemaVersion: 2, generatorVersion: J.PROJECT_GENERATOR_VERSION, mode: 'video-captions', id: 'mv-effects', media: { width: 1280, height: 720, duration: 6 }, transcript, segments: [], plans: {}, safeZones: [], settings: {}, seed: 3107, style: { preset: 'creator' } };
 Object.assign(base, J.planCaptions(base, base.media));
 const store = new J.CaptionStore(base);
 const lockedId = store.project.segments[1].id;

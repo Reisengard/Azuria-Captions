@@ -11,7 +11,8 @@ const RECOVERY = Object.freeze({
   MEDIA_AUDIO_CODEC_UNSUPPORTED: 'Convert the soundtrack to AAC in an MP4 file. JIZURA will not silently remove audio.',
   MEDIA_CONTAINER_MALFORMED: 'Re-export the source as a standard H.264/AAC MP4 and try again.',
   MEDIA_DEMUX_FAILED: 'Check that the file is a complete, readable MP4. Re-export it if necessary.',
-  MEDIA_ENCODER_UNSUPPORTED: 'Use the latest desktop Chrome or Edge, update graphics drivers, or export a shorter PNG sequence from Lyric Motion.',
+  // No other caption encoder exists in the app: the fallback is the saved project, relinked and exported where H.264 works.
+  MEDIA_ENCODER_UNSUPPORTED: 'Use the latest desktop Chrome or Edge, or update graphics drivers. Save the project, then open it with the same video on a computer where export works; nothing is lost.',
   MEDIA_FILE_SAVE_REQUIRED: 'Open JIZURA in Chrome or Edge so you can choose a file-backed save location.',
   MEDIA_AUDIO_PASSTHROUGH_UNAVAILABLE: 'Use AAC audio in the source MP4; audio is never omitted without warning.',
   MEDIA_AUDIO_START_UNSUPPORTED: 'Re-export the source with video and audio starting at 00:00.',

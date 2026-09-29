@@ -10,7 +10,7 @@ global.document = { fonts: { check: () => true, add: () => {}, ready: Promise.re
 for (const name of fs.readdirSync(path.join(root, 'src')).filter(name => name.endsWith('.js') && name !== '12_ui.js').sort()) {
   const filename = path.join(root, 'src', name); vm.runInThisContext(fs.readFileSync(filename, 'utf8'), { filename });
 }
-const capability = (extra = {}) => Object.assign({ intensity: 1, motionCost: 0.08, attentionCost: 0.08, captionSafe: true, liveSafe: true,
+const capability = (extra = {}) => Object.assign({ intensity: 1, motionCost: 0.08, attentionCost: 0.08, captionSafe: true, 
   minDuration: 0.2, preferredDuration: 1, maxWords: 8, portraitFriendly: true, emojiSafe: true, requiresFullFrame: false,
   flashes: false, movesCamera: false, incompatibleComponentIds: [], incompatibleCategories: [] }, extra);
 const register = (group, id, extra) => J.register(group, id, Object.assign({ name: `Test ${id}` }, capability(extra), { plan() {}, draw() {} }), 'caption-planner-test');

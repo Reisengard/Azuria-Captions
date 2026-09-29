@@ -86,9 +86,13 @@ J.scoreCaptionEmphasis = (token, context = {}) => {
 J.applyCaptionEmphasis = transcript => {
   if (typeof J.validateTranscript === 'function') J.validateTranscript(transcript);
   const result = clone(transcript);
-  result.tokens = result.tokens.map((token, index, tokens) => Object.assign({}, token, {
-    emphasis: J.scoreCaptionEmphasis(token, { index, tokens }),
-  }));
+  // Typed text blocks and speech are scored as separate streams, so a title laid over speech
+  // does not change the context (sentence start, repetition) of the spoken words, or vice versa.
+  const typed = token => token.source === 'manual';
+  const speech = result.tokens.filter(token => !typed(token)), blocks = result.tokens.filter(typed);
+  const scored = new Map();
+  for (const stream of [speech, blocks]) stream.forEach((token, index) => scored.set(token, J.scoreCaptionEmphasis(token, { index, tokens: stream })));
+  result.tokens = result.tokens.map(token => Object.assign({}, token, { emphasis: scored.get(token) }));
   return result;
 };
 })();

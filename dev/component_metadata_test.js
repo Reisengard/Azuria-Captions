@@ -21,7 +21,7 @@ assert.ok(!J.captionCandidates('layout').includes(legacyKey), 'caption picker se
 
 const safe = {
   name: 'Fixture safe layout', intensity: 1, motionCost: 0.2, attentionCost: 0.1,
-  captionSafe: true, liveSafe: true, minDuration: 0.4, preferredDuration: 1.2, maxWords: 8,
+  captionSafe: true, minDuration: 0.4, preferredDuration: 1.2, maxWords: 8,
   portraitFriendly: true, emojiSafe: true, requiresFullFrame: false, flashes: false, movesCamera: false,
   incompatibleComponentIds: ['enter.fixtureUnsafe'], incompatibleCategories: ['flash'], plan() {}, draw() {},
 };
@@ -35,10 +35,6 @@ assert.equal(J.captionComponentEligibility('layout', 'fixtureCaptionSafe', { sel
 const unsafe = Object.assign({}, safe, { name: 'Fixture unsafe layout', captionSafe: false });
 J.register('layout', 'fixtureCaptionUnsafe', unsafe, 'test');
 assert.equal(J.captionComponentEligibility('layout', 'fixtureCaptionUnsafe').code, 'COMPONENT_NOT_CAPTION_SAFE');
-
-const liveUnsafe = Object.assign({}, safe, { name: 'Fixture live-unsafe layout', liveSafe: false });
-J.register('layout', 'fixtureLiveUnsafe', liveUnsafe, 'test');
-assert.equal(J.captionComponentEligibility('layout', 'fixtureLiveUnsafe', { live: true }).code, 'COMPONENT_NOT_LIVE_SAFE');
 
 assert.throws(() => J.register('layout', 'fixtureBroken', {
   name: 'Fixture broken component', intensity: 7,

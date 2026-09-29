@@ -112,7 +112,8 @@ J.evaluateCaptionMotionPlan = (plan, context = {}) => {
   const repetitionCost = round(repeatedTechniques.length * budget.repetitionPenalty);
   if (repeatedTechniques.length) warnings.push('recent-technique-repetition');
 
-  const continuity = continuityCheck(plan || {}, context.previousPlan || previous, budget);
+  // An explicit previousPlan (even undefined) is the caller's per-track predecessor; only fall back to the global one when absent.
+  const continuity = continuityCheck(plan || {}, Object.prototype.hasOwnProperty.call(context, 'previousPlan') ? context.previousPlan : previous, budget);
   reasons.push(...continuity.violations);
   const uniqueReasons = Array.from(new Set(reasons));
   const manualOverride = context.manualOverride === true || plan.manualOverride === true;

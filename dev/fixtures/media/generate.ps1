@@ -24,6 +24,8 @@ New-AvFixture "portrait-15s-30fps-av.mp4" 1080 1920 30 15
 New-AvFixture "landscape-10s-30fps-av.mp4" 1280 720 30 10
 New-AvFixture "portrait-5s-24fps-av.mp4" 720 1280 24 5
 New-AvFixture "portrait-5s-60fps-av.mp4" 720 1280 60 5
+# Three minutes: file-backed export and long-run memory (export_chrome_check.js --long).
+New-AvFixture "portrait-180s-30fps-av.mp4" 1080 1920 30 180
 
 $silent = Join-Path $output "portrait-5s-30fps-silent.mp4"
 $silentVideo = "testsrc2=size=720x1280:rate=30:duration=5,drawtext=text='JIZURA SILENT %{pts\:hms}':x=(w-text_w)/2:y=h*0.08:fontsize=h/24:fontcolor=white:box=1:boxcolor=black@0.65"

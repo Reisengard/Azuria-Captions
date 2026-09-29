@@ -40,7 +40,7 @@ const profiles = {
 };
 J.CAPTION_STYLE_PROFILES = Object.freeze(profiles);
 
-const internalMeta = (intensity, motionCost, attentionCost) => ({ intensity, motionCost, attentionCost, captionSafe: true, liveSafe: true, minDuration: 0, maxWords: 99, portraitFriendly: true, emojiSafe: true, requiresFullFrame: false, flashes: false, movesCamera: false, incompatibleComponentIds: [], incompatibleCategories: [] });
+const internalMeta = (intensity, motionCost, attentionCost) => ({ intensity, motionCost, attentionCost, captionSafe: true, minDuration: 0, maxWords: 99, portraitFriendly: true, emojiSafe: true, requiresFullFrame: false, flashes: false, movesCamera: false, incompatibleComponentIds: [], incompatibleCategories: [] });
 const SAFE = Object.freeze({
   layout: { group: 'layout', id: 'captionStatic', metadata: internalMeta(0, 0, 0) },
   enter: { group: 'enter', id: 'captionFade', metadata: internalMeta(1, 0.12, 0.18), role: 'primary' },
@@ -50,8 +50,8 @@ const SAFE = Object.freeze({
   treat: { group: 'treat', id: 'captionBackplate', metadata: internalMeta(0, 0, 0) },
 });
 
-const styleFor = project => {
-  const source = project.style || {};
+const styleFor = (project, track) => {
+  const source = (J.captionTrackProjectStyle ? J.captionTrackProjectStyle(project, track) : project.style) || {};
   const key = typeof source === 'string' ? source : source.preset || source.profile || 'creator';
   const normalized = key === 'jizura' || key === 'mv' ? 'jizura-mv' : key;
   const base = profiles[normalized] || profiles.creator;
@@ -72,7 +72,10 @@ const frameFor = (project, media) => ({
 const hasEmoji = text => /\p{Extended_Pictographic}/u.test(text);
 const resolvedStored = stored => Object.assign({}, stored && stored.generated || {}, stored && stored.manual || {});
 const fieldsLocked = (segment, stored) => new Set([...(segment.locks && segment.locks.fields || []), ...(stored && stored.lockedFields || [])]);
-const hashSeed = (seed, segmentId, reroll = 0) => J.h(Number(seed) || 0, J.sid(String(segmentId)), reroll, J.CAPTION_PLANNER_VERSION);
+// The primary track keeps the original seed so existing projects plan identically; other tracks fold their ID in (ADR 0003).
+const hashSeed = (seed, segmentId, reroll = 0, trackId) => trackId && trackId !== J.CAPTION_PRIMARY_TRACK_ID
+  ? J.h(Number(seed) || 0, J.sid(String(trackId)), J.sid(String(segmentId)), reroll, J.CAPTION_PLANNER_VERSION)
+  : J.h(Number(seed) || 0, J.sid(String(segmentId)), reroll, J.CAPTION_PLANNER_VERSION);
 const advancedEditor = style => style.editor === 'advanced';
 // Reviewed lyric ids carry intensity 4. The caption budget would drop them before the id is stored.
 const NEUTRAL_POOL_META = Object.freeze({ intensity: 0, motionCost: 0, attentionCost: 0 });
@@ -146,7 +149,8 @@ const projectZones = (project, frame, style) => {
 const segmentText = (segment, tokenMap) => segment.tokenIds.map(id => tokenMap.get(id)).filter(Boolean).map(token => token.text).join(' ');
 const segmentEmphasis = (segment, tokenMap, strength = 1) => segment.tokenIds.map(id => tokenMap.get(id)).filter(Boolean).map(token => ({ id: token.id, score: Math.max(0, Math.min(1, (token.emphasis && token.emphasis.score || 0) * strength)), reasons: token.emphasis && token.emphasis.reasons || [] }));
 
-const candidateFor = (segment, text, emphasis, zone, style, seed, attempt, frame, project) => {
+const candidateFor = (segment, text, emphasis, placement, style, seed, attempt, frame, project) => {
+  const zone = placement.zone;
   const layout = choose(optionList('layout', SAFE.layout, segment, text, frame, style, project), seed, attempt, 11);
   const entrance = choose(optionList('enter', SAFE.enter, segment, text, frame, style, project), seed, attempt, 12);
   const hold = choose(optionList('hold', SAFE.hold, segment, text, frame, style, project), seed, attempt, 13);
@@ -163,7 +167,7 @@ const candidateFor = (segment, text, emphasis, zone, style, seed, attempt, frame
   const strongest = emphasis.reduce((best, item) => !best || item.score > best.score ? item : best, null);
   return {
     segmentId: segment.id, seed, text, tokenIds: segment.tokenIds.slice(), start: segment.start, end: segment.end,
-    zoneId: zone.id, zone: clone(zone), layout: layout.id, entrance: entrance.id, hold: hold.id, exit: exit.id,
+    zoneId: zone.id, zone: clone(zone), box: clone(placement.box), layout: layout.id, entrance: entrance.id, hold: hold.id, exit: exit.id,
     activeWordTreatment: activeId, textTreatment: treatment.id, decoration: decoration && decoration.id,
     font: style.font, fontSize: style.fontSize, alignment: style.alignment, position: zone.kind, writingMode: style.writingMode || 'horizontal',
     treatment: treatment.id, accentColor: style.accentColor, animationFamily: entrance.id,
@@ -186,10 +190,10 @@ const completeStoredPlan = (segment, candidate, oldPlan, attempt, fallback, read
   manual: clone(oldPlan && oldPlan.manual || {}), lockedFields: clone(oldPlan && oldPlan.lockedFields || []),
 });
 
-const staticFallback = (segment, text, emphasis, zone, style, seed, frame, project) => {
+const staticFallback = (segment, text, emphasis, placement, style, seed, frame, project) => {
   let fontSize = style.fontSize, readability, candidate;
   do {
-    candidate = candidateFor(segment, text, emphasis, zone, style, seed, 999, frame, project);
+    candidate = candidateFor(segment, text, emphasis, placement, style, seed, 999, frame, project);
     const pooled = group => advancedEditor(style) ? eligible(group, segment, text, frame, style, project)[0] : null;
     const layoutId = pooled('layout') || (style.layouts && style.layouts.find(id => J.LAYOUTS && J.LAYOUTS[id] && J.LAYOUTS[id].capabilities)) || SAFE.layout.id;
     const entranceId = pooled('enter') || SAFE.enter.id;
@@ -214,44 +218,63 @@ const staticFallback = (segment, text, emphasis, zone, style, seed, frame, proje
   return { candidate, readability };
 };
 
-const planOne = (segment, tokenMap, zones, style, project, projectSeed, oldPlan, recentPlans, frame, rerollCount) => {
+const planOne = (segment, tokenMap, placement, style, project, projectSeed, oldPlan, recentPlans, frame, rerollCount, previousPlan) => {
   if (segment.locks && segment.locks.visualPlan && oldPlan) return clone(oldPlan);
   const text = segmentText(segment, tokenMap), emphasis = segmentEmphasis(segment, tokenMap, Number.isFinite(style.emphasisStrength) ? style.emphasisStrength : 1);
-  const seed = hashSeed(projectSeed, segment.id, rerollCount), locked = fieldsLocked(segment, oldPlan);
+  const seed = hashSeed(projectSeed, segment.id, rerollCount, segment.trackId), locked = fieldsLocked(segment, oldPlan);
   const advanced = advancedEditor(style);
   for (let attempt = 0; attempt < style.maxAttempts; attempt++) {
-    const zone = zones[J.h(seed, attempt, 7) % zones.length];
-    let candidate = candidateFor(segment, text, emphasis, zone, style, seed, attempt, frame, project);
+    let candidate = candidateFor(segment, text, emphasis, placement, style, seed, attempt, frame, project);
     candidate = applyLocks(candidate, oldPlan, locked);
     if (!componentsCompatible(candidate.components, advanced)) continue;
     const readability = J.evaluateCaptionReadability(candidate, { frame, constraints: { minFontSize: style.minFontSize, maxLines: 2 } });
     if (!readability.allowed) continue;
     // Explicit combinations use the existing manual motion policy; component eligibility
     // and readability remain mandatory. Automatic styles retain their original budgets.
-    const motion = J.evaluateCaptionMotionPlan(motionCandidate(candidate, advanced), { profile: style.motionBudget, manualOverride: !!(style.holdEffect && style.holdEffect !== 'auto' || style.exitEffect && style.exitEffect !== 'auto'), recentPlans, previousPlan: recentPlans[recentPlans.length - 1] });
+    const motion = J.evaluateCaptionMotionPlan(motionCandidate(candidate, advanced), { profile: style.motionBudget, manualOverride: !!(style.holdEffect && style.holdEffect !== 'auto' || style.exitEffect && style.exitEffect !== 'auto'), recentPlans, previousPlan });
     if (!motion.allowed) continue;
     return completeStoredPlan(segment, candidate, oldPlan, attempt, false, readability, motion, rerollCount);
   }
-  const zone = zones.find(item => item.kind === 'bottom') || zones[0];
-  const fallback = staticFallback(segment, text, emphasis, zone, style, seed, frame, project);
+  // The placement is the user's: an unreadable fit becomes a static plan with warnings, never a moved caption.
+  const fallback = staticFallback(segment, text, emphasis, placement, style, seed, frame, project);
   const candidate = applyLocks(fallback.candidate, oldPlan, locked);
   const readability = J.evaluateCaptionReadability(candidate, { frame, constraints: { minFontSize: style.minFontSize, maxLines: 2 } });
-  const motion = J.evaluateCaptionMotionPlan(candidate, { profile: style.motionBudget, manualOverride: !!(style.holdEffect && style.holdEffect !== 'auto' || style.exitEffect && style.exitEffect !== 'auto'), recentPlans, previousPlan: recentPlans[recentPlans.length - 1] });
+  const motion = J.evaluateCaptionMotionPlan(candidate, { profile: style.motionBudget, manualOverride: !!(style.holdEffect && style.holdEffect !== 'auto' || style.exitEffect && style.exitEffect !== 'auto'), recentPlans, previousPlan });
   return completeStoredPlan(segment, candidate, oldPlan, style.maxAttempts, true, readability, motion, rerollCount);
 };
+
+/* Where a segment's caption goes: its own override, else its track's box, else (bare projects
+   without tracks) the first zone the style would have offered. The planner never picks a position. */
+const placementFor = (segment, oldPlan, project, frame, zones) => {
+  const box = J.captionEffectiveBox(project, segment, oldPlan);
+  if (box) return { box: clone(box), zone: J.captionBoxToZone(box, frame) };
+  return { box: J.captionZoneToBox(zones[0], frame), zone: zones[0] };
+};
+
+/* Zones the style offers as the default box (saved valid zones, else the style's kinds). */
+J.captionProjectZones = (project, frame) => projectZones(project, frame, styleFor(project).value);
 
 J.planCaptions = (project, media, options = {}) => {
   const frame = frameFor(project, media), resolvedStyle = styleFor(project), style = resolvedStyle.value;
   const emphasized = J.applyCaptionEmphasis(project.transcript), tokenMap = new Map(emphasized.tokens.map(token => [token.id, token]));
-  const zones = projectZones(project, frame, style), plans = {}, recentPlans = [];
+  const zones = projectZones(project, frame, style), plans = {}, recentPlans = [], lastByTrack = new Map(), styles = new Map();
+  // Budget and repetition are global (recentPlans holds every track in time order); continuity is per track (previousPlan).
+  const trackStyleFor = track => {
+    const key = track ? track.id : '';
+    if (!styles.has(key)) styles.set(key, J.captionTrackStyle(styleFor(project, track).value, track));
+    return styles.get(key);
+  };
+  const primaryTrack = J.captionTrack(project), primaryZone = primaryTrack && J.isCaptionBox(primaryTrack.box) ? J.captionBoxToZone(primaryTrack.box, frame) : zones[0];
   const segments = project.segments && project.segments.length ? project.segments : J.segmentCaptions(emphasized, {
-    duration: project.media && project.media.duration, safeZone: zones[0], existingSegments: project.segments || [], ...style.segmentation,
+    duration: project.media && project.media.duration, safeZone: primaryZone, existingSegments: project.segments || [], ...style.segmentation,
   }).segments;
   for (const segment of segments) {
     const oldPlan = project.plans && project.plans[segment.id];
     const rerollCount = options.rerollCounts && options.rerollCounts[segment.id] != null ? options.rerollCounts[segment.id] : oldPlan && oldPlan.generated && oldPlan.generated.rerollCount || 0;
-    const stored = planOne(segment, tokenMap, zones, style, project, project.seed, oldPlan, recentPlans, frame, rerollCount);
-    plans[segment.id] = stored; recentPlans.push(stored.generated);
+    const trackId = segment.trackId || J.CAPTION_PRIMARY_TRACK_ID;
+    const stored = planOne(segment, tokenMap, placementFor(segment, oldPlan, project, frame, zones), trackStyleFor(J.captionTrack(project, trackId)), project, project.seed, oldPlan, recentPlans, frame, rerollCount, lastByTrack.get(trackId));
+    if (stored.trackId == null) stored.trackId = trackId;
+    plans[segment.id] = stored; recentPlans.push(stored.generated); lastByTrack.set(trackId, stored.generated);
   }
   return { version: J.CAPTION_PLANNER_VERSION, generatorVersion: J.CAPTION_GENERATOR_VERSION, projectId: project.id,
     seed: project.seed, profile: resolvedStyle.key, frame, zones, tokens: emphasized.tokens, segments: clone(segments), plans };

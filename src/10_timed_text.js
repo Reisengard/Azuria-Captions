@@ -86,14 +86,17 @@ J.validateTranscript = (transcript, options = {}) => {
     if (Number.isFinite(options.duration) && token.end > options.duration + 1e-9) {
       fail('TOKEN_END_AFTER_DURATION', `Subtitle ends at ${token.end.toFixed(2)}s, beyond the video duration (${options.duration.toFixed(2)}s).`, { tokenId, tokenIndex: index, end: token.end, duration: options.duration });
     }
-    if (previous && token.start < previous.end) {
+    // Spoken words never overlap. Words of a manual text block (source "manual") may overlap speech or other
+    // blocks: they live on their own track, and the store keeps one caption per track on screen (ADR 0007).
+    const typed = token.source === 'manual';
+    if (!typed && previous && token.start < previous.end) {
       fail('TOKEN_TIMING_OVERLAP', `Token "${tokenId}" overlaps "${previous.id}".`, { tokenId, previousTokenId: previous.id, tokenIndex: index });
     }
     if (!J.TIMING_QUALITIES.includes(token.timingQuality)) fail('TOKEN_TIMING_QUALITY_INVALID', `Token "${tokenId}" has invalid timing quality.`, { tokenId, tokenIndex: index });
     if (token.confidence != null && (!Number.isFinite(token.confidence) || token.confidence < 0 || token.confidence > 1)) {
       fail('TOKEN_CONFIDENCE_INVALID', `Token "${tokenId}" confidence must be between 0 and 1.`, { tokenId, tokenIndex: index });
     }
-    previous = token;
+    if (!typed) previous = token;
   }
   return transcript;
 };

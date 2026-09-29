@@ -51,6 +51,25 @@ J.prepareCaptionActiveItem = (env, item) => {
   const clock = Number(config.clockTime);
   const mapped = J.captionGlyphStatesAt(item.text, config.tokens, clock);
   const treatment = config.treatment || 'captionActiveColor';
+  // Emphasis role: restyles glyphs of marked words in place (colour, scale, second font). Advances, line breaks and
+  // the anchor come from the base layout, so nothing reflows; a wider second face is squeezed into the base slot.
+  const emphasis = config.emphasis;
+  if (emphasis && Array.isArray(emphasis.tokenIds) && emphasis.tokenIds.length) {
+    const marked = new Set(emphasis.tokenIds);
+    item.charFns.push((index, glyph) => {
+      const token = mapped.glyphs[index];
+      if (!token || !marked.has(token.id)) return null;
+      const result = {};
+      if (emphasis.color) result.color = emphasis.color;
+      if (emphasis.scale && emphasis.scale !== 1) result.s = emphasis.scale;
+      if (emphasis.font) {
+        result.font = emphasis.font;
+        const ch = glyph && glyph.ch, base = ch ? J.metrics.adv(item.font, ch) : 0, second = ch ? J.metrics.adv(emphasis.font, ch) : 0;
+        if (base > 0 && second > base) result.sx = base / second;
+      }
+      return Object.keys(result).length ? result : null;
+    });
+  }
   const style = J.resolveCaptionActiveStyle(treatment, mapped.timeline.activeTokenId ? 'active' : 'upcoming', {
     accentColor: config.accentColor || (env.sc && env.sc.accent), variableWeightSupported: config.variableWeightSupported,
     scale: config.scale, lift: config.lift, weight: config.weight,

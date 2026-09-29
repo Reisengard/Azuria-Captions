@@ -9,13 +9,13 @@
 const PACK = 'caption-expressive';
 const clamp = J.clamp;
 const meta = (intensity, motionCost, attentionCost, minDuration, maxWords = 10) => ({
-  intensity, motionCost, attentionCost, captionSafe: true, liveSafe: false,
+  intensity, motionCost, attentionCost, captionSafe: true, 
   minDuration, preferredDuration: Math.max(0.7, minDuration), maxWords,
   portraitFriendly: true, emojiSafe: true, requiresFullFrame: false, flashes: false, movesCamera: false,
   incompatibleComponentIds: [], incompatibleCategories: [],
 });
 const unsafeMeta = () => ({
-  intensity: 4, motionCost: 1, attentionCost: 1, captionSafe: false, liveSafe: false,
+  intensity: 4, motionCost: 1, attentionCost: 1, captionSafe: false, 
   minDuration: 0, maxWords: 99, portraitFriendly: false, emojiSafe: false,
   requiresFullFrame: false, flashes: false, movesCamera: false,
   incompatibleComponentIds: [], incompatibleCategories: [],

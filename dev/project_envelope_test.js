@@ -21,7 +21,7 @@ const legacy = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'lyri
 const beforeLegacy = JSON.stringify(legacy);
 const migrated = J.loadProject(legacy);
 assert.equal(JSON.stringify(legacy), beforeLegacy, 'legacy migration mutated its input');
-assert.equal(migrated.schemaVersion, 2);
+assert.equal(migrated.schemaVersion, 3);
 assert.equal(migrated.mode, 'lyrics');
 assert.equal(migrated.generatorVersion, '@VERSION@');
 
@@ -29,7 +29,7 @@ const legacyPlan = J.plan(Object.assign(J.defaultProject(), legacy), null);
 const migratedPlan = J.plan(Object.assign(J.defaultProject(), migrated), null);
 assert.deepStrictEqual(migratedPlan, legacyPlan, 'lyric mode dispatch changed planner output');
 
-const caption = {
+const captionV2 = {
   schemaVersion: 2,
   generatorVersion: 'caption-mvp-1',
   mode: 'video-captions',
@@ -40,7 +40,15 @@ const caption = {
   settings: { customFutureSafeField: { preserved: true } },
   createdAt: '2026-09-27T00:00:00.000Z', updatedAt: '2026-09-27T00:00:00.000Z',
 };
+const captionV2Before = JSON.stringify(captionV2);
+const caption = J.loadProject(captionV2);
+assert.equal(JSON.stringify(captionV2), captionV2Before, 'v2 -> v3 migration mutated its input');
+assert.equal(caption.schemaVersion, 3);
+assert.equal(caption.tracks.length, 1, 'migration must add exactly one track');
+assert.equal(caption.tracks[0].id, J.CAPTION_PRIMARY_TRACK_ID);
+assert.equal(caption.tracks[0].primary, true);
 assert.deepStrictEqual(J.loadProject(J.saveProject(caption)), caption, 'caption round-trip lost data');
+assert.deepStrictEqual(J.loadProject(caption), caption, 'v3 load is not idempotent');
 
 const importedCaption = JSON.parse(JSON.stringify(caption));
 importedCaption.media = { name: 'fixture.mp4', size: 1234, lastModified: 99, fingerprint: 'sha256-fixture',

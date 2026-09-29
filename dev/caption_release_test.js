@@ -36,7 +36,7 @@ const longProject = Object.assign({}, base, { id: 'release-3min', media: { durat
 const started = performance.now(), longPlan = J.planCaptions(longProject, longProject.media), elapsedMs = performance.now() - started;
 assert.ok(longPlan.segments.length >= 60); assert.ok(elapsedMs < 30000, 'three-minute planner benchmark appears hung');
 
-const saved = J.saveProject(Object.assign({}, base, { media: Object.assign({}, base.media, { fingerprint: 'sha256-test', file: { bytes: 'must-not-save' }, objectUrl: 'blob:test' }) }));
+const saved = J.saveProject(J.loadProject(Object.assign({}, base, { media: Object.assign({}, base.media, { fingerprint: 'sha256-test', file: { bytes: 'must-not-save' }, objectUrl: 'blob:test' }) })));
 assert.ok(!saved.includes('must-not-save') && !saved.includes('blob:test'), 'project embedded runtime/source media');
 assert.throws(() => J.loadProject(Object.assign({}, base, { schemaVersion: 999 })), error => error.code === 'UNSUPPORTED_SCHEMA_VERSION');
 

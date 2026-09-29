@@ -11,6 +11,10 @@ class Element {
   emit(name, extra = {}) { for (const fn of this.listeners[name] || []) fn({ target: this, ...extra }); }
   replaceChildren() {}
   setAttribute() {}
+  appendChild(child) { return child; }
+  append() {}
+  querySelectorAll() { return []; }
+  get childElementCount() { return 0; }
 }
 class Video extends Element {
   constructor() { super(); this.duration = 15; this.videoWidth = 1920; this.videoHeight = 1080; this.currentTime = 0; this.paused = true; }
@@ -25,7 +29,7 @@ let previews = 0;
 const context = vm.createContext({ console, Uint8Array, Set, Map, queueMicrotask,
   document: { querySelectorAll: () => [], getElementById: el, createElement: tag => tag === 'video' ? new Video() : new Element() },
   URL: { createObjectURL: () => 'blob:test', revokeObjectURL() {} },
-  J: { CaptionStore: class { constructor(project) { this.project = project; } canUndo() { return false; } canRedo() { return false; } },
+  J: { defaultCaptionTrack: () => ({ id: 'track_main', primary: true }), captionTrack: () => null, captionEffectiveBox: () => null, captionBoxWarnings: () => [], captionSyncDefaultBoxes: project => project, captionSyncTrackBoxes: project => project, captionBoxCollisions: () => [], captionTrackSegments: () => [], captionTrackNeighbor: () => null, captionSegmentsAt: () => [], CAPTION_MAX_TRACKS: 3, CAPTION_PRIMARY_TRACK_ID: 'track_main', CAPTION_FONTS: [], FONTS: {}, CAPTION_ACTIVE: {}, captionRoleFonts: () => [], captionFontStatus: () => [], CaptionStore: class { constructor(project) { this.project = project; } canUndo() { return false; } canRedo() { return false; } },
     MediaPreviewController: class { constructor(options) { this.video = options.video; } connect() { previews++; return this; } renderNow() {} disconnect() {} } },
   addEventListener() {}
 });

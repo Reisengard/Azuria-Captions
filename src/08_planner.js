@@ -10,7 +10,7 @@ J.SAMPLE_LYRICS = `夜明けの色を/覚えてる
 *透明*なままじゃ終われない!`;
 
 J.defaultProject = () => ({
-  schemaVersion: 2,
+  schemaVersion: 3,
   generatorVersion: '@VERSION@',
   mode: 'lyrics',
   version: 1,

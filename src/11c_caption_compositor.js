@@ -6,6 +6,8 @@
 (() => {
 const tokenMap = project => new Map((project.transcript && project.transcript.tokens || []).map(token => [token.id, token]));
 const segmentAt = (project, time) => (project.segments || []).find(segment => time >= segment.start && time < segment.end) || null;
+// One caption per track can be on screen; primary first, later tracks on top (the z-order is the track order).
+const segmentsAt = (project, time) => J.captionSegmentsAt ? J.captionSegmentsAt(project, time) : [segmentAt(project, time)].filter(Boolean);
 
 function captionPhase(segment, time, plan) {
   if (plan.animationDisabled) return { alpha: 1, dy: 0, scale: 1 };
@@ -18,18 +20,36 @@ function captionPhase(segment, time, plan) {
 }
 
 function drawCaptionOverlay(ctx, project, time, info = {}) {
-  if (J.drawVideoNotes) J.drawVideoNotes(ctx, project, time, { designWidth: info.designWidth || project.media.width, designHeight: info.designHeight || project.media.height });
-  const segment = segmentAt(project, time); if (!segment) return null;
-  const map = tokenMap(project), tokens = segment.tokenIds.map(id => map.get(id)).filter(Boolean), text = tokens.map(token => token.text).join(' ');
+  const design = { designWidth: info.designWidth || project.media.width, designHeight: info.designHeight || project.media.height };
+  if (J.drawVideoOverlays) J.drawVideoOverlays(ctx, project, 'below', design);
+  if (J.drawVideoNotes) J.drawVideoNotes(ctx, project, time, design);
+  const segments = segmentsAt(project, time);
+  let result = null;
+  if (segments.length) {
+    const map = tokenMap(project), layers = segments.map(segment => drawCaptionSegment(ctx, project, segment, time, info, map));
+    // The first layer keeps the old single-caption result shape; `layers` lists every track drawn.
+    result = Object.assign({}, layers[0], { layers });
+  }
+  if (J.drawVideoOverlays) J.drawVideoOverlays(ctx, project, 'above', design);
+  return result;
+}
+
+function drawCaptionSegment(ctx, project, segment, time, info, map) {
+  const tokens = segment.tokenIds.map(id => map.get(id)).filter(Boolean), text = tokens.map(token => token.text).join(' ');
   const stored = project.plans && project.plans[segment.id], plan = J.captionResolvedPlan ? J.captionResolvedPlan(stored) : Object.assign({}, stored && stored.generated, stored && stored.manual);
   const W = Number(info.designWidth) || Number(project.media && project.media.width) || 1080;
   const H = Number(info.designHeight) || Number(project.media && project.media.height) || 1920;
   const sourceWidth = Number(project.media && project.media.width) || W, sourceHeight = Number(project.media && project.media.height) || H;
-  const savedZone = plan.zone, zone = savedZone ? { ...savedZone, x: savedZone.x * W / sourceWidth, y: savedZone.y * H / sourceHeight,
-    width: savedZone.width * W / sourceWidth, height: savedZone.height * H / sourceHeight } : { id: 'caption-preview-bottom', kind: 'bottom', x: W * .08, y: H * .7, width: W * .84, height: H * .2 };
+  // Position is the segment's box (override, else the box it was planned into, else its track's box).
+  // Plans saved before boxes existed carry a pixel zone only and keep rendering from it.
+  const frame = { width: W, height: H };
+  const placed = plan.box || plan.zone ? plan : { box: J.captionEffectiveBox(project, segment, stored) };
+  const zone = J.captionPlanZone(placed, frame, { width: sourceWidth, height: sourceHeight })
+    || { id: 'caption-preview-bottom', kind: 'bottom', x: W * .08, y: H * .7, width: W * .84, height: H * .2 };
+  const roleRender = J.captionRoleRender ? J.captionRoleRender(project, segment, plan, tokens) : { active: {}, emphasis: null };
   const layout = J.composeCaptionLayout ? J.composeCaptionLayout(plan.layout || 'captionBottomStack', { text, tokens, clockTime: time,
-    activeTreatment: plan.activeWordTreatment, accentColor: plan.accentColor, font: plan.font, fontSize: plan.fontSize,
-    zone, frame: { width: W, height: H }, textColor: plan.textColor || '#ffffff' }) : null;
+    activeTreatment: roleRender.active.treatment || plan.activeWordTreatment, accentColor: roleRender.active.color || plan.accentColor, emphasis: roleRender.emphasis, font: plan.font, fontSize: plan.fontSize,
+    zone, box: J.isCaptionBox(placed.box) ? placed.box : undefined, frame, textColor: plan.textColor || '#ffffff' }) : null;
   const lines = layout && layout.lines || [text], fontSize = layout && layout.fontSize || Math.max(38, Math.min(74, W / Math.max(10, text.length * .62)));
   const anchor = layout && layout.anchor || { x: zone.x + zone.width / 2, y: zone.y + zone.height / 2, align: 'center' };
   // Use the same item/effect pipeline as Lyric Motion in both preview and export.

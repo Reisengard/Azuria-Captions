@@ -8,7 +8,7 @@ const transcript = J.importSrt(`1\n00:00:00,000 --> 00:00:06,000\n${mixed}\n`, {
 assert.ok(transcript.tokens.length > 3, 'mixed CJK must be split into words, not long whitespace chunks');
 assert.equal(transcript.tokens.map(t => t.text).join(''), mixed.replace(/\s/g, ''));
 assert.throws(() => J.importSrt('not subtitles', { timingQuality: 'estimated' }), { code: 'TRANSCRIPT_EMPTY' });
-const empty = { schemaVersion: J.PROJECT_SCHEMA_VERSION, generatorVersion: J.PROJECT_GENERATOR_VERSION, mode: 'video-captions', id: 'manual-test', media: { duration: 46, width: 1920, height: 1080 }, transcript: { schemaVersion: 1, language: 'und', timingQuality: 'word', tokens: [] }, segments: [], plans: {}, safeZones: [], seed: 3107, style: { preset: 'creator' }, settings: {} };
+const empty = { schemaVersion: 2, generatorVersion: J.PROJECT_GENERATOR_VERSION, mode: 'video-captions', id: 'manual-test', media: { duration: 46, width: 1920, height: 1080 }, transcript: { schemaVersion: 1, language: 'und', timingQuality: 'word', tokens: [] }, segments: [], plans: {}, safeZones: [], seed: 3107, style: { preset: 'creator' }, settings: {} };
 const store = new J.CaptionStore(empty);
 store.execute({ type: 'add-caption', text: mixed, start: 0, end: 5 });
 assert.equal(store.project.segments.length, 1);

@@ -7,7 +7,7 @@
 const PACK = 'caption-core';
 const clamp = J.clamp;
 const meta = (intensity, motionCost, attentionCost, minDuration = 0.3) => ({
-  intensity, motionCost, attentionCost, captionSafe: true, liveSafe: true,
+  intensity, motionCost, attentionCost, captionSafe: true, 
   minDuration, preferredDuration: 0.7, maxWords: 12, portraitFriendly: true, emojiSafe: true,
   requiresFullFrame: false, flashes: false, movesCamera: false,
   incompatibleComponentIds: [], incompatibleCategories: [],
@@ -74,9 +74,9 @@ J.registerCaptionActive = (id, definition) => {
   if (!J.CAPTION_ACTIVE_ORDER.includes(id)) J.CAPTION_ACTIVE_ORDER.push(id);
   return definition;
 };
-J.captionActiveCandidates = context => J.CAPTION_ACTIVE_ORDER.filter(id => {
+J.captionActiveCandidates = () => J.CAPTION_ACTIVE_ORDER.filter(id => {
   const def = J.CAPTION_ACTIVE[id], c = def && def.capabilities;
-  return c && c.captionSafe && (!context || !context.live || c.liveSafe);
+  return c && c.captionSafe;
 });
 
 const activeMeta = (attentionCost = 0.06) => meta(0, 0, attentionCost, 0);

@@ -38,6 +38,8 @@ const J = context.J;
   const supported = await J.checkCaptionExportSupport({}, { VideoEncoder: { async isConfigSupported(config) { return { supported: true, config }; } } });
   assert.equal(supported.supported, true); assert.equal(supported.config.width, 1080); assert.equal(supported.config.height, 1920); assert.equal(supported.config.framerate, 30);
   assert.equal((await J.checkCaptionExportSupport({}, {})).supported, false);
+  assert.equal(J.captionExportFrameTimes(4.8 + 6.3, 30).length, 333, 'float noise in summed kept sections must not add a frame');
+  assert.equal(J.captionExportFrameTimes(15, 30).length, 450); assert.equal(J.captionExportFrameTimes(15.018, 30).length, 451, 'a partial last frame is still covered');
   assert.deepStrictEqual(Array.from([J.CAPTION_EXPORT_DEFAULTS.width, J.CAPTION_EXPORT_DEFAULTS.height, J.CAPTION_EXPORT_DEFAULTS.fps]), [1080, 1920, 30]);
   console.log('media export tests passed');
 })().catch(error => { console.error(error); process.exitCode = 1; });

@@ -162,8 +162,14 @@ J.segmentCaptions = (transcript, options = {}) => {
     const locks = plainObject(range.segment.locks) ? range.segment.locks : {};
     if (range.segment.boundarySource === 'manual' || locks.segmentation === true) { forced.add(range.from); forced.add(range.to); }
   }
+  // A segmentation-locked caption (every text block, by default) is kept whole: its edges are forced and nothing is planned inside it.
+  const whole = new Map(ranges.filter(range => plainObject(range.segment.locks) && range.segment.locks.segmentation === true).map(range => [range.from, range.to]));
   const boundaries = Array.from(forced).sort((a, b) => a - b), planned = [];
-  for (let index = 1; index < boundaries.length; index++) planned.push(...planSpan(tokens, boundaries[index - 1], boundaries[index], config, forced));
+  for (let index = 1; index < boundaries.length; index++) {
+    const from = boundaries[index - 1], to = boundaries[index];
+    if (whole.get(from) === to) planned.push({ from, to, detail: scoreSegment(tokens, from, to, config, forced) });
+    else planned.push(...planSpan(tokens, from, to, config, forced));
+  }
   const exactExisting = new Map(ranges.map(range => [`${range.from}:${range.to}`, range.segment]));
   const segments = planned.map((item, index) => {
     const slice = tokens.slice(item.from, item.to), existing = exactExisting.get(`${item.from}:${item.to}`);
@@ -174,6 +180,7 @@ J.segmentCaptions = (transcript, options = {}) => {
     return {
       id: existing && existing.id ? existing.id : `segment_${String(index + 1).padStart(6, '0')}`,
       tokenIds: slice.map(token => token.id), start: round(start), end: round(end),
+      trackId: existing && existing.trackId || J.CAPTION_PRIMARY_TRACK_ID,
       boundarySource: preserved ? existing.boundarySource : 'planner',
       boundaryReasons: item.detail.reasons,
       locks: existing && existing.locks ? clone(existing.locks) : { segmentation: false, visualPlan: false, fields: [] },
@@ -188,8 +195,35 @@ J.segmentCaptions = (transcript, options = {}) => {
   } };
 };
 
-J.replanCaptionSegments = (project, options = {}) => J.segmentCaptions(project.transcript, Object.assign({}, options, {
-  duration: project.media && project.media.duration,
-  existingSegments: project.segments || [],
-}));
+const replanTrackOptions = (track, options) => {
+  const style = track && track.style || {}, profile = style.preset && J.CAPTION_STYLE_PROFILES && J.CAPTION_STYLE_PROFILES[style.preset];
+  return Object.assign({}, options, profile && profile.segmentation || {}, style.segmentation || {});
+};
+
+/* One track: exactly the old behaviour. Several tracks: each is segmented over its own tokens only (locked and
+   manual boundaries survive), then the results are merged in time order. New segment IDs never collide across tracks. */
+J.replanCaptionSegments = (project, options = {}) => {
+  const base = Object.assign({}, options, { duration: project.media && project.media.duration });
+  if (!Array.isArray(project.tracks) || project.tracks.length < 2) return J.segmentCaptions(project.transcript, Object.assign(base, { existingSegments: project.segments || [] }));
+  const groups = J.captionTrackTokens(project), reserved = new Set((project.segments || []).map(segment => segment.id)), used = new Set();
+  const result = { version: J.CAPTION_SEGMENTER_VERSION, segments: [], diagnostics: { candidateCount: 0, forcedBoundaries: [], tracks: {} } };
+  let counter = 0;
+  for (const track of project.tracks) {
+    const tokens = groups.get(track.id) || [], own = J.captionTrackSegments(project, track.id);
+    if (!tokens.length) continue;
+    const ownIds = new Set(own.map(segment => segment.id));
+    const part = J.segmentCaptions(Object.assign({}, project.transcript, { tokens }), Object.assign({}, replanTrackOptions(track, base), { existingSegments: own }));
+    for (const segment of part.segments) {
+      if (used.has(segment.id) || (!ownIds.has(segment.id) && reserved.has(segment.id))) {
+        let id; do { id = `segment_${String(++counter).padStart(6, '0')}`; } while (used.has(id) || reserved.has(id));
+        segment.id = id;
+      }
+      used.add(segment.id); segment.trackId = track.id; result.segments.push(segment);
+    }
+    result.diagnostics.candidateCount += part.diagnostics.candidateCount;
+    result.diagnostics.tracks[track.id] = part.diagnostics;
+  }
+  result.segments = J.captionSortSegments({ tracks: project.tracks, segments: result.segments });
+  return result;
+};
 })();

@@ -8,7 +8,9 @@ const WIDTH = 1080, HEIGHT = 1920, FPS = 30, MAX_BLOB_SECONDS = 30, MAX_BLOB_SOU
 class CaptionExportError extends Error { constructor(code, message, details) { super(message); this.name = 'CaptionExportError'; this.code = code; Object.assign(this, details || {}); } }
 const fail = (code, message, details) => { throw new CaptionExportError(code, message, details); };
 const abortCheck = signal => { if (signal && signal.aborted) fail('MEDIA_EXPORT_CANCELLED', 'Video export was cancelled.'); };
-const timestamps = (duration, fps) => Array.from({ length: Math.ceil(duration * fps) }, (_, index) => index / fps);
+// Frames that cover the duration. Kept sections are summed in floating point (4.8 + 6.3 = 11.100000000000001), so a
+// tolerance keeps that from adding a near-zero-length extra frame (found by the real-Chrome export check, step 8).
+const timestamps = (duration, fps) => Array.from({ length: Math.max(0, Math.ceil(duration * fps - 1e-6)) }, (_, index) => index / fps);
 
 function streamTarget(M, writable) {
   const stream = new WritableStream({
@@ -55,6 +57,8 @@ class CaptionVideoExporter {
       this.output.addVideoTrack(videoSource, { frameRate: FPS, maximumPacketCount: Math.ceil(duration * FPS) });
       let audioSource = null;
       if (info.hasAudio) { audioSource = edited ? new M.AudioSampleSource({ codec: 'aac', bitrate: 192000 }) : new M.EncodedAudioPacketSource('aac'); this.output.addAudioTrack(audioSource); }
+      if (J.preloadVideoOverlays) await J.preloadVideoOverlays(project);   // overlay images decoded before the first frame
+      if (J.ensureCaptionFonts) await J.ensureCaptionFonts(project);   // faces loaded and metrics fresh before the first frame
       await this.output.start();
       const times = timestamps(duration, FPS), fit = project.settings && project.settings.sourceFit || 'contain';
       const videoPump = (async () => { let encoded = 0;
@@ -82,6 +86,7 @@ class CaptionVideoExporter {
 
 J.CAPTION_EXPORT_DEFAULTS = Object.freeze({ width: WIDTH, height: HEIGHT, fps: FPS, maxBlobSeconds: MAX_BLOB_SECONDS });
 J.CaptionExportError = CaptionExportError;
+J.captionExportFrameTimes = timestamps;
 J.checkCaptionExportSupport = checkCaptionExportSupport;
 J.CaptionVideoExporter = CaptionVideoExporter;
 })();

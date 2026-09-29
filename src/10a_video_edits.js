@@ -9,6 +9,8 @@ J.videoFormats = {
   portrait: { label: 'Portrait post · 4:5 · 1080 × 1350', width: 1080, height: 1350 },
 };
 J.videoEditSettings = project => project.settings && project.settings.videoEdit || { format: 'shorts', clips: [], panels: [], notes: [] };
+J.VIDEO_OVERLAY_LIMIT = 4;
+J.VIDEO_OVERLAY_MAX_CHARS = 8_000_000;   // data-URL length, about 6 MB of PNG
 J.videoOutputSize = project => J.videoFormats[J.videoEditSettings(project).format] || J.videoFormats.shorts;
 J.videoClips = (project, duration = project.media.duration) => {
   const clips = J.videoEditSettings(project).clips || [];
@@ -23,6 +25,7 @@ J.validateVideoEdits = (edit, duration) => {
   const fail = message => { throw new Error(message); };
   if (!edit || !J.videoFormats[edit.format]) fail('Choose an output format.');
   for (const key of ['clips', 'panels', 'notes']) if (!Array.isArray(edit[key]) || edit[key].length > 100) fail('Invalid video edit list.');
+  if (edit.overlays !== undefined) J.validateVideoOverlays(edit.overlays);
   let previousEnd = 0;
   for (const clip of edit.clips) {
     if (!Number.isFinite(clip.start) || !Number.isFinite(clip.end) || clip.start < previousEnd || clip.end <= clip.start || !(clip.end <= duration + .001)) fail('Kept sections must be in source order, inside the video, and must not overlap.');
@@ -33,6 +36,49 @@ J.validateVideoEdits = (edit, duration) => {
   }
   for (const note of edit.notes) {
     if (typeof note.text !== 'string' || !note.text.trim() || note.text.length > 1000 || !Number.isFinite(note.start) || !Number.isFinite(note.end) || note.start < 0 || note.end <= note.start || note.end > duration || !Number.isFinite(note.x) || !Number.isFinite(note.y) || note.x < 0 || note.x > 1 || note.y < 0 || note.y > 1 || !Number.isFinite(note.size) || note.size < 1 || note.size > 15 || !/^#[0-9a-f]{6}$/i.test(note.color)) fail('Check note text, timing, position, size, and color.');
+  }
+};
+/* Overlays are transparent images (frames, logos, templates) stored inside the project as data URLs.
+   Rects are fractions of the output frame and may bleed past it. `layer` is 'below' or 'above' the captions. */
+J.validateVideoOverlays = overlays => {
+  const fail = message => { throw new Error(message); };
+  if (!Array.isArray(overlays) || overlays.length > J.VIDEO_OVERLAY_LIMIT) fail(`Use at most ${J.VIDEO_OVERLAY_LIMIT} overlays.`);
+  const ids = new Set();
+  for (const overlay of overlays) {
+    if (!overlay || typeof overlay.id !== 'string' || !overlay.id || ids.has(overlay.id)) fail('Each overlay needs a unique id.');
+    ids.add(overlay.id);
+    if (typeof overlay.src !== 'string' || !/^data:image\/(png|webp);base64,/.test(overlay.src)) fail('Overlays must be PNG or WebP images.');
+    if (overlay.src.length > J.VIDEO_OVERLAY_MAX_CHARS) fail('Overlay image is too large (limit about 6 MB).');
+    if (typeof overlay.name !== 'string' || overlay.name.length > 200) fail('Check the overlay name.');
+    if (![overlay.x, overlay.y, overlay.w, overlay.h].every(Number.isFinite) || overlay.w <= 0 || overlay.h <= 0 || overlay.w > 4 || overlay.h > 4 || overlay.x < -2 || overlay.y < -2 || overlay.x > 2 || overlay.y > 2) fail('Check overlay position and size.');
+    if (!Number.isFinite(overlay.opacity) || overlay.opacity < 0 || overlay.opacity > 1) fail('Overlay opacity must be between 0 and 100%.');
+    if (overlay.layer !== 'above' && overlay.layer !== 'below') fail('Overlay layer must be above or below the captions.');
+  }
+};
+// Decoded images are cached by their data URL. Drawing is synchronous, so callers preload first
+// (J.preloadVideoOverlays) and an overlay that is not decoded yet is simply skipped for that frame.
+const overlayImages = new Map();
+J.videoOverlayImage = src => overlayImages.get(src);
+J.preloadVideoOverlays = (project, onReady) => {
+  const jobs = [];
+  for (const overlay of J.videoEditSettings(project).overlays || []) {
+    if (overlayImages.has(overlay.src) || typeof Image === 'undefined') continue;
+    jobs.push(new Promise(resolve => {
+      const image = new Image();
+      image.onload = () => { overlayImages.set(overlay.src, image); resolve(); };
+      image.onerror = () => resolve();
+      image.src = overlay.src;
+    }));
+  }
+  return Promise.all(jobs).then(() => { if (jobs.length && onReady) onReady(); });
+};
+J.drawVideoOverlays = (ctx, project, layer, info) => {
+  const W = info.designWidth, H = info.designHeight;
+  for (const overlay of J.videoEditSettings(project).overlays || []) {
+    if (layer !== 'all' && overlay.layer !== layer) continue;
+    const image = J.videoOverlayImage(overlay.src); if (!image) continue;
+    ctx.save();
+    try { ctx.globalAlpha *= overlay.opacity; ctx.drawImage(image, overlay.x * W, overlay.y * H, overlay.w * W, overlay.h * H); } finally { ctx.restore(); }
   }
 };
 J.drawVideoEdit = (ctx, video, width, height, project) => {

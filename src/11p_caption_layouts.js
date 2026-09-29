@@ -19,16 +19,16 @@ const union = (a, b) => J.unionBB ? J.unionBB(a, b) : (!a ? b : !b ? a : {
 
 const metadata = (intensity, maxWords, minDuration = 0.45) => ({
   intensity, motionCost: 0, attentionCost: intensity ? 0.12 : 0,
-  captionSafe: true, liveSafe: true, minDuration, preferredDuration: 1.4, maxWords,
+  captionSafe: true, minDuration, preferredDuration: 1.4, maxWords,
   portraitFriendly: true, emojiSafe: true, requiresFullFrame: false, flashes: false, movesCamera: false,
   incompatibleComponentIds: [], incompatibleCategories: [],
 });
 
 const sourceFor = env => {
-  const cut = env.cut || {}, params = cut.params || {};
+  const cut = env.cut || {}, params = cut.params || {}, box = env.box || cut.box || params.box;
   return {
     text: cut.text || '', font: params.font || cut.font || (env.st && env.st.fonts && env.st.fonts.body && env.st.fonts.body[0]) || 'gothic',
-    fontSize: params.fontSize || cut.fontSize, zone: env.zone || cut.zone || params.zone,
+    fontSize: params.fontSize || cut.fontSize, zone: env.zone || cut.zone || params.zone, box, frame: box ? env.frame || { width: env.W, height: env.H } : undefined,
     textColor: params.textColor || cut.textColor || (env.sc && env.sc.fg), padding: params.padding,
     tokens: cut.captionTokens || cut.tokens || params.tokens,
     clockTime: env.clockTime != null ? env.clockTime : env.time != null ? env.time : (Number(cut.start) || 0) + (Number(env.lt) || 0),
@@ -79,7 +79,8 @@ const fit = (text, zone, font, requestedSize, maxLines, padding) => {
 };
 
 const compose = (kind, input = {}) => {
-  const zone = input.zone;
+  // A normalized box (the placement source) wins over a pixel zone. Geometry never depends on the active word.
+  const zone = input.box && input.frame ? J.captionBoxToZone(input.box, input.frame) : input.zone;
   J.validateCaptionZone(zone, input.frame);
   const font = input.font || 'gothic', text = String(input.text || '').trim();
   const padding = Math.max(12, Number(input.padding) || (Number(input.fontSize) || 64) * 0.28);
@@ -109,7 +110,7 @@ const compose = (kind, input = {}) => {
     items: [{ text: fitted.lines.join('\n'), font, size: fitted.fontSize, x: anchor.x, y: anchor.y, align, lead: 1.18, color: input.textColor,
       captionActive: input.tokens && input.tokens.length ? { tokens: input.tokens, clockTime: input.clockTime,
         treatment: input.activeTreatment || 'captionActiveColor', accentColor: input.accentColor,
-        variableWeightSupported: input.variableWeightSupported } : null }],
+        variableWeightSupported: input.variableWeightSupported, emphasis: input.emphasis || null } : null }],
   };
 };
 
@@ -118,7 +119,7 @@ J.composeCaptionLayout = compose;
 const definition = (id, name, intensity, maxWords, options = {}) => Object.assign({
   name, category: 'caption-layout', ...metadata(intensity, maxWords, options.minDuration),
   fits: count => count <= maxWords,
-  plan: (_rng, cut) => ({ font: cut.font, fontSize: cut.fontSize, zone: cut.zone }),
+  plan: (_rng, cut) => ({ font: cut.font, fontSize: cut.fontSize, zone: cut.zone, box: cut.box }),
   measure(input) { return compose(id, input); },
   render(env) {
     const resolved = compose(id, sourceFor(env));

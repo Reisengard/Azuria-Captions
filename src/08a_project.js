@@ -4,7 +4,9 @@
 (() => {
 'use strict';
 
-J.PROJECT_SCHEMA_VERSION = 2;
+J.PROJECT_SCHEMA_VERSION = 3;
+J.CAPTION_PRIMARY_TRACK_ID = 'track_main';
+J.CAPTION_MAX_TRACKS = 3;
 J.PROJECT_GENERATOR_VERSION = '@VERSION@';
 J.PROJECT_MODES = Object.freeze(['lyrics', 'video-captions']);
 
@@ -33,7 +35,58 @@ J.projectMigrations = Object.freeze({
     migrated.mode = 'lyrics';
     return migrated;
   },
+  /* v2 -> v3. Lyric projects only change version. Caption projects gain one
+     primary track whose box is the zone the planner already used, advisory
+     guides mirroring the pixel safe zones, and a trackId on every segment/plan.
+     Nothing is re-planned, so existing projects render identically. */
+  v2ToV3(project) {
+    const migrated = clone(project);
+    migrated.schemaVersion = 3;
+    if (migrated.mode !== 'video-captions') return migrated;
+    const primary = J.CAPTION_PRIMARY_TRACK_ID;
+    migrated.tracks = [J.defaultCaptionTrack(migrated)];
+    migrated.guides = J.captionGuidesFromZones(migrated);
+    for (const segment of Array.isArray(migrated.segments) ? migrated.segments : []) if (plainObject(segment) && segment.trackId == null) segment.trackId = primary;
+    for (const plan of Object.values(plainObject(migrated.plans) ? migrated.plans : {})) if (plainObject(plan) && plan.trackId == null) plan.trackId = primary;
+    return migrated;
+  },
 });
+
+const round9 = value => Math.round(value * 1e9) / 1e9;
+const FALLBACK_FRAME = Object.freeze({ width: 1080, height: 1920 });
+const frameOf = project => {
+  const media = project && project.media;
+  return media && media.width > 0 && media.height > 0 ? { width: media.width, height: media.height } : FALLBACK_FRAME;
+};
+const normalizedRect = (rect, frame) => ({
+  x: round9(rect.x / frame.width), y: round9(rect.y / frame.height),
+  width: round9(rect.width / frame.width), height: round9(rect.height / frame.height),
+});
+
+/* Pixel safe zones become advisory, normalized guides (they no longer decide placement). */
+J.captionGuidesFromZones = project => {
+  const frame = frameOf(project), guides = [];
+  for (const zone of Array.isArray(project.safeZones) ? project.safeZones : []) {
+    if (!plainObject(zone) || typeof zone.id !== 'string' || !zone.id) continue;
+    if (!['x', 'y', 'width', 'height'].every(field => Number.isFinite(zone[field])) || zone.width <= 0 || zone.height <= 0) continue;
+    guides.push(Object.assign({ id: zone.id, kind: zone.kind || 'custom', advisory: true }, normalizedRect(zone, frame)));
+  }
+  return guides;
+};
+
+/* The primary track's box is the first zone the planner would consider today. */
+J.defaultCaptionTrack = project => {
+  const frame = frameOf(project);
+  let zone = null;
+  try { zone = typeof J.captionProjectZones === 'function' ? J.captionProjectZones(project, frame)[0] : null; } catch (_) { zone = null; }
+  if (!zone) zone = J.createCaptionZone('bottom', frame);
+  return {
+    id: J.CAPTION_PRIMARY_TRACK_ID, name: 'Main', primary: true,
+    box: Object.assign(normalizedRect(zone, frame), { zoneKind: zone.kind }),
+    style: {},                                     // empty = inherit project.style (today's look)
+    roles: { base: {}, active: {}, emphasis: {} }, // empty = inherit the plan's resolved fields
+  };
+};
 
 J.validateProject = project => {
   if (!plainObject(project)) fail('PROJECT_NOT_OBJECT', 'Project data must be a JSON object.');
@@ -85,7 +138,7 @@ J.loadProject = input => {
     }
     return J.validateProject(J.projectMigrations.legacyLyrics(parsed));
   }
-  const loaded = clone(parsed);
+  const loaded = parsed.schemaVersion === 2 ? J.projectMigrations.v2ToV3(parsed) : clone(parsed);
   J.validateProject(loaded);
   return loaded;
 };

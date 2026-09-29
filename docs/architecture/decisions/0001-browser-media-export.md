@@ -73,3 +73,18 @@ This host also showed environment-specific browser behavior: installed Chrome cr
 - The caption path introduces a pinned MPL-2.0 dependency and must update notices before merging that dependency.
 - The existing lyric exporter is unchanged during the caption prototype; migration away from deprecated `mp4-muxer` should be a separate, regression-tested shared-engine change.
 - Production tests must cover B-frames, VFR selection, AAC priming/padding, cancellation, decoder/encoder backpressure, file cleanup, and three-minute memory behavior.
+
+## Re-verification (2026-09-28, delta plan step 8)
+
+The decision held on real browsers with the production pipeline (Mediabunny demux → WebCodecs decode → caption compositor → WebCodecs H.264 → Mediabunny mux), after the tracks / boxes / roles / text-block refactor:
+
+- **Google Chrome 154.0.8037.58** (headless, and headed with the window minimized during each export) and **Microsoft Edge 153.0.4234.48** (headless), each with a fresh profile, on Windows 11 with an RTX 3050: 7 of 7 scenarios passed in every run (portrait / landscape / 24 fps / 60 fps / silent / trimmed / 3-minute; Shorts, Reels, YouTube 16:9, Square, 4:5).
+- Exact frame counts (⌈duration × 30⌉, decoded by FFprobe), 30/1 fps, start at 0, H.264 Constrained Baseline. **AAC passthrough is bit-exact** when the video is untrimmed (FFmpeg packet MD5 equal to the source); trimmed exports re-encode AAC as designed.
+- Speed is about 0.17–0.24× real time (3 minutes in about 30 s), far better than the seek-based spike (5.7×). The JS heap stays under about 50 MB, and repeated exports do not grow it.
+- The earlier note "installed Chrome crashed its GPU process in headless mode; Edge headless did not complete" **no longer reproduces** with these versions and the production pipeline. Headless results matched headed results, but the release criterion stays a real browser run.
+- An export keeps running while the page is hidden (window minimized). Import and preview do not: Chrome defers `<video>` loading in hidden pages until they are shown.
+- One defect was found and fixed: float rounding of trimmed durations added a near-zero-length frame.
+
+Tool: `dev/export_chrome_check.js` (`npm run check:export-chrome` in `dev/`). Evidence and the supported/fallback path are recorded in `docs/VIDEO_CAPTIONS_RELEASE_CHECKLIST.md`.
+
+**Fallback, as implemented** (supersedes "offer the existing PNG-sequence path" above, which only exists for Lyric Motion): when H.264 encoding is unavailable, export stops before any work with `MEDIA_ENCODER_UNSUPPORTED`, and the recovery text sends the user to Chrome/Edge or to another computer with the saved project and a relink. There is no second caption encoder. Sources over 30 s or 128 MB need the file-backed save (`showSaveFilePicker`); elsewhere `MEDIA_FILE_SAVE_REQUIRED` is raised up front. A sidecar SRT/VTT export is the planned encoder-free fallback.

@@ -58,13 +58,13 @@ J.registry = g => J[GROUPS[g][0]];
 J.order = g => J[GROUPS[g][1]];
 
 const CAPABILITY_FIELDS = Object.freeze([
-  'intensity', 'motionCost', 'attentionCost', 'captionSafe', 'liveSafe',
+  'intensity', 'motionCost', 'attentionCost', 'captionSafe',
   'minDuration', 'preferredDuration', 'maxWords', 'portraitFriendly',
   'emojiSafe', 'requiresFullFrame', 'flashes', 'movesCamera',
   'incompatibleComponentIds', 'incompatibleCategories',
 ]);
 const REQUIRED_CAPABILITY_FIELDS = Object.freeze([
-  'intensity', 'motionCost', 'attentionCost', 'captionSafe', 'liveSafe',
+  'intensity', 'motionCost', 'attentionCost', 'captionSafe',
   'minDuration', 'maxWords', 'portraitFriendly', 'emojiSafe',
   'requiresFullFrame', 'flashes', 'movesCamera',
 ]);
@@ -91,7 +91,7 @@ J.validateComponentMetadata = (group, key, def) => {
   }
   if (!Number.isInteger(def.intensity) || def.intensity < 0 || def.intensity > 4) metadataError(group, key, 'intensity must be an integer from 0 to 4', 'intensity');
   for (const field of ['motionCost', 'attentionCost']) if (!finiteRange(def[field], 0, 1)) metadataError(group, key, `${field} must be between 0 and 1`, field);
-  for (const field of ['captionSafe', 'liveSafe', 'portraitFriendly', 'emojiSafe', 'requiresFullFrame', 'flashes', 'movesCamera']) {
+  for (const field of ['captionSafe', 'portraitFriendly', 'emojiSafe', 'requiresFullFrame', 'flashes', 'movesCamera']) {
     if (typeof def[field] !== 'boolean') metadataError(group, key, `${field} must be boolean`, field);
   }
   if (!Number.isFinite(def.minDuration) || def.minDuration < 0) metadataError(group, key, 'minDuration must be a non-negative number', 'minDuration');
@@ -148,7 +148,6 @@ J.captionComponentEligibility = (group, key, context = {}) => {
   const meta = def.capabilities;
   if (!meta) return { allowed: false, code: 'COMPONENT_CAPABILITIES_UNREVIEWED', group, componentId: key };
   if (!meta.captionSafe) return { allowed: false, code: 'COMPONENT_NOT_CAPTION_SAFE', group, componentId: key };
-  if (context.live && !meta.liveSafe) return { allowed: false, code: 'COMPONENT_NOT_LIVE_SAFE', group, componentId: key };
   if (Number.isFinite(context.duration) && context.duration < meta.minDuration) return { allowed: false, code: 'COMPONENT_DURATION_TOO_SHORT', group, componentId: key };
   if (Number.isFinite(context.wordCount) && context.wordCount > meta.maxWords) return { allowed: false, code: 'COMPONENT_WORD_LIMIT_EXCEEDED', group, componentId: key };
   if (context.portrait && !meta.portraitFriendly) return { allowed: false, code: 'COMPONENT_NOT_PORTRAIT_FRIENDLY', group, componentId: key };

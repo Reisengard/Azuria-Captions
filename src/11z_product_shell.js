@@ -1,5 +1,5 @@
 /* ============================================================
-   JIZURA — three-mode product shell (Gate 5.1)
+   JIZURA — two-mode product shell (Gate 5.1)
    ============================================================ */
 (() => {
 'use strict';
@@ -7,11 +7,10 @@
 if (typeof document === 'undefined' || typeof document.getElementById !== 'function') return;
 
 const STORAGE_KEY = 'jizura.productMode.v1';
-const MODES = Object.freeze(['video-captions', 'lyrics', 'live-captions']);
+const MODES = Object.freeze(['video-captions', 'lyrics']);
 const SURFACES = Object.freeze({
   'video-captions': 'videoCaptionsWorkspace',
   lyrics: 'lyricMotionWorkspace',
-  'live-captions': 'liveCaptionsWorkspace',
 });
 let current = 'lyrics';
 
