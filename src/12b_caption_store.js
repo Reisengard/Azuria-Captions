@@ -232,8 +232,12 @@ class CaptionStore {
       case 'set-video-edits': {
         J.validateVideoEdits(command.value, this.project.media.duration);
         this.project.settings = this.project.settings || {};
+        const before = J.videoOutputSize(this.project);
         this.project.settings.videoEdit = clone(command.value);
         J.captionSyncDefaultBoxes(this.project);   // the untouched default box follows the output format's safe area
+        // Fit and readability are measured in the output frame, so a new shape re-plans (manual and locked values stay).
+        const after = J.videoOutputSize(this.project);
+        if ((before.width !== after.width || before.height !== after.height) && this.project.transcript.tokens.length && J.planCaptions) this.project.plans = J.planCaptions(this.project, this.project.media).plans;
         break;
       }
       case 'set-caption-style': {

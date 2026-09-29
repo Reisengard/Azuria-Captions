@@ -9,6 +9,14 @@ J.videoFormats = {
   portrait: { label: 'Portrait post · 4:5 · 1080 × 1350', width: 1080, height: 1350 },
 };
 J.videoEditSettings = project => project.settings && project.settings.videoEdit || { format: 'shorts', clips: [], panels: [], notes: [] };
+/* How a video whose shape differs from the output fills the frame (full-frame layout only; panels always crop to fill).
+   contain = whole video with bars, cover = crop to fill, blur = whole video over a blurred, darkened copy of itself.
+   Optional in the project: old edits fall back to settings.sourceFit, then 'contain' (unchanged rendering). */
+J.VIDEO_FITS = Object.freeze(['contain', 'cover', 'blur']);
+J.videoEditFit = project => {
+  const edit = J.videoEditSettings(project), fit = edit.fit || project.settings && project.settings.sourceFit;
+  return J.VIDEO_FITS.includes(fit) ? fit : 'contain';
+};
 J.VIDEO_OVERLAY_LIMIT = 4;
 J.VIDEO_OVERLAY_MAX_CHARS = 8_000_000;   // data-URL length, about 6 MB of PNG
 J.videoOutputSize = project => J.videoFormats[J.videoEditSettings(project).format] || J.videoFormats.shorts;
@@ -26,6 +34,8 @@ J.validateVideoEdits = (edit, duration) => {
   if (!edit || !J.videoFormats[edit.format]) fail('Choose an output format.');
   for (const key of ['clips', 'panels', 'notes']) if (!Array.isArray(edit[key]) || edit[key].length > 100) fail('Invalid video edit list.');
   if (edit.overlays !== undefined) J.validateVideoOverlays(edit.overlays);
+  if (edit.fit !== undefined && !J.VIDEO_FITS.includes(edit.fit)) fail('Choose how the video fills the frame.');
+  if (edit.background !== undefined && !/^#[0-9a-f]{6}$/i.test(edit.background)) fail('Check the bar colour.');
   let previousEnd = 0;
   for (const clip of edit.clips) {
     if (!Number.isFinite(clip.start) || !Number.isFinite(clip.end) || clip.start < previousEnd || clip.end <= clip.start || !(clip.end <= duration + .001)) fail('Kept sections must be in source order, inside the video, and must not overlap.');
@@ -81,9 +91,45 @@ J.drawVideoOverlays = (ctx, project, layer, info) => {
     try { ctx.globalAlpha *= overlay.opacity; ctx.drawImage(image, overlay.x * W, overlay.y * H, overlay.w * W, overlay.h * H); } finally { ctx.restore(); }
   }
 };
+/* The blurred background is the cover crop drawn into a small canvas (1/16 of the frame, softened when the
+   context supports filters) and scaled back up: cheap per frame and the same in preview and export. */
+let blurCanvas = null;
+const smallCanvas = (width, height) => {
+  if (!blurCanvas) {
+    if (typeof OffscreenCanvas === 'function') blurCanvas = new OffscreenCanvas(width, height);
+    else if (typeof document !== 'undefined' && document.createElement) blurCanvas = document.createElement('canvas');
+    if (!blurCanvas || !blurCanvas.getContext) { blurCanvas = null; return null; }
+  }
+  if (blurCanvas.width !== width) blurCanvas.width = width;
+  if (blurCanvas.height !== height) blurCanvas.height = height;
+  return blurCanvas;
+};
+const drawBlurredFill = (ctx, video, width, height, background) => {
+  const small = smallCanvas(Math.max(8, Math.round(width / 16)), Math.max(8, Math.round(height / 16))), sctx = small && small.getContext('2d');
+  if (sctx) {
+    J.drawSourceVideo(sctx, video, small.width, small.height, 'cover', background);
+    if ('filter' in sctx) {
+      // Soften in place: draw the tiny frame onto itself through a blur (a second pass hides the pixel grid).
+      sctx.save(); try { sctx.filter = 'blur(1.5px)'; sctx.drawImage(small, 0, 0); } finally { sctx.restore(); }
+    }
+  }
+  ctx.save();
+  try {
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.fillStyle = background; ctx.fillRect(0, 0, width, height);
+    if (sctx) { ctx.imageSmoothingEnabled = true; if ('imageSmoothingQuality' in ctx) ctx.imageSmoothingQuality = 'high'; ctx.drawImage(small, 0, 0, width, height); }
+    else J.drawSourceVideo(ctx, video, width, height, 'cover', background);
+    ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(0, 0, width, height);
+  } finally { ctx.restore(); }
+  const rect = J.sourceFrameRect(Number(video.videoWidth || video.displayWidth || video.naturalWidth || video.width), Number(video.videoHeight || video.displayHeight || video.naturalHeight || video.height), width, height, 'contain');
+  ctx.save(); try { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.drawImage(video, rect.x, rect.y, rect.width, rect.height); } finally { ctx.restore(); }
+  return Object.assign({}, rect, { fit: 'blur' });
+};
 J.drawVideoEdit = (ctx, video, width, height, project) => {
-  const panels = J.videoEditSettings(project).panels || [];
-  if (!panels.length) return J.drawSourceVideo(ctx, video, width, height, project.settings.sourceFit || 'contain');
+  const edit = J.videoEditSettings(project), panels = edit.panels || [];
+  if (!panels.length) {
+    const fit = J.videoEditFit(project), background = edit.background || '#000000';
+    return fit === 'blur' ? drawBlurredFill(ctx, video, width, height, background) : J.drawSourceVideo(ctx, video, width, height, fit, background);
+  }
   const sw = video.videoWidth || video.displayWidth || video.width, sh = video.videoHeight || video.displayHeight || video.height;
   ctx.save();
   try {

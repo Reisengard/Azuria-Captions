@@ -1,6 +1,7 @@
 """English copy for the browser edition. The Japanese source stays authoritative."""
 
 BODY = {
+    'title="縞模様の部分はトリムで削除され、書き出されません"': 'title="Striped parts are trimmed away and not exported"',
     # Caption tab
     '単語を押すと修正・強調できます。✂ で字幕を分けます。</p>': 'Press a word to fix or highlight it. ✂ splits the caption there.</p>',
     'aria-label="字幕の移動"': 'aria-label="Caption navigation"',
@@ -662,6 +663,71 @@ CAPTION_UI = {
     "const unsetText = from != null ? inherit.text : '自動';": "const unsetText = from != null ? inherit.text : 'Auto';",
 }
 
+VIDEO_UI = {
+    # Video settings (src/12a_video_edit_ui.js)
+    "name: 'ショート・リール'": "name: 'Shorts · Reels'", "name: '縦長の投稿'": "name: 'Portrait post'", "name: '正方形'": "name: 'Square post'", "name: 'YouTube（横）'": "name: 'YouTube'",
+    "name: '全体を表示'": "name: 'Fit'", "'動画全体が見え、余白は指定の色になります。'": "'The whole video shows; the empty space uses the bar color.'",
+    "name: '画面を埋める'": "name: 'Fill'", "'画面いっぱいに拡大し、はみ出た端は切り取られます。'": "'The video is enlarged to fill the frame; edges that stick out are cut off.'",
+    "name: 'ぼかし背景'": "name: 'Blurred background'", "'動画全体が見え、余白には同じ動画をぼかして敷きます。'": "'The whole video shows over a blurred copy of itself.'",
+    "name: '全体'": "name: 'Full frame'", "name: '上下に分割'": "name: 'Stacked'", "name: '左右に分割'": "name: 'Side by side'", "name: 'ワイプ'": "name: 'Picture in picture'",
+    '<h3 class="vs-title">出力の形</h3>': '<h3 class="vs-title">Output shape</h3>', 'aria-label="出力の形"': 'aria-label="Output shape"',
+    '<h4 class="vs-subtitle">動画の形が出力と違うとき</h4>': '<h4 class="vs-subtitle">When the video has a different shape</h4>', 'aria-label="動画の収め方"': 'aria-label="How the video fills the frame"',
+    '余白の色<input': 'Bar color<input', '<summary>トリム</summary>': '<summary>Trim</summary>',
+    '明るい部分が書き出されます。端をドラッグして長さを変え、再生位置で分割して不要な区間を削除します。時間は元の動画の時間です。': 'The bright parts are exported. Drag an edge to change a section, split at the playhead and delete what you do not need. Times are in the original video.',
+    'aria-label="残す区間"': 'aria-label="Kept sections"',
+    '>✂ 再生位置で分割<': '>✂ Split at playhead<', '>区間の開始を再生位置に<': '>Section starts here<', '>区間の終了を再生位置に<': '>Section ends here<',
+    '>選択した区間を削除<': '>Delete selected section<', '>削除した部分を戻す<': '>Restore removed part<', '>全体に戻す<': '>Restore full video<',
+    '<summary>正確な時間（秒）</summary>': '<summary>Exact times (seconds)</summary>', '<summary>レイアウトと切り抜き</summary>': '<summary>Layout &amp; crop</summary>',
+    '画面を分けて、元の動画の一部を並べます。各パネルは選んだ範囲で画面を埋めます。': 'Split the frame and show parts of the original video. Each panel fills its area with the chosen crop.',
+    'aria-label="レイアウト"': 'aria-label="Layout"', 'aria-label="パネル"': 'aria-label="Panels"',
+    '<figcaption>元の動画 · ドラッグで範囲を選ぶ</figcaption>': '<figcaption>Source · drag to choose the crop</figcaption>',
+    'aria-label="切り抜く範囲。キーボードでは下の正確な値を使います"': 'aria-label="Crop area; with a keyboard, use the exact values below"',
+    '<figcaption>出力 · ドラッグで移動</figcaption>': '<figcaption>Output · drag to move</figcaption>',
+    'aria-label="パネルの配置。キーボードでは下の正確な値を使います"': 'aria-label="Panel placement; with a keyboard, use the exact values below"',
+    '<summary>正確な値（%）</summary>': '<summary>Exact values (%)</summary>', '<summary>画像の重ね合わせ</summary>': '<summary>Image overlays</summary>',
+    '透明部分のある PNG（フレーム・ロゴ・テンプレート）を重ねます。最大4枚。プロジェクトに保存され、テンプレートとして他のプロジェクトでも使えます。': 'Add a PNG with transparent areas (a frame, logo or template) on top of the video, up to 4. Overlays are saved with the project; save them as a template to reuse them in other projects.',
+    '>PNG を追加<': '>Add PNG<', '>テンプレートを保存<': '>Save template<', '>テンプレートを読込<': '>Load template<',
+    '<summary>テキストメモ</summary>': '<summary>Text notes</summary>',
+    '字幕とは別の、シンプルな文字です。それぞれ表示時間と位置を持ち、字幕や他のメモと重なってもかまいません。': 'Simple text, separate from the captions. Each note has its own time and position and may overlap captions or other notes.',
+    '>再生位置にメモを追加<': '>Add note at playhead<',
+    "'先に動画を読み込んでください。'": "'Load a video first.'", "'数値を入力してください。'": "'Enter a number.'",
+    '`出力の形を ${shape.ratio} にしました。`': '`Output shape set to ${shape.ratio}.`',
+    '`元の動画 ${media.width} × ${media.height}（${ratioName(media.width, media.height)}）· `': '`Source ${media.width} × ${media.height} (${ratioName(media.width, media.height)}) · `',
+    '`${source}出力 ${out.width} × ${out.height} · ': '`${source}Output ${out.width} × ${out.height} · ',
+    '`動画の収め方を「${item.name}」にしました。`': '`Fill set to “${item.name}”.`',
+    "'動画はすでに出力と同じ形なので、この設定は変化しません。'": "'The video already has the output shape, so this setting changes nothing.'",
+    "'余白の色を変えました。'": "'Bar color changed.'",
+    '`区間${index + 1}の開始`': '`Section ${index + 1} start`', '`区間${index + 1}の終了`': '`Section ${index + 1} end`',
+    "'動画を読み込むとトリムできます。'": "'Load a video to trim it.'",
+    '`区間${i + 1}: ${sec(clip.start)}–${sec(clip.end)}`': '`Section ${i + 1}: ${sec(clip.start)}–${sec(clip.end)}`',
+    '`書き出し ${sec(kept)}`': '`Exported ${sec(kept)}`', '`${clips.length}区間`': '`${clips.length} sections`', '`${sec(removed)} を削除`': '`${sec(removed)} removed`',
+    '`区間${i + 1} 開始`': '`Section ${i + 1} start`', "'終了', clip.end": "'End', clip.end",
+    "`区間${index + 1}の${side === 'start' ? '開始' : '終了'}時刻は ${sec(low)}〜${sec(high)} の範囲にしてください。`": "`Section ${index + 1} ${side === 'start' ? 'start' : 'end'} must be between ${sec(low)} and ${sec(high)}.`",
+    "'トリムを更新しました。'": "'Trim updated.'",
+    '`レイアウトを「${layout.name}」にしました。`': '`Layout set to “${layout.name}”.`', "text: 'カスタム'": "text: 'Custom'",
+    '`パネル${i + 1}`': '`Panel ${i + 1}`', "'パネルを追加しました。'": "'Panel added.'", "'＋ パネル'": "'+ Panel'", "'パネルを削除しました。'": "'Panel deleted.'", "'選択したパネルを削除'": "'Delete selected panel'",
+    "['source', '切り抜く範囲'], ['target', '出力での位置']": "['source', 'Crop area'], ['target', 'Position in the output']", '`${title}（%）`': '`${title} (%)`',
+    "[['x', '左'], ['y', '上'], ['w', '幅'], ['h', '高さ']]": "[['x', 'Left'], ['y', 'Top'], ['w', 'Width'], ['h', 'Height']]",
+    "'パネルを更新しました。'": "'Panel updated.'", "'切り抜く範囲を更新しました。'": "'Crop updated.'", "'パネルを移動しました。'": "'Panel moved.'",
+    "'不透明度'": "'Opacity'", "'不透明度を変えました。'": "'Opacity changed.'", '`画像${i + 1}`': '`Image ${i + 1}`', "'重ねる順番'": "'Layer'",
+    "'字幕の下'": "'Under captions'", "'字幕の上'": "'Over captions'", "'画像を字幕の下にしました。'": "'Image placed under the captions.'", "'画像を字幕の上にしました。'": "'Image placed over the captions.'",
+    "'画像を画面いっぱいにしました。'": "'Image fitted to the frame.'", "'画面いっぱいに'": "'Fit to frame'", "'画像を削除しました。'": "'Image deleted.'", "}, '削除'))": "}, 'Delete'))",
+    "'位置と大きさ（%）'": "'Position and size (%)'", "'画像の位置を更新しました。'": "'Image position updated.'",
+    "'画像を読み込めませんでした。'": "'Could not read the image.'", "'読み込める画像ではありません。'": "'That file is not a readable image.'",
+    '`画像は${J.VIDEO_OVERLAY_LIMIT}枚までです。`': '`Use at most ${J.VIDEO_OVERLAY_LIMIT} images.`',
+    "'透明部分のある PNG（または WebP）を選んでください。'": "'Choose a PNG (or WebP) image with transparency.'", "'画像が大きすぎます（約6 MBまで）。'": "'The image is too large (limit about 6 MB).'",
+    "'画像を追加しました。'": "'Image added.'", "'JIZURA の重ね合わせテンプレートではありません。'": "'That is not a JIZURA overlay template.'", "'テンプレートを読み込みました。'": "'Template loaded.'",
+    "'メモの文字を入力してください。'": "'Enter the note text.'",
+    '`メモは 0:00.0〜${sec(duration())} の中で、終了を開始より後にしてください。`': '`Keep the note between 0:00.0 and ${sec(duration())}, with its end after its start.`',
+    "'メモを更新しました。'": "'Note updated.'", '`メモ${i + 1}`': '`Note ${i + 1}`', "'文字', make('textarea'": "'Text', make('textarea'",
+    "'開始（秒）'": "'Start (s)'", "'終了（秒）'": "'End (s)'", "'横位置（%）'": "'Horizontal (%)'", "'縦位置（%）'": "'Vertical (%)'", "'文字の大きさ（%）'": "'Text size (%)'",
+    "'色', make('input'": "'Color', make('input'", "'メモを削除しました。'": "'Note deleted.'", "'メモを削除'": "'Delete note'",
+    "'再生位置を、残す区間の中（端から少し離れた位置）に置いてください。'": "'Put the playhead inside a kept section, a little away from its edges.'",
+    '`${sec(time)} で分割しました。`': '`Split at ${sec(time)}.`', "'最後の区間は削除できません。'": "'The last section cannot be deleted.'", "'区間を削除しました。'": "'Section deleted.'",
+    "'再生位置を、削除した部分（縞模様の部分）に置いてください。'": "'Put the playhead on a removed (striped) part.'", "'削除した部分を戻しました。'": "'Removed part restored.'",
+    "'動画全体に戻しました。'": "'Full video restored.'", "'先に画像を追加してください。'": "'Add an image first.'", "text: '新しいメモ'": "text: 'New note'", "'メモを追加しました。'": "'Note added.'",
+}
+
 EXPORT = {
     "'エンコーダーが出力を返しません'": "'The encoder returned no output'",
     "'（ソフトウェア）'": "' (software)'",
@@ -878,6 +944,8 @@ def localize_js(source, filename):
         return replace_copy(source, UI)
     if filename.endswith('12c_caption_workbench.js'):
         return replace_copy(source, CAPTION_UI)
+    if filename.endswith('12a_video_edit_ui.js'):
+        return replace_copy(source, VIDEO_UI)
     if filename.endswith('11_export.js'):
         return replace_copy(source, EXPORT)
     return source

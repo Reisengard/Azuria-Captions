@@ -118,6 +118,11 @@ function renderSegments() {
     (rows.get(segmentTrackId(segment)) || rows.values().next().value).appendChild(block);
   });
   for (const token of project.transcript.tokens) { const mark = document.createElement('button'); mark.type = 'button'; mark.className = 'caption-word-mark'; mark.dataset.wordId = token.id; mark.style.left = `${token.start / duration * 100}%`; mark.title = `${token.text} ${fmt(token.start)}–${fmt(token.end)}`; const label = document.createElement('span'); label.textContent = token.text; mark.appendChild(label); wordTrack.appendChild(mark); }
+  // Trimmed-away parts of the source are striped in the VIDEO row (caption times stay source times).
+  const kept = J.videoClips(project, duration), cuts = [];
+  kept.forEach((clip, i) => { const from = i ? kept[i - 1].end : 0; if (clip.start - from > .001) cuts.push([from, clip.start]); });
+  if (kept.length && duration - kept[kept.length - 1].end > .001) cuts.push([kept[kept.length - 1].end, duration]);
+  $('captionVideoTrack').replaceChildren(...cuts.map(([from, to]) => { const cut = document.createElement('span'); cut.className = 'caption-video-cut'; cut.style.left = `${from / duration * 100}%`; cut.style.width = `${(to - from) / duration * 100}%`; cut.title = `${fmt(from)}–${fmt(to)}`; return cut; }));
   $('captionTimelineContent').style.width = `${ui.timelineZoom * 100}%`; $('captionTimeline').dataset.zoomed = String(ui.timelineZoom >= 2);
   $('captionTranscriptEmpty').hidden = project.segments.length > 0;
   const quality = project.transcript.timingQuality || 'word';
