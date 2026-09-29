@@ -823,39 +823,69 @@ function resetBox() {
   else runCommand({ type: 'set-track-box', trackId: context.track.id, reset: true });
 }
 
-/* ---- roles (base / active / emphasis) ----
-   Values are stored on the track. Only the base role re-plans (it changes what fits); the others restyle words in place. */
+/* ---- word styles (roles: base / active / emphasis) ----
+   Values are stored on the track. Only the base role re-plans (it changes what fits); the others restyle words in place.
+   Unset values show what the track uses instead ("Auto"); every row has its own reset. The spoken word's effect is
+   chosen in Effects; a treatment stored on the role by older versions still wins and is shown with a button to remove it. */
 const ROLE_CONTROLS = {
   captionRoleBaseFont: ['base', 'font'], captionRoleBaseColor: ['base', 'color'], captionRoleBaseFontSize: ['base', 'fontSize'],
-  captionRoleActiveTreatment: ['active', 'treatment'], captionRoleActiveColor: ['active', 'color'],
+  captionRoleActiveColor: ['active', 'color'],
   captionRoleEmphasisFont: ['emphasis', 'font'], captionRoleEmphasisColor: ['emphasis', 'color'],
-  captionRoleEmphasisScale: ['emphasis', 'scale'], captionRoleEmphasisThreshold: ['emphasis', 'threshold'],
+  captionRoleEmphasisScale: ['emphasis', 'scale'], captionRoleEmphasisAmount: ['emphasis', 'threshold'],
 };
+// "How much is emphasised" runs the other way from the stored threshold: more = a lower threshold.
+const roleInputValue = (id, value) => id === 'captionRoleEmphasisAmount' ? +(1 - value).toFixed(2) : value;
+const roleStoredValue = (id, value) => id === 'captionRoleEmphasisAmount' ? +(1 - value).toFixed(2) : value;
 let roleFontsLoaded = '';
 const roleTrack = () => activeTrack();
 
 function fillRoleOptions() {
   const option = (value, label) => { const node = document.createElement('option'); node.value = value; node.textContent = label; return node; };
-  for (const [id, emptyLabel] of [['captionRoleBaseFont', 'スタイルに合わせる'], ['captionRoleEmphasisFont', '使わない']]) {
+  for (const [id, emptyLabel] of [['captionRoleBaseFont', '自動（スタイルに合わせる）'], ['captionRoleEmphasisFont', '使わない']]) {
     const select = $(id); select.replaceChildren(option('', emptyLabel));
     for (const key of J.CAPTION_FONTS) select.appendChild(option(key, J.FONTS[key] ? J.FONTS[key].label : key));
   }
-  const treatment = $('captionRoleActiveTreatment'); treatment.replaceChildren(option('', 'スタイルに合わせる'));
-  for (const id of Object.keys(J.CAPTION_ACTIVE || {})) treatment.appendChild(option(id, J.CAPTION_ACTIVE[id].name || id));
+}
+
+/* What the track draws with when a role leaves a value unset. */
+function roleDefaults(project, track) {
+  const style = J.captionTrackProjectStyle(project, track) || {}, profile = J.CAPTION_STYLE_PROFILES[J.captionStyleProfileId(project, track)] || {};
+  const look = J.resolveCaptionLook(style, J.captionStyleProfileId(project, track)).look;
+  return { style, textColor: (profile.textColor || '#ffffff').toLowerCase(), fontSize: profile.fontSize || 76, accentColor: (style.accentColor || profile.accentColor || '#f5a50c').toLowerCase(), active: look.active };
+}
+
+function roleValueText(id, value, set, count) {
+  if (id === 'captionRoleEmphasisAmount') return `${count.count} / ${count.total} 語`;
+  if (!set) return id === 'captionRoleEmphasisColor' || id === 'captionRoleEmphasisScale' ? 'なし' : '自動';
+  if (id === 'captionRoleBaseFontSize') return `${value}px`;
+  if (id === 'captionRoleEmphasisScale') return `×${Number(value).toFixed(2)}`;
+  return String(value);
 }
 
 function renderRolesPanel() {
-  const track = roleTrack(), roles = track && track.roles || {}, enabled = !!track;
+  const project = ui.store.project, tracks = project.tracks || [], track = roleTrack(), roles = track && track.roles || {}, enabled = !!track;
+  const trackSelect = $('captionRoleTrack'); trackSelect.replaceChildren();
+  for (const item of tracks) { const option = document.createElement('option'); option.value = item.id; option.textContent = item.name || item.id; trackSelect.appendChild(option); }
+  trackSelect.value = track ? track.id : ''; $('captionRoleTrackField').hidden = tracks.length < 2;
+  const defaults = track ? roleDefaults(project, track) : { textColor: '#ffffff', fontSize: 76, accentColor: '#f5a50c' };
+  const baseColor = roles.base && roles.base.color || defaults.textColor;
+  const shown = { captionRoleBaseColor: defaults.textColor, captionRoleBaseFontSize: defaults.fontSize, captionRoleActiveColor: defaults.accentColor,
+    captionRoleEmphasisColor: baseColor, captionRoleEmphasisScale: 1, captionRoleEmphasisAmount: J.CAPTION_EMPHASIS_THRESHOLD };
+  const count = track ? J.captionEmphasisCount(project, track.id) : { count: 0, total: 0 };
   for (const [id, [role, field]] of Object.entries(ROLE_CONTROLS)) {
-    const input = $(id), value = roles[role] && roles[role][field];
+    const input = $(id), value = roles[role] && roles[role][field], set = value != null && value !== '';
     input.disabled = !enabled;
-    if (input.type === 'color') { if (value) input.value = value; input.dataset.unset = value ? '' : '1'; }
-    else input.value = value == null ? '' : value;
+    input.value = input.tagName === 'SELECT' ? (set ? value : '') : roleInputValue(id, set ? value : shown[id]);
+    const row = input.closest('.caption-role-row'); if (row) row.classList.toggle('is-set', set);
+    const out = document.querySelector(`[data-role-value="${id}"]`); if (out) out.textContent = roleValueText(id, value, set, count);
+    const clear = document.querySelector(`[data-role-clear="${id}"]`); if (clear) clear.disabled = !enabled || !set;
   }
-  document.querySelectorAll('[data-role-clear]').forEach(button => { button.disabled = !enabled; });
-  $('captionRolesReset').disabled = !enabled;
+  $('captionRolesReset').disabled = !enabled || !['base', 'active', 'emphasis'].some(role => Object.keys(roles[role] || {}).length);
+  $('captionRoleEmphasisHint').hidden = !enabled || J.captionRoleStylesEmphasis(track);
+  renderRoleActiveNotes(project, track, roles, defaults);
+  paintRoleSample(project, track, roles, defaults);
   const warnings = $('captionRolesWarnings'); warnings.replaceChildren();
-  const project = ui.store.project, used = J.captionRoleFonts(project);
+  const used = J.captionRoleFonts(project);
   for (const font of J.captionFontStatus(project).filter(item => used.includes(item.key))) {
     const message = !font.ready ? '指定フォントを読み込めませんでした。ネットワークを確認するか、別のフォントを選んでください。'
       : !font.bundled ? `${font.label}: アプリに同梱されていないため、環境によって文字幅が変わる場合があります。` : null;
@@ -868,12 +898,48 @@ function renderRolesPanel() {
   }
 }
 
+/* The spoken word: where its effect is chosen, and the older role override that still wins over Effects. */
+function renderRoleActiveNotes(project, track, roles, defaults) {
+  const advanced = project.style && project.style.editor === 'advanced', active = roles.active || {}, effect = lookLabel('active', active.treatment || defaults.active) || '—';
+  $('captionRoleActiveHint').textContent = advanced ? `動き方は「${effect}」です。エフェクトの「話している単語」で変えられます。`
+    : `動き方は「${effect}」です。詳細モードにすると、エフェクトで変えられます。`;
+  $('captionRoleActiveOpen').hidden = !advanced || !track;
+  $('captionRoleActiveOverride').hidden = !active.treatment;
+  $('captionRoleActiveOverrideText').textContent = active.treatment ? `このトラックでは話している単語の動きが「${lookLabel('active', active.treatment)}」に固定され、エフェクトの設定より優先されています。` : '';
+  // An effect setting's colour is drawn before the role colour (compositor), so say when the role colour cannot show.
+  const effectColor = !!track && J.captionTrackSegments(project, track.id).some(segment => {
+    const plan = J.captionResolvedPlan(project.plans[segment.id]);
+    return !!J.captionLookSettingsFor(plan.lookSettings, 'active', active.treatment || plan.activeWordTreatment).color;
+  });
+  $('captionRoleActiveColorNote').hidden = !effectColor;
+}
+
+/* A still sample drawn by the caption compositor with what this track resolves to. */
+function paintRoleSample(project, track, roles, defaults) {
+  const canvas = $('captionRoleSample'); if (!canvas || !J.paintCaptionRoleSample || !canvas.getContext) return;
+  const base = roles.base || {}, style = defaults.style || {};
+  J.paintCaptionRoleSample(canvas, roles, { font: base.font || style.font, textColor: base.color || defaults.textColor, accentColor: defaults.accentColor,
+    activeWordTreatment: defaults.active || 'captionActiveColor', captionTreatment: style.captionTreatment || 'outline' });
+}
+
 function applyRoleInput(input) {
   const track = roleTrack(); if (!track) return;
   const [role, field] = ROLE_CONTROLS[input.id];
-  let value = input.value === '' ? null : input.type === 'number' ? Number(input.value) : input.value;
-  if (input.type === 'color') input.dataset.unset = '';
+  const value = input.value === '' ? null : input.type === 'range' ? roleStoredValue(input.id, Number(input.value)) : input.value;
   runCommand({ type: 'set-track-roles', trackId: track.id, roles: { [role]: { [field]: value } } });
+}
+
+/* While a slider moves, only its readout follows (the command runs on release). */
+function previewRoleInput(input) {
+  const track = roleTrack(), out = document.querySelector(`[data-role-value="${input.id}"]`); if (!track || !out) return;
+  const value = roleStoredValue(input.id, Number(input.value));
+  out.textContent = roleValueText(input.id, value, true, input.id === 'captionRoleEmphasisAmount' ? J.captionEmphasisCount(ui.store.project, track.id, value) : null);
+}
+
+function openActiveEffect() {
+  const track = roleTrack(), tracks = ui.store.project.tracks || [];
+  ui.lookScope = tracks.length > 1 && track ? `track:${track.id}` : 'project'; ui.lookPick = 'active'; ui.lookSignature = null;
+  selectStyleTab('effects'); renderLookPanel();
 }
 
 function clearRoleInput(button) {
@@ -1204,8 +1270,14 @@ function bind() {
   $('captionTrackAccentClear').addEventListener('click', () => applyTrackStyle('accentColor', null));
   $('captionMoveSegment').addEventListener('click', () => moveToTrack(true)); $('captionMoveTokens').addEventListener('click', () => moveToTrack(false));
   fillRoleOptions();
-  for (const id of Object.keys(ROLE_CONTROLS)) $(id).addEventListener('change', () => applyRoleInput($(id)));
-  document.querySelectorAll('[data-role-clear]').forEach(button => button.addEventListener('click', () => clearRoleInput(button)));
+  for (const id of Object.keys(ROLE_CONTROLS)) {
+    $(id).addEventListener('change', () => applyRoleInput($(id)));
+    if ($(id).type === 'range') $(id).addEventListener('input', () => previewRoleInput($(id)));
+  }
+  document.querySelectorAll('[data-role-clear]').forEach(button => button.addEventListener('click', event => { event.preventDefault(); clearRoleInput(button); }));
+  $('captionRoleTrack').addEventListener('change', event => selectTrack(event.target.value));
+  $('captionRoleActiveOpen').addEventListener('click', event => { event.preventDefault(); openActiveEffect(); });
+  $('captionRoleActiveOverrideClear').addEventListener('click', () => { const track = roleTrack(); if (track) runCommand({ type: 'set-track-roles', trackId: track.id, roles: { active: { treatment: null } } }); });
   $('captionRolesReset').addEventListener('click', () => { const track = roleTrack(); if (track) runCommand({ type: 'set-track-roles', trackId: track.id, reset: true }); });
   window.addEventListener('resize', onWorkbenchResize);
   if (typeof ResizeObserver === 'function') { const observer = new ResizeObserver(onWorkbenchResize); observer.observe(document.querySelector('.caption-stage')); }   // strip height changes with the track count

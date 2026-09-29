@@ -109,6 +109,22 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .caption-box-warnings:empty { display: none; }
 .caption-role { margin: 8px 0 0; padding: 6px 8px 8px; border: 1px solid var(--line); border-radius: 6px; }
 .caption-role legend { padding: 0 4px; color: var(--muted); font-size: 11px; }
+/* Word styles: one row per value (name | control | what it resolves to | reset), a still sample on top */
+.caption-role-sample { display: block; width: 100%; aspect-ratio: 16 / 5; margin: 0 0 8px; border: 1px solid var(--line); border-radius: 6px; background: #0d1826; }
+.caption-role-note { margin: 4px 0 6px; color: var(--muted); font-size: 10px; }
+.caption-role-note.is-warn { color: #e8c47e; }
+.caption-role-note button { padding: 1px 6px; font-size: 10px; }
+.caption-roles-panel > .caption-role-note { margin-top: 0; }
+.caption-role-row { display: grid; grid-template-columns: minmax(64px, 6.5em) minmax(0, 1fr) auto auto; align-items: center; gap: 6px; min-height: 30px; font-size: 11px; color: var(--muted); }
+.caption-role-row select { grid-column: 2 / 4; width: 100%; min-width: 0; }
+.caption-role-row input[type=range] { width: 100%; min-width: 0; }
+.caption-left .caption-role-row input[type=color] { width: 44px; height: 24px; padding: 0; border: 1px solid var(--line); border-radius: var(--r); background: none; }
+.caption-role-row output { min-width: 3.6em; color: var(--faint); font: 10px var(--mono); text-align: right; font-variant-numeric: tabular-nums; }
+.caption-role-row.is-set output, .caption-role-row.is-set > span { color: var(--text); }
+.caption-role-row button { padding: 2px 6px; }
+.caption-role-override { display: grid; gap: 6px; margin-top: 4px; }
+.caption-role-override button { justify-self: start; }
+#captionRolesReset { margin-top: 10px; }
 .caption-role-pair { display: flex; gap: 6px; align-items: center; }
 .caption-role-pair input[type=color][data-unset="1"] { opacity: .45; }
 .caption-transport { display: flex; align-items: center; gap: 9px; }

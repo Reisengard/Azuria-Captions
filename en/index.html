@@ -132,6 +132,22 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .caption-box-warnings:empty { display: none; }
 .caption-role { margin: 8px 0 0; padding: 6px 8px 8px; border: 1px solid var(--line); border-radius: 6px; }
 .caption-role legend { padding: 0 4px; color: var(--muted); font-size: 11px; }
+/* Word styles: one row per value (name | control | what it resolves to | reset), a still sample on top */
+.caption-role-sample { display: block; width: 100%; aspect-ratio: 16 / 5; margin: 0 0 8px; border: 1px solid var(--line); border-radius: 6px; background: #0d1826; }
+.caption-role-note { margin: 4px 0 6px; color: var(--muted); font-size: 10px; }
+.caption-role-note.is-warn { color: #e8c47e; }
+.caption-role-note button { padding: 1px 6px; font-size: 10px; }
+.caption-roles-panel > .caption-role-note { margin-top: 0; }
+.caption-role-row { display: grid; grid-template-columns: minmax(64px, 6.5em) minmax(0, 1fr) auto auto; align-items: center; gap: 6px; min-height: 30px; font-size: 11px; color: var(--muted); }
+.caption-role-row select { grid-column: 2 / 4; width: 100%; min-width: 0; }
+.caption-role-row input[type=range] { width: 100%; min-width: 0; }
+.caption-left .caption-role-row input[type=color] { width: 44px; height: 24px; padding: 0; border: 1px solid var(--line); border-radius: var(--r); background: none; }
+.caption-role-row output { min-width: 3.6em; color: var(--faint); font: 10px var(--mono); text-align: right; font-variant-numeric: tabular-nums; }
+.caption-role-row.is-set output, .caption-role-row.is-set > span { color: var(--text); }
+.caption-role-row button { padding: 2px 6px; }
+.caption-role-override { display: grid; gap: 6px; margin-top: 4px; }
+.caption-role-override button { justify-self: start; }
+#captionRolesReset { margin-top: 10px; }
 .caption-role-pair { display: flex; gap: 6px; align-items: center; }
 .caption-role-pair input[type=color][data-unset="1"] { opacity: .45; }
 .caption-transport { display: flex; align-items: center; gap: 9px; }
@@ -774,8 +790,8 @@ button.small.primary { padding: 4px 12px; }
       <div class="caption-left" data-left-tab="transcript">
       <div class="caption-left-tabs" role="tablist" aria-label="Left panel tabs">
         <button id="captionLeftTab_transcript" type="button" role="tab" data-left-tab="transcript" aria-selected="true" aria-controls="captionLeftPane_transcript">Transcript</button>
-        <button id="captionLeftTab_roles" type="button" role="tab" data-left-tab="roles" aria-selected="false" aria-controls="captionLeftPane_roles">Text roles</button>
-        <button id="captionLeftTab_caption" type="button" role="tab" data-left-tab="caption" aria-selected="false" aria-controls="captionLeftPane_caption">Selected caption</button>
+        <button id="captionLeftTab_roles" type="button" role="tab" data-left-tab="roles" aria-selected="false" aria-controls="captionLeftPane_roles">Word styles</button>
+        <button id="captionLeftTab_caption" type="button" role="tab" data-left-tab="caption" aria-selected="false" aria-controls="captionLeftPane_caption">Caption</button>
       </div>
       <aside id="captionLeftPane_transcript" class="caption-panel caption-transcript caption-left-pane" aria-label="Transcript and caption segments">
         <div class="caption-panel-head"><h2>Transcript</h2><span id="captionTimingBadge" class="caption-badge">Not imported</span></div>
@@ -808,25 +824,31 @@ button.small.primary { padding: 4px 12px; }
         <div id="captionTranscriptEmpty" class="caption-empty">Import a video and word-timestamp JSON, SRT, or VTT to see captions.</div>
       </aside>
         <div id="captionLeftPane_roles" class="caption-panel caption-left-pane" role="tabpanel" aria-labelledby="captionLeftTab_roles" hidden>
-        <section id="captionRolesPanel" class="caption-box-panel caption-roles-panel" aria-label="Text roles">
-          <div class="caption-panel-head segment-head"><h2>Text roles</h2></div>
-          <p class="caption-profile-note">The base text decides the layout. The spoken word and emphasized words only change look, never position or line breaks.</p>
-          <fieldset class="caption-role" data-caption-role="base"><legend>Base text</legend>
-            <label class="field">Font<select id="captionRoleBaseFont"></select></label>
-            <label class="field">Color<span class="caption-role-pair"><input id="captionRoleBaseColor" type="color" value="#ffffff"><button type="button" class="small" data-role-clear="captionRoleBaseColor">Default</button></span></label>
-            <label class="field">Size<input id="captionRoleBaseFontSize" type="number" min="24" max="200" step="1" placeholder="Match style"></label>
+        <section id="captionRolesPanel" class="caption-box-panel caption-roles-panel" aria-label="Word styles">
+          <div class="caption-panel-head segment-head"><h2>Word styles</h2></div>
+          <label id="captionRoleTrackField" class="field" hidden>Track<select id="captionRoleTrack"></select></label>
+          <canvas id="captionRoleSample" class="caption-role-sample" width="800" height="250" role="img" aria-label="Word style sample (the second word is being spoken, the last word is highlighted)"></canvas>
+          <p class="caption-role-note">All text sets the layout and line breaks. The spoken word and highlighted words only change how they look, never where they sit.</p>
+          <fieldset class="caption-role" data-caption-role="base"><legend>All text</legend>
+            <label class="caption-role-row"><span>Font</span><select id="captionRoleBaseFont"></select><button type="button" class="ghost small" data-role-clear="captionRoleBaseFont" title="Back to automatic" aria-label="Font back to automatic">↺</button></label>
+            <label class="caption-role-row"><span>Color</span><input id="captionRoleBaseColor" type="color" value="#ffffff"><output data-role-value="captionRoleBaseColor"></output><button type="button" class="ghost small" data-role-clear="captionRoleBaseColor" title="Back to automatic" aria-label="Color back to automatic">↺</button></label>
+            <label class="caption-role-row"><span>Size</span><input id="captionRoleBaseFontSize" type="range" min="24" max="200" step="2"><output data-role-value="captionRoleBaseFontSize"></output><button type="button" class="ghost small" data-role-clear="captionRoleBaseFontSize" title="Back to automatic" aria-label="Size back to automatic">↺</button></label>
           </fieldset>
-          <fieldset class="caption-role" data-caption-role="active"><legend>Spoken word</legend>
-            <label class="field">Effect<select id="captionRoleActiveTreatment"></select></label>
-            <label class="field">Color<span class="caption-role-pair"><input id="captionRoleActiveColor" type="color" value="#f5a50c"><button type="button" class="small" data-role-clear="captionRoleActiveColor">Default</button></span></label>
+          <fieldset class="caption-role" data-caption-role="active"><legend>Word being spoken</legend>
+            <label class="caption-role-row"><span>Color</span><input id="captionRoleActiveColor" type="color" value="#f5a50c"><output data-role-value="captionRoleActiveColor"></output><button type="button" class="ghost small" data-role-clear="captionRoleActiveColor" title="Back to automatic" aria-label="Color back to automatic">↺</button></label>
+            <p id="captionRoleActiveColorNote" class="caption-role-note" hidden>A color set in the spoken-word effect settings (Effects) is used instead of this one.</p>
+            <p class="caption-role-note"><span id="captionRoleActiveHint"></span> <button id="captionRoleActiveOpen" type="button" class="ghost small" hidden>Open Effects</button></p>
+            <div id="captionRoleActiveOverride" class="caption-warning caption-role-override" hidden><span id="captionRoleActiveOverrideText"></span><button id="captionRoleActiveOverrideClear" type="button" class="small">Remove override</button></div>
           </fieldset>
-          <fieldset class="caption-role" data-caption-role="emphasis"><legend>Emphasized words</legend>
-            <label class="field">Second font<select id="captionRoleEmphasisFont"></select></label>
-            <label class="field">Color<span class="caption-role-pair"><input id="captionRoleEmphasisColor" type="color" value="#ffde59"><button type="button" class="small" data-role-clear="captionRoleEmphasisColor">Default</button></span></label>
-            <label class="field">Scale<input id="captionRoleEmphasisScale" type="number" min="0.9" max="1.15" step="0.01" placeholder="1"></label>
-            <label class="field">Emphasis threshold (0–1)<input id="captionRoleEmphasisThreshold" type="number" min="0" max="1" step="0.05" placeholder="0.6"></label>
+          <fieldset class="caption-role" data-caption-role="emphasis"><legend>Highlighted words</legend>
+            <p class="caption-role-note">Numbers, “!” and similar words are picked automatically. Change single words in the Caption tab.</p>
+            <label class="caption-role-row"><span>Color</span><input id="captionRoleEmphasisColor" type="color" value="#ffde59"><output data-role-value="captionRoleEmphasisColor"></output><button type="button" class="ghost small" data-role-clear="captionRoleEmphasisColor" title="Remove" aria-label="Remove color">↺</button></label>
+            <label class="caption-role-row"><span>Second font</span><select id="captionRoleEmphasisFont"></select><button type="button" class="ghost small" data-role-clear="captionRoleEmphasisFont" title="None" aria-label="No second font">↺</button></label>
+            <label class="caption-role-row"><span>Size</span><input id="captionRoleEmphasisScale" type="range" min="0.9" max="1.15" step="0.01"><output data-role-value="captionRoleEmphasisScale"></output><button type="button" class="ghost small" data-role-clear="captionRoleEmphasisScale" title="Remove" aria-label="Remove size change">↺</button></label>
+            <label class="caption-role-row"><span>How many</span><input id="captionRoleEmphasisAmount" type="range" min="0" max="1" step="0.05" aria-describedby="captionRoleEmphasisCount"><output id="captionRoleEmphasisCount" data-role-value="captionRoleEmphasisAmount"></output><button type="button" class="ghost small" data-role-clear="captionRoleEmphasisAmount" title="Back to automatic" aria-label="How many back to automatic">↺</button></label>
+            <p id="captionRoleEmphasisHint" class="caption-role-note is-warn" hidden>Pick a color, second font or size to make highlighted words stand out. Until then they look like the rest.</p>
           </fieldset>
-          <button id="captionRolesReset" type="button" class="small">Reset roles</button>
+          <button id="captionRolesReset" type="button" class="small">Reset all word styles</button>
           <div id="captionRolesWarnings" class="caption-box-warnings" role="status"></div>
         </section>
         </div>
@@ -6595,21 +6617,42 @@ J.captionTrackStyle = (style, track) => {
   return next;
 };
 
+/* Which of a segment's tokens count as emphasised: a manual on/off wins, else the planned score against the
+   track's threshold (`threshold` overrides it, for previews). Independent of whether the role styles anything. */
+J.captionEmphasizedTokenIds = (project, segment, plan, tokens, threshold) => {
+  const track = J.captionTrack(project, segment && segment.trackId), emphasis = track && track.roles && track.roles.emphasis || {};
+  const limit = Number.isFinite(threshold) ? threshold : Number.isFinite(emphasis.threshold) ? emphasis.threshold : J.CAPTION_EMPHASIS_THRESHOLD;
+  const scores = new Map(((plan && plan.emphasis) || []).map(item => [item.id, item.score]));
+  return (tokens || []).filter(token => {
+    const manual = token.manualEmphasis;
+    if (manual && typeof manual.enabled === 'boolean') return manual.enabled;
+    return (scores.get(token.id) || 0) >= limit;
+  }).map(token => token.id);
+};
+
 /* Draw-time description of a segment's roles: which tokens are emphasised and how. */
 J.captionRoleRender = (project, segment, plan, tokens) => {
   const track = J.captionTrack(project, segment && segment.trackId), roles = track && track.roles || {};
   const active = roles.active || {}, emphasis = roles.emphasis || {};
   const out = { active: { treatment: active.treatment || null, color: active.color || null }, emphasis: null };
-  if (!(emphasis.font || emphasis.color || emphasis.scale)) return out;
-  const threshold = Number.isFinite(emphasis.threshold) ? emphasis.threshold : J.CAPTION_EMPHASIS_THRESHOLD;
-  const scores = new Map(((plan && plan.emphasis) || []).map(item => [item.id, item.score]));
-  const tokenIds = (tokens || []).filter(token => {
-    const manual = token.manualEmphasis;
-    if (manual && typeof manual.enabled === 'boolean') return manual.enabled;
-    return (scores.get(token.id) || 0) >= threshold;
-  }).map(token => token.id);
+  if (!J.captionRoleStylesEmphasis(track)) return out;
+  const tokenIds = J.captionEmphasizedTokenIds(project, segment, plan, tokens);
   if (tokenIds.length) out.emphasis = { tokenIds, font: emphasis.font || null, color: emphasis.color || null, scale: emphasis.scale || null };
   return out;
+};
+
+/* Emphasis is only drawn once the role changes something (colour, second font or size). */
+J.captionRoleStylesEmphasis = track => { const emphasis = track && track.roles && track.roles.emphasis || {}; return !!(emphasis.font || emphasis.color || emphasis.scale); };
+
+/* How many of a track's words count as emphasised (for the editor's "how many" readout). */
+J.captionEmphasisCount = (project, trackId, threshold) => {
+  const tokens = new Map((project && project.transcript && project.transcript.tokens || []).map(token => [token.id, token]));
+  let count = 0, total = 0;
+  for (const segment of J.captionTrackSegments(project, trackId)) {
+    const list = segment.tokenIds.map(id => tokens.get(id)).filter(Boolean), plan = J.captionResolvedPlan(project.plans && project.plans[segment.id]);
+    count += J.captionEmphasizedTokenIds(project, segment, plan, list, threshold).length; total += list.length;
+  }
+  return { count, total };
 };
 
 /* Fonts a project's roles draw with (for loading and availability warnings). */
@@ -43196,14 +43239,39 @@ const cache = new Map();
 
 /* A one-caption project. `plan` holds the effect choices; unset stages stay still / plain. */
 J.captionSampleProject = (plan = {}, options = {}) => {
-  const duration = options.duration || 2.4, words = options.words || SAMPLE_WORDS, per = duration / words.length;
-  const tokens = words.map((text, index) => ({ id: `w${index}`, text, start: index * per, end: (index + 1) * per, source: 'sample' }));
+  const duration = options.duration || 2.4, words = options.words || SAMPLE_WORDS, per = duration / words.length, frame = options.frame || FRAME;
+  const emphasize = new Set(options.emphasize || []);
+  const tokens = words.map((text, index) => Object.assign({ id: `w${index}`, text, start: index * per, end: (index + 1) * per, source: 'sample' },
+    emphasize.has(index) ? { manualEmphasis: { enabled: true } } : {}));
   const segment = { id: 's1', start: 0, end: duration, tokenIds: tokens.map(token => token.id), trackId: J.CAPTION_PRIMARY_TRACK_ID };
   const box = { x: .05, y: .1, width: .9, height: .8 };
   const generated = Object.assign({ id: 'p1', segmentId: 's1', trackId: J.CAPTION_PRIMARY_TRACK_ID, layout: 'captionCenterStack', entrance: 'cut', hold: 'captionStill', exit: 'cut',
     activeWordTreatment: 'captionActiveColor', captionTreatment: 'outline', motion: .7, seed: 7, fontSize: 56, box, accentColor: '#4fd6ff', textColor: '#ffffff' }, plan);
-  return { mode: 'video-captions', media: { width: FRAME.width, height: FRAME.height, duration }, transcript: { tokens }, tracks: [{ id: J.CAPTION_PRIMARY_TRACK_ID, primary: true, box }],
+  const track = Object.assign({ id: J.CAPTION_PRIMARY_TRACK_ID, primary: true, box }, options.roles ? { roles: options.roles } : {});
+  return { mode: 'video-captions', media: { width: frame.width, height: frame.height, duration }, transcript: { tokens }, tracks: [track],
     segments: [segment], plans: { s1: { id: 'p1', segmentId: 's1', generated, manual: {}, lockedFields: [] } }, style: { preset: 'creator' }, settings: {}, seed: 1 };
+};
+
+/* A still sample of a track's word styles: the second word is being spoken, the last one is emphasised.
+   `plan` carries what the track resolves to (font, colours, spoken-word effect, text finish); `roles` are the track's roles. */
+const ROLE_SAMPLE_WORDS = ['Every', 'word', 'counts', '100%'];
+const ROLE_SAMPLE_FRAME = { width: 400, height: 125 };
+J.paintCaptionRoleSample = (canvas, roles, plan = {}) => {
+  const ctx = canvas.getContext('2d'), per = .6, words = ROLE_SAMPLE_WORDS;
+  const project = J.captionSampleProject(Object.assign({ fontSize: 34, box: { x: .03, y: .06, width: .94, height: .88 } }, plan),
+    { words, duration: words.length * per, frame: ROLE_SAMPLE_FRAME, roles, emphasize: [words.length - 1] });
+  const scale = canvas.width / ROLE_SAMPLE_FRAME.width;
+  try {
+    ctx.save(); ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#0d1826'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.scale(scale, scale);
+    J.drawCaptionOverlay(ctx, project, per * 1.5, { designWidth: ROLE_SAMPLE_FRAME.width, designHeight: ROLE_SAMPLE_FRAME.height, scale: 1, reducedMotion: true });
+    ctx.restore();
+  } catch (error) {
+    try { ctx.restore(); } catch (ignored) { /* nothing was saved */ }
+    ctx.fillStyle = '#131316'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+  canvas.dataset.ready = '1';
 };
 
 /* Which stage of the sample to loop for a group: the entrance, the middle, or the exit. */
@@ -43464,7 +43532,7 @@ function renderBlockEditor(segment, plan) {
   for (const [key, id] of Object.entries(BLOCK_ANIMATION_CONTROLS)) {
     const select = $(id), ids = options[key].slice(); if (chosen[key] && !ids.includes(chosen[key])) ids.push(chosen[key]);
     select.replaceChildren();
-    const auto = document.createElement('option'); auto.value = ''; auto.textContent = 'Automatic (match style)'; select.appendChild(auto);
+    const auto = document.createElement('option'); auto.value = ''; auto.textContent = 'Auto (match style)'; select.appendChild(auto);
     for (const value of ids) { const def = J.registry(J.CAPTION_TEXT_BLOCK_ANIMATION[key].group)[value], option = document.createElement('option'); option.value = value; option.textContent = PRESET_LABELS[value] || def && def.name || value; select.appendChild(option); }
     select.value = chosen[key] || ''; select.disabled = locked;
   }
@@ -44104,39 +44172,69 @@ function resetBox() {
   else runCommand({ type: 'set-track-box', trackId: context.track.id, reset: true });
 }
 
-/* ---- roles (base / active / emphasis) ----
-   Values are stored on the track. Only the base role re-plans (it changes what fits); the others restyle words in place. */
+/* ---- word styles (roles: base / active / emphasis) ----
+   Values are stored on the track. Only the base role re-plans (it changes what fits); the others restyle words in place.
+   Unset values show what the track uses instead ("Auto"); every row has its own reset. The spoken word's effect is
+   chosen in Effects; a treatment stored on the role by older versions still wins and is shown with a button to remove it. */
 const ROLE_CONTROLS = {
   captionRoleBaseFont: ['base', 'font'], captionRoleBaseColor: ['base', 'color'], captionRoleBaseFontSize: ['base', 'fontSize'],
-  captionRoleActiveTreatment: ['active', 'treatment'], captionRoleActiveColor: ['active', 'color'],
+  captionRoleActiveColor: ['active', 'color'],
   captionRoleEmphasisFont: ['emphasis', 'font'], captionRoleEmphasisColor: ['emphasis', 'color'],
-  captionRoleEmphasisScale: ['emphasis', 'scale'], captionRoleEmphasisThreshold: ['emphasis', 'threshold'],
+  captionRoleEmphasisScale: ['emphasis', 'scale'], captionRoleEmphasisAmount: ['emphasis', 'threshold'],
 };
+// "How much is emphasised" runs the other way from the stored threshold: more = a lower threshold.
+const roleInputValue = (id, value) => id === 'captionRoleEmphasisAmount' ? +(1 - value).toFixed(2) : value;
+const roleStoredValue = (id, value) => id === 'captionRoleEmphasisAmount' ? +(1 - value).toFixed(2) : value;
 let roleFontsLoaded = '';
 const roleTrack = () => activeTrack();
 
 function fillRoleOptions() {
   const option = (value, label) => { const node = document.createElement('option'); node.value = value; node.textContent = label; return node; };
-  for (const [id, emptyLabel] of [['captionRoleBaseFont', 'Match style'], ['captionRoleEmphasisFont', 'None']]) {
+  for (const [id, emptyLabel] of [['captionRoleBaseFont', 'Auto (match style)'], ['captionRoleEmphasisFont', 'None']]) {
     const select = $(id); select.replaceChildren(option('', emptyLabel));
     for (const key of J.CAPTION_FONTS) select.appendChild(option(key, J.FONTS[key] ? J.FONTS[key].label : key));
   }
-  const treatment = $('captionRoleActiveTreatment'); treatment.replaceChildren(option('', 'Match style'));
-  for (const id of Object.keys(J.CAPTION_ACTIVE || {})) treatment.appendChild(option(id, J.CAPTION_ACTIVE[id].name || id));
+}
+
+/* What the track draws with when a role leaves a value unset. */
+function roleDefaults(project, track) {
+  const style = J.captionTrackProjectStyle(project, track) || {}, profile = J.CAPTION_STYLE_PROFILES[J.captionStyleProfileId(project, track)] || {};
+  const look = J.resolveCaptionLook(style, J.captionStyleProfileId(project, track)).look;
+  return { style, textColor: (profile.textColor || '#ffffff').toLowerCase(), fontSize: profile.fontSize || 76, accentColor: (style.accentColor || profile.accentColor || '#f5a50c').toLowerCase(), active: look.active };
+}
+
+function roleValueText(id, value, set, count) {
+  if (id === 'captionRoleEmphasisAmount') return `${count.count} / ${count.total} words`;
+  if (!set) return id === 'captionRoleEmphasisColor' || id === 'captionRoleEmphasisScale' ? 'None' : 'Auto';
+  if (id === 'captionRoleBaseFontSize') return `${value}px`;
+  if (id === 'captionRoleEmphasisScale') return `×${Number(value).toFixed(2)}`;
+  return String(value);
 }
 
 function renderRolesPanel() {
-  const track = roleTrack(), roles = track && track.roles || {}, enabled = !!track;
+  const project = ui.store.project, tracks = project.tracks || [], track = roleTrack(), roles = track && track.roles || {}, enabled = !!track;
+  const trackSelect = $('captionRoleTrack'); trackSelect.replaceChildren();
+  for (const item of tracks) { const option = document.createElement('option'); option.value = item.id; option.textContent = item.name || item.id; trackSelect.appendChild(option); }
+  trackSelect.value = track ? track.id : ''; $('captionRoleTrackField').hidden = tracks.length < 2;
+  const defaults = track ? roleDefaults(project, track) : { textColor: '#ffffff', fontSize: 76, accentColor: '#f5a50c' };
+  const baseColor = roles.base && roles.base.color || defaults.textColor;
+  const shown = { captionRoleBaseColor: defaults.textColor, captionRoleBaseFontSize: defaults.fontSize, captionRoleActiveColor: defaults.accentColor,
+    captionRoleEmphasisColor: baseColor, captionRoleEmphasisScale: 1, captionRoleEmphasisAmount: J.CAPTION_EMPHASIS_THRESHOLD };
+  const count = track ? J.captionEmphasisCount(project, track.id) : { count: 0, total: 0 };
   for (const [id, [role, field]] of Object.entries(ROLE_CONTROLS)) {
-    const input = $(id), value = roles[role] && roles[role][field];
+    const input = $(id), value = roles[role] && roles[role][field], set = value != null && value !== '';
     input.disabled = !enabled;
-    if (input.type === 'color') { if (value) input.value = value; input.dataset.unset = value ? '' : '1'; }
-    else input.value = value == null ? '' : value;
+    input.value = input.tagName === 'SELECT' ? (set ? value : '') : roleInputValue(id, set ? value : shown[id]);
+    const row = input.closest('.caption-role-row'); if (row) row.classList.toggle('is-set', set);
+    const out = document.querySelector(`[data-role-value="${id}"]`); if (out) out.textContent = roleValueText(id, value, set, count);
+    const clear = document.querySelector(`[data-role-clear="${id}"]`); if (clear) clear.disabled = !enabled || !set;
   }
-  document.querySelectorAll('[data-role-clear]').forEach(button => { button.disabled = !enabled; });
-  $('captionRolesReset').disabled = !enabled;
+  $('captionRolesReset').disabled = !enabled || !['base', 'active', 'emphasis'].some(role => Object.keys(roles[role] || {}).length);
+  $('captionRoleEmphasisHint').hidden = !enabled || J.captionRoleStylesEmphasis(track);
+  renderRoleActiveNotes(project, track, roles, defaults);
+  paintRoleSample(project, track, roles, defaults);
   const warnings = $('captionRolesWarnings'); warnings.replaceChildren();
-  const project = ui.store.project, used = J.captionRoleFonts(project);
+  const used = J.captionRoleFonts(project);
   for (const font of J.captionFontStatus(project).filter(item => used.includes(item.key))) {
     const message = !font.ready ? 'The selected font could not be loaded. Check the network or choose another font.'
       : !font.bundled ? `${font.label}: not bundled with the app, so text width may differ between machines.` : null;
@@ -44149,12 +44247,48 @@ function renderRolesPanel() {
   }
 }
 
+/* The spoken word: where its effect is chosen, and the older role override that still wins over Effects. */
+function renderRoleActiveNotes(project, track, roles, defaults) {
+  const advanced = project.style && project.style.editor === 'advanced', active = roles.active || {}, effect = lookLabel('active', active.treatment || defaults.active) || '—';
+  $('captionRoleActiveHint').textContent = advanced ? `It uses “${effect}”. Change it in Effects → Spoken word.`
+    : `It uses “${effect}”. Switch to Advanced to change it in Effects.`;
+  $('captionRoleActiveOpen').hidden = !advanced || !track;
+  $('captionRoleActiveOverride').hidden = !active.treatment;
+  $('captionRoleActiveOverrideText').textContent = active.treatment ? `This track fixes the spoken word to “${lookLabel('active', active.treatment)}”, which overrides the Effects setting.` : '';
+  // An effect setting's colour is drawn before the role colour (compositor), so say when the role colour cannot show.
+  const effectColor = !!track && J.captionTrackSegments(project, track.id).some(segment => {
+    const plan = J.captionResolvedPlan(project.plans[segment.id]);
+    return !!J.captionLookSettingsFor(plan.lookSettings, 'active', active.treatment || plan.activeWordTreatment).color;
+  });
+  $('captionRoleActiveColorNote').hidden = !effectColor;
+}
+
+/* A still sample drawn by the caption compositor with what this track resolves to. */
+function paintRoleSample(project, track, roles, defaults) {
+  const canvas = $('captionRoleSample'); if (!canvas || !J.paintCaptionRoleSample || !canvas.getContext) return;
+  const base = roles.base || {}, style = defaults.style || {};
+  J.paintCaptionRoleSample(canvas, roles, { font: base.font || style.font, textColor: base.color || defaults.textColor, accentColor: defaults.accentColor,
+    activeWordTreatment: defaults.active || 'captionActiveColor', captionTreatment: style.captionTreatment || 'outline' });
+}
+
 function applyRoleInput(input) {
   const track = roleTrack(); if (!track) return;
   const [role, field] = ROLE_CONTROLS[input.id];
-  let value = input.value === '' ? null : input.type === 'number' ? Number(input.value) : input.value;
-  if (input.type === 'color') input.dataset.unset = '';
+  const value = input.value === '' ? null : input.type === 'range' ? roleStoredValue(input.id, Number(input.value)) : input.value;
   runCommand({ type: 'set-track-roles', trackId: track.id, roles: { [role]: { [field]: value } } });
+}
+
+/* While a slider moves, only its readout follows (the command runs on release). */
+function previewRoleInput(input) {
+  const track = roleTrack(), out = document.querySelector(`[data-role-value="${input.id}"]`); if (!track || !out) return;
+  const value = roleStoredValue(input.id, Number(input.value));
+  out.textContent = roleValueText(input.id, value, true, input.id === 'captionRoleEmphasisAmount' ? J.captionEmphasisCount(ui.store.project, track.id, value) : null);
+}
+
+function openActiveEffect() {
+  const track = roleTrack(), tracks = ui.store.project.tracks || [];
+  ui.lookScope = tracks.length > 1 && track ? `track:${track.id}` : 'project'; ui.lookPick = 'active'; ui.lookSignature = null;
+  selectStyleTab('effects'); renderLookPanel();
 }
 
 function clearRoleInput(button) {
@@ -44485,8 +44619,14 @@ function bind() {
   $('captionTrackAccentClear').addEventListener('click', () => applyTrackStyle('accentColor', null));
   $('captionMoveSegment').addEventListener('click', () => moveToTrack(true)); $('captionMoveTokens').addEventListener('click', () => moveToTrack(false));
   fillRoleOptions();
-  for (const id of Object.keys(ROLE_CONTROLS)) $(id).addEventListener('change', () => applyRoleInput($(id)));
-  document.querySelectorAll('[data-role-clear]').forEach(button => button.addEventListener('click', () => clearRoleInput(button)));
+  for (const id of Object.keys(ROLE_CONTROLS)) {
+    $(id).addEventListener('change', () => applyRoleInput($(id)));
+    if ($(id).type === 'range') $(id).addEventListener('input', () => previewRoleInput($(id)));
+  }
+  document.querySelectorAll('[data-role-clear]').forEach(button => button.addEventListener('click', event => { event.preventDefault(); clearRoleInput(button); }));
+  $('captionRoleTrack').addEventListener('change', event => selectTrack(event.target.value));
+  $('captionRoleActiveOpen').addEventListener('click', event => { event.preventDefault(); openActiveEffect(); });
+  $('captionRoleActiveOverrideClear').addEventListener('click', () => { const track = roleTrack(); if (track) runCommand({ type: 'set-track-roles', trackId: track.id, roles: { active: { treatment: null } } }); });
   $('captionRolesReset').addEventListener('click', () => { const track = roleTrack(); if (track) runCommand({ type: 'set-track-roles', trackId: track.id, reset: true }); });
   window.addEventListener('resize', onWorkbenchResize);
   if (typeof ResizeObserver === 'function') { const observer = new ResizeObserver(onWorkbenchResize); observer.observe(document.querySelector('.caption-stage')); }   // strip height changes with the track count

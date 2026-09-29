@@ -95,6 +95,13 @@ assert.equal(J.captionRoleRender(project, goSegment, goPlan, tokensOf(goSegment)
 const manualOn = tokensOf(goSegment).map(token => Object.assign({}, token, { manualEmphasis: token.text === 'We' ? { enabled: true } : token.text === 'go!' ? { enabled: false } : undefined }));
 const overridden = J.captionRoleRender(withRoles({ emphasis: { color: '#ffde59' } }), goSegment, goPlan, manualOn).emphasis;
 assert.ok(!overridden || !overridden.tokenIds.includes(transcript.tokens.find(token => token.text === 'go!').id), 'manual "off" wins over the score');
+// Which words count is known without an emphasis style (the editor shows it before anything is styled).
+assert.deepStrictEqual(J.captionEmphasizedTokenIds(project, goSegment, goPlan, tokensOf(goSegment)), marked.tokenIds, 'same words as the drawn emphasis');
+assert.equal(J.captionRoleStylesEmphasis(project.tracks[0]), false); assert.equal(J.captionRoleStylesEmphasis(withRoles({ emphasis: { scale: 1.05 } }).tracks[0]), true);
+const counted = J.captionEmphasisCount(project, TRACK), countedLax = J.captionEmphasisCount(project, TRACK, 0.2);
+assert.equal(counted.total, J.captionTrackSegments(project, TRACK).reduce((sum, segment) => sum + segment.tokenIds.length, 0), 'every word of the track is counted');
+assert.ok(counted.count >= 1 && countedLax.count > counted.count, 'a lower threshold counts more words');
+assert.deepStrictEqual(J.captionEmphasisCount(withRoles({ emphasis: { threshold: 0.2 } }), TRACK), countedLax, 'the stored threshold is used when none is given');
 
 /* ---- no reflow: roles never change geometry ---- */
 const tokens = tokensOf(goSegment), text = tokens.map(token => token.text).join(' ');
