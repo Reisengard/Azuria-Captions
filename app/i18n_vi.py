@@ -42,6 +42,7 @@ STYLES = {
 }
 
 BODY = {
+    '>スタイルを保存</button>': '>Lưu kiểu</button>', '>スタイルを読込<input': '>Tải kiểu<input',
     '文字PV系の部品を使う': 'Dùng các thành phần kiểu chữ',
     'キネティックの部品を使う': 'Dùng các thành phần chuyển động chữ',
     'ホラーの演出も使う': 'Dùng cả hiệu ứng kinh dị',

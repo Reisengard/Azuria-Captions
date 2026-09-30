@@ -319,10 +319,39 @@ class CaptionStore {
       case 'set-field-lock': this.setFieldLock(command); break;
       case 'reroll-segment': this.randomizeCaptionLook({ segmentId: command.segmentId, variation: command.variation }); break;
       case 'set-technique': this.setTechnique(command); break;
+      case 'apply-caption-style': this.applyCaptionStyle(command); break;
       default: fail('COMMAND_UNKNOWN', `Unknown caption command "${command.type}".`, { commandType: command.type });
     }
     if (this.project.tracks.length > 1) J.captionSortSegments(this.project);
     this.project.updatedAt = command.updatedAt || new Date().toISOString();
+  }
+
+  /* Load a style file: project style, techniques, and each known track's style and roles. Words, timing, boxes,
+     word density and per-caption overrides stay as they are. One command, so one undo restores everything. */
+  applyCaptionStyle(command) {
+    const preset = J.parseCaptionStylePreset(command.preset), project = this.project;
+    const keep = plainObject(project.style) && project.style.segmentation ? clone(project.style.segmentation) : null;
+    project.style = clone(preset.style);
+    if (keep) project.style.segmentation = keep; else delete project.style.segmentation;
+    const techniques = {};
+    for (const set of CAPTION_TECHNIQUE_SETS) if (typeof preset.techniques[set] === 'boolean') techniques[set] = preset.techniques[set];
+    const enabled = preset.techniques.enabled;
+    if (plainObject(enabled)) for (const group of J.GROUP_KEYS) {
+      if (!plainObject(enabled[group])) continue;
+      const registry = J.registry(group), kept = {};
+      for (const [id, value] of Object.entries(enabled[group])) if (typeof value === 'boolean' && Object.prototype.hasOwnProperty.call(registry, id)) kept[id] = value;
+      if (Object.keys(kept).length) { techniques.enabled = techniques.enabled || {}; techniques.enabled[group] = kept; }
+    }
+    if (Object.keys(techniques).length) project.techniques = techniques; else delete project.techniques;
+    for (const track of project.tracks) {
+      const entry = preset.tracks.find(item => item.id === track.id) || (track.primary ? preset.tracks.find(item => item.primary) : null);
+      if (!entry) continue;
+      const own = track.style && track.style.segmentation;
+      track.style = clone(entry.style); if (own) track.style.segmentation = clone(own);
+      track.roles = clone(entry.roles);
+    }
+    J.captionSyncDefaultBoxes(project);
+    this.replanAfterPlacement();
   }
 
   setTechnique(command) {

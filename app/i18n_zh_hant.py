@@ -1,6 +1,7 @@
 """Traditional Chinese (Taiwan) copy for the browser edition. Same glossary keys as app/english.py."""
 
 BODY = {
+    '>スタイルを保存</button>': '>儲存樣式</button>', '>スタイルを読込<input': '>載入樣式<input',
     '文字PV系の部品を使う': '使用文字排版部件',
     'キネティックの部品を使う': '使用動態文字部件',
     'ホラーの演出も使う': '也使用恐怖特效',
