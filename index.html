@@ -1042,7 +1042,7 @@ button.small.primary { padding: 4px 12px; }
             <label class="field caption-adv-only">文字方向<select id="captionWritingMode"><option value="horizontal">横書き</option><option value="vertical">縦書き</option></select></label>
           </section>
           <section class="caption-style-group"><h3>位置と分量</h3>
-            <label class="field">位置<select id="captionPosition"><option value="bottom">下</option><option value="center">中央</option><option value="top">上</option></select></label>
+            <label class="field">文字揃え<select id="captionAlignment"><option value="left">左</option><option value="center">中央</option><option value="right">右</option></select></label>
             <label class="field caption-adv-only">字幕あたりの単語数<input id="captionDensity" type="range" min="2" max="8" value="6"><output id="captionDensityValue">6</output></label>
           </section>
           <section class="caption-style-group"><h3>動き</h3>
@@ -9389,10 +9389,13 @@ function drawCaptionSegment(ctx, project, segment, time, info, map) {
   // Effect settings chosen in the look panel (Advanced); unset values keep each effect's own behaviour.
   const settingsOf = (stage, id) => J.captionLookSettingsFor ? J.captionLookSettingsFor(plan.lookSettings, stage, id) : {};
   const activeTreatment = roleRender.active.treatment || plan.activeWordTreatment, activeSet = settingsOf('active', activeTreatment);
+  // Only an alignment the user set (project or track style) overrides the layout; a profile's default 'center' does not.
+  const alignStyle = J.captionTrackProjectStyle ? J.captionTrackProjectStyle(project, J.captionTrack(project, segment.trackId)) : project.style;
+  const explicitAlignment = alignStyle && alignStyle.alignment;
   const layout = J.composeCaptionLayout ? J.composeCaptionLayout(plan.layout || 'captionBottomStack', { text, tokens, clockTime: time,
     activeTreatment, accentColor: activeSet.color || roleRender.active.color || plan.accentColor, activeScale: activeSet.scale, activeLift: activeSet.lift, activeWeight: activeSet.weight,
     emphasis: roleRender.emphasis, font: plan.font, fontSize: plan.fontSize,
-    zone, box: J.isCaptionBox(placed.box) ? placed.box : undefined, frame, textColor: plan.textColor || '#ffffff' }) : null;
+    zone, box: J.isCaptionBox(placed.box) ? placed.box : undefined, frame, textColor: plan.textColor || '#ffffff', alignment: explicitAlignment }) : null;
   const lines = layout && layout.lines || [text], fontSize = layout && layout.fontSize || Math.max(38, Math.min(74, W / Math.max(10, text.length * .62)));
   const anchor = layout && layout.anchor || { x: zone.x + zone.width / 2, y: zone.y + zone.height / 2, align: 'center' };
   // Use the same item/effect pipeline as Lyric Motion in both preview and export.
@@ -11223,8 +11226,9 @@ const compose = (kind, input = {}) => {
   const blockHeight = fitted.lines.length * fitted.lineHeight;
   const left = kind === 'captionLeftAnchor', right = kind === 'captionRightAnchor';
   const topAligned = kind === 'captionCenterStack' || hero;
-  const x = left ? fitted.inner.x : right ? fitted.inner.x + fitted.inner.width : fitted.inner.x + fitted.inner.width / 2;
-  const align = left ? 'left' : right ? 'right' : 'center';
+  // An explicit alignment (the project or track style) wins over the layout's own; without one the layout decides, as before.
+  const align = ['left', 'center', 'right'].includes(input.alignment) ? input.alignment : left ? 'left' : right ? 'right' : 'center';
+  const x = align === 'left' ? fitted.inner.x : align === 'right' ? fitted.inner.x + fitted.inner.width : fitted.inner.x + fitted.inner.width / 2;
   const y = topAligned ? fitted.inner.y + (fitted.inner.height - blockHeight) / 2 + blockHeight / 2
     : fitted.inner.y + fitted.inner.height - blockHeight / 2;
   const anchor = { x: round(x), y: round(y), align, vertical: topAligned ? 'center' : 'bottom' };
@@ -44244,7 +44248,7 @@ function renderActions() {
   $('captionIntensity').value = Math.round((style.intensity == null ? .5 : style.intensity) * 100);
   $('captionMotion').value = Math.round((style.motion == null ? .45 : style.motion) * 100);
   $('captionDensity').value = segmentation.maxWords || 6; $('captionDensityValue').value = $('captionDensity').value;
-  $('captionPosition').value = style.position || 'bottom'; $('captionAccent').value = style.accentColor || '#f5a50c';
+  $('captionAlignment').value = style.alignment || 'center'; $('captionAccent').value = style.accentColor || '#f5a50c';
   $('captionWritingMode').value = style.writingMode || 'horizontal'; $('captionEmphasisStrength').value = Math.round((style.emphasisStrength == null ? 1 : style.emphasisStrength) * 100);
   $('captionReducedMotion').checked = !!(ui.store.project.settings && ui.store.project.settings.reducedMotionPreview);
   $('captionPreviewFrame').dataset.reducedMotion = String($('captionReducedMotion').checked);
@@ -44763,13 +44767,15 @@ async function importTranscript(file) {
   setProject(project); status(`${project.segments.length}件の字幕を作成しました。`);
 }
 
-function replanStyle() {
+function replanStyle(event) {
   const project = clone(ui.store.project), motion = Number($('captionMotion').value) / 100, intensity = Number($('captionIntensity').value) / 100;
   project.style = Object.assign({}, project.style, { preset: $('captionStyle').value, effect: $('captionEffect').value, holdEffect: $('captionHoldEffect').value, exitEffect: $('captionExitEffect').value, captionTreatment: $('captionTreatment').value, intensity, motion, accentColor: $('captionAccent').value,
     editor: $('captionModePro').getAttribute('aria-pressed') === 'true' ? 'advanced' : 'simple',
-    position: $('captionPosition').value, zones: [$('captionPosition').value], writingMode: $('captionWritingMode').value,
+    writingMode: $('captionWritingMode').value,
     emphasisStrength: Number($('captionEmphasisStrength').value) / 100,
     motionBudget: { maxIntensity: Math.max(0, Math.round(intensity * 3)), maxMotionCost: .25 + motion * .9, maxAttentionCost: .3 + intensity * .8 } });
+  // Alignment is only stored once the user picks one, so untouched projects keep each layout's own alignment.
+  if (event && event.target && event.target.id === 'captionAlignment') project.style.alignment = $('captionAlignment').value;
   if (runCommand({ type: 'set-caption-style', style: project.style })) status('スタイルを更新しました。');
 }
 
@@ -44910,7 +44916,7 @@ function bind() {
   if (typeof ResizeObserver === 'function') { const observer = new ResizeObserver(onWorkbenchResize); observer.observe(document.querySelector('.caption-stage')); }   // strip height changes with the track count
   document.querySelectorAll('.caption-style-tabs [data-style-tab]').forEach(button => button.addEventListener('click', () => selectStyleTab(button.dataset.styleTab)));
   document.querySelectorAll('.caption-left-tabs [data-left-tab]').forEach(button => button.addEventListener('click', () => selectLeftTab(button.dataset.leftTab)));
-  $('captionPosition').addEventListener('change', replanStyle); $('captionWritingMode').addEventListener('change', replanStyle); $('captionEmphasisStrength').addEventListener('change', replanStyle);
+  $('captionAlignment').addEventListener('change', replanStyle); $('captionWritingMode').addEventListener('change', replanStyle); $('captionEmphasisStrength').addEventListener('change', replanStyle);
   $('captionReducedMotion').addEventListener('change', event => { runCommand({ type: 'set-project-setting', field: 'reducedMotionPreview', value: event.target.checked }, ui.selectedId); status(event.target.checked ? 'プレビューの動きを減らしました。' : '通常のプレビュー動作に戻しました。'); });
   $('captionDensity').addEventListener('input', () => { $('captionDensityValue').value = $('captionDensity').value; }); $('captionDensity').addEventListener('change', changeDensity);
   $('app').addEventListener('jizura:product-mode', event => {

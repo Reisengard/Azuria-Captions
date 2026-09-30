@@ -90,8 +90,9 @@ const compose = (kind, input = {}) => {
   const blockHeight = fitted.lines.length * fitted.lineHeight;
   const left = kind === 'captionLeftAnchor', right = kind === 'captionRightAnchor';
   const topAligned = kind === 'captionCenterStack' || hero;
-  const x = left ? fitted.inner.x : right ? fitted.inner.x + fitted.inner.width : fitted.inner.x + fitted.inner.width / 2;
-  const align = left ? 'left' : right ? 'right' : 'center';
+  // An explicit alignment (the project or track style) wins over the layout's own; without one the layout decides, as before.
+  const align = ['left', 'center', 'right'].includes(input.alignment) ? input.alignment : left ? 'left' : right ? 'right' : 'center';
+  const x = align === 'left' ? fitted.inner.x : align === 'right' ? fitted.inner.x + fitted.inner.width : fitted.inner.x + fitted.inner.width / 2;
   const y = topAligned ? fitted.inner.y + (fitted.inner.height - blockHeight) / 2 + blockHeight / 2
     : fitted.inner.y + fitted.inner.height - blockHeight / 2;
   const anchor = { x: round(x), y: round(y), align, vertical: topAligned ? 'center' : 'bottom' };
