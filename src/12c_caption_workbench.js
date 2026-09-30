@@ -722,7 +722,7 @@ function renderActions() {
   $('captionIntensity').value = Math.round((style.intensity == null ? .5 : style.intensity) * 100);
   $('captionMotion').value = Math.round((style.motion == null ? .45 : style.motion) * 100);
   $('captionDensity').value = segmentation.maxWords || 6; $('captionDensityValue').value = $('captionDensity').value;
-  $('captionPosition').value = style.position || 'bottom'; $('captionAccent').value = style.accentColor || '#f5a50c';
+  $('captionAlignment').value = style.alignment || 'center'; $('captionAccent').value = style.accentColor || '#f5a50c';
   $('captionWritingMode').value = style.writingMode || 'horizontal'; $('captionEmphasisStrength').value = Math.round((style.emphasisStrength == null ? 1 : style.emphasisStrength) * 100);
   $('captionReducedMotion').checked = !!(ui.store.project.settings && ui.store.project.settings.reducedMotionPreview);
   $('captionPreviewFrame').dataset.reducedMotion = String($('captionReducedMotion').checked);
@@ -1241,13 +1241,15 @@ async function importTranscript(file) {
   setProject(project); status(`${project.segments.length}件の字幕を作成しました。`);
 }
 
-function replanStyle() {
+function replanStyle(event) {
   const project = clone(ui.store.project), motion = Number($('captionMotion').value) / 100, intensity = Number($('captionIntensity').value) / 100;
   project.style = Object.assign({}, project.style, { preset: $('captionStyle').value, effect: $('captionEffect').value, holdEffect: $('captionHoldEffect').value, exitEffect: $('captionExitEffect').value, captionTreatment: $('captionTreatment').value, intensity, motion, accentColor: $('captionAccent').value,
     editor: $('captionModePro').getAttribute('aria-pressed') === 'true' ? 'advanced' : 'simple',
-    position: $('captionPosition').value, zones: [$('captionPosition').value], writingMode: $('captionWritingMode').value,
+    writingMode: $('captionWritingMode').value,
     emphasisStrength: Number($('captionEmphasisStrength').value) / 100,
     motionBudget: { maxIntensity: Math.max(0, Math.round(intensity * 3)), maxMotionCost: .25 + motion * .9, maxAttentionCost: .3 + intensity * .8 } });
+  // Alignment is only stored once the user picks one, so untouched projects keep each layout's own alignment.
+  if (event && event.target && event.target.id === 'captionAlignment') project.style.alignment = $('captionAlignment').value;
   if (runCommand({ type: 'set-caption-style', style: project.style })) status('スタイルを更新しました。');
 }
 
@@ -1388,7 +1390,7 @@ function bind() {
   if (typeof ResizeObserver === 'function') { const observer = new ResizeObserver(onWorkbenchResize); observer.observe(document.querySelector('.caption-stage')); }   // strip height changes with the track count
   document.querySelectorAll('.caption-style-tabs [data-style-tab]').forEach(button => button.addEventListener('click', () => selectStyleTab(button.dataset.styleTab)));
   document.querySelectorAll('.caption-left-tabs [data-left-tab]').forEach(button => button.addEventListener('click', () => selectLeftTab(button.dataset.leftTab)));
-  $('captionPosition').addEventListener('change', replanStyle); $('captionWritingMode').addEventListener('change', replanStyle); $('captionEmphasisStrength').addEventListener('change', replanStyle);
+  $('captionAlignment').addEventListener('change', replanStyle); $('captionWritingMode').addEventListener('change', replanStyle); $('captionEmphasisStrength').addEventListener('change', replanStyle);
   $('captionReducedMotion').addEventListener('change', event => { runCommand({ type: 'set-project-setting', field: 'reducedMotionPreview', value: event.target.checked }, ui.selectedId); status(event.target.checked ? 'プレビューの動きを減らしました。' : '通常のプレビュー動作に戻しました。'); });
   $('captionDensity').addEventListener('input', () => { $('captionDensityValue').value = $('captionDensity').value; }); $('captionDensity').addEventListener('change', changeDensity);
   $('app').addEventListener('jizura:product-mode', event => {

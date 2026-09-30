@@ -8,7 +8,7 @@ const body = fs.readFileSync(path.join(root, 'app', 'body.html'), 'utf8');
 const ui = fs.readFileSync(path.join(root, 'src', '12c_caption_workbench.js'), 'utf8');
 const store = fs.readFileSync(path.join(root, 'src', '12b_caption_store.js'), 'utf8');
 
-for (const id of ['captionStyle', 'captionIntensity', 'captionMotion', 'captionDensity', 'captionPosition', 'captionAccent', 'captionWritingMode', 'captionEmphasisStrength', 'captionVariation', 'captionLock', 'captionReroll', 'captionDisableAnimation']) {
+for (const id of ['captionStyle', 'captionIntensity', 'captionMotion', 'captionDensity', 'captionAlignment', 'captionAccent', 'captionWritingMode', 'captionEmphasisStrength', 'captionVariation', 'captionLock', 'captionReroll', 'captionDisableAnimation']) {
   assert.match(body, new RegExp(`id="${id}"`), `G5.4 is missing #${id}`);
 }
 assert.match(ui, /window\.confirm\('単語数を変えると/, 'segmentation replanning does not warn first');
@@ -244,7 +244,7 @@ function domText(node) {
   assert.equal(document.getElementById('videoCaptionsWorkspace').classList.contains('is-easy'), false);
   assert.equal(document.getElementById('captionTechniqueHost').hidden, true, 'the advanced editor no longer shows the per-technique checklist');
   assert.equal(J.captionWorkbench.store.project.style.editor, 'advanced');
-  for (const id of ['captionStyle', 'captionIntensity', 'captionMotion', 'captionDensity', 'captionPosition', 'captionAccent', 'captionWritingMode', 'captionEmphasisStrength']) {
+  for (const id of ['captionStyle', 'captionIntensity', 'captionMotion', 'captionDensity', 'captionAlignment', 'captionAccent', 'captionWritingMode', 'captionEmphasisStrength']) {
     const control = document.getElementById(id);
     assert.notEqual(control, null);
     assert.equal(control.hidden, false);
@@ -329,7 +329,7 @@ function domText(node) {
   assert.equal(store.undo(), true);
   assert.equal(store.project.plans.segment_000001.generated.layout, 'SENTINEL_LAYOUT');
   assert.equal(store.project.techniques && store.project.techniques.enabled && store.project.techniques.enabled.enter && store.project.techniques.enabled.enter.captionFade, undefined);
-  document.getElementById('captionPosition').dispatchEvent(new Event('change'));
+  document.getElementById('captionAlignment').dispatchEvent(new Event('change'));
   for (const key of ['layout', 'decor', 'bg', 'cam', 'fx', 'trans']) assert.equal(J.CAPTION_TECHNIQUE_DRAW[key], false, key);
   for (const key of ['enter', 'hold', 'exit', 'treat']) assert.equal(J.CAPTION_TECHNIQUE_DRAW[key], true, key);
   const source = fs.readFileSync(path.join(root, 'src', '12c_caption_workbench.js'), 'utf8');

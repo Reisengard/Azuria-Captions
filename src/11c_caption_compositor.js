@@ -50,10 +50,13 @@ function drawCaptionSegment(ctx, project, segment, time, info, map) {
   // Effect settings chosen in the look panel (Advanced); unset values keep each effect's own behaviour.
   const settingsOf = (stage, id) => J.captionLookSettingsFor ? J.captionLookSettingsFor(plan.lookSettings, stage, id) : {};
   const activeTreatment = roleRender.active.treatment || plan.activeWordTreatment, activeSet = settingsOf('active', activeTreatment);
+  // Only an alignment the user set (project or track style) overrides the layout; a profile's default 'center' does not.
+  const alignStyle = J.captionTrackProjectStyle ? J.captionTrackProjectStyle(project, J.captionTrack(project, segment.trackId)) : project.style;
+  const explicitAlignment = alignStyle && alignStyle.alignment;
   const layout = J.composeCaptionLayout ? J.composeCaptionLayout(plan.layout || 'captionBottomStack', { text, tokens, clockTime: time,
     activeTreatment, accentColor: activeSet.color || roleRender.active.color || plan.accentColor, activeScale: activeSet.scale, activeLift: activeSet.lift, activeWeight: activeSet.weight,
     emphasis: roleRender.emphasis, font: plan.font, fontSize: plan.fontSize,
-    zone, box: J.isCaptionBox(placed.box) ? placed.box : undefined, frame, textColor: plan.textColor || '#ffffff' }) : null;
+    zone, box: J.isCaptionBox(placed.box) ? placed.box : undefined, frame, textColor: plan.textColor || '#ffffff', alignment: explicitAlignment }) : null;
   const lines = layout && layout.lines || [text], fontSize = layout && layout.fontSize || Math.max(38, Math.min(74, W / Math.max(10, text.length * .62)));
   const anchor = layout && layout.anchor || { x: zone.x + zone.width / 2, y: zone.y + zone.height / 2, align: 'center' };
   // Use the same item/effect pipeline as Lyric Motion in both preview and export.

@@ -37,6 +37,16 @@ for (const id of ids) {
 }
 
 assert.equal(J.LAYOUTS.captionLeftAnchor.measure({ text: 'Left side', font: 'gothic', fontSize: 76, zone, frame }).anchor.align, 'left');
+// An explicit alignment overrides the layout's own and moves the anchor to that edge of the box; none keeps the layout's alignment.
+{
+  const at = (id, alignment) => J.LAYOUTS[id].measure({ text: 'Align me', font: 'gothic', fontSize: 76, zone, frame, alignment }).anchor;
+  const left = at('captionBottomStack', 'left'), center = at('captionBottomStack', 'center'), right = at('captionBottomStack', 'right');
+  assert.deepEqual([left.align, center.align, right.align], ['left', 'center', 'right']);
+  assert.ok(left.x < center.x && center.x < right.x);
+  assert.equal(at('captionLeftAnchor', 'right').align, 'right');
+  assert.equal(at('captionLeftAnchor', undefined).align, 'left');
+  assert.equal(at('captionBottomStack', 'justify').align, 'center');
+}
 assert.equal(J.LAYOUTS.captionRightAnchor.measure({ text: 'Right side', font: 'gothic', fontSize: 76, zone, frame }).anchor.align, 'right');
 assert.equal(J.captionComponentEligibility('layout', 'captionSingleWordHero', { duration: 1, wordCount: 2 }).code, 'COMPONENT_WORD_LIMIT_EXCEEDED');
 
