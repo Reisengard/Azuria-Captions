@@ -110,6 +110,17 @@
       "copyright": "Copyright © 2017 IBM Corp. with Reserved Font Name \"Plex\"",
       "source": "https://github.com/google/fonts/tree/main/ofl/ibmplexmono",
       "subset": "ASCII, Latin-1/Extended, general punctuation, kana, CJK symbols, fullwidth forms, JIS X 0208 level 1 kanji"
+    },
+    {
+      "key": "wakai",
+      "family": "BR Wakaisho",
+      "weight": 400,
+      "file": "BRWakaisho-Regular.subset.woff2",
+      "license": "SIL OFL 1.1",
+      "licenseFile": "licenses/OFL-brwakaisho.txt",
+      "copyright": "Copyright 2024-2026 BridgeRiver; Copyright 2020 The Klee Project Authors.",
+      "source": "https://github.com/BridgeRiver/BRWakaishotai",
+      "subset": "ASCII, Latin-1/Extended, general punctuation, kana, CJK symbols, fullwidth forms, JIS X 0208 level 1 kanji"
     }
   ]
 }
