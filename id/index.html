@@ -43682,7 +43682,7 @@ J.captionSampleProject = (plan = {}, options = {}) => {
 
 /* A still sample of a track's word styles: the second word is being spoken, the last one is emphasised.
    `plan` carries what the track resolves to (font, colours, spoken-word effect, text finish); `roles` are the track's roles. */
-const ROLE_SAMPLE_WORDS = ['Every', 'word', 'counts', '100%'];
+const ROLE_SAMPLE_WORDS = ['Every', '言葉', 'ひとつ', '100%'];
 const ROLE_SAMPLE_FRAME = { width: 400, height: 125 };
 J.paintCaptionRoleSample = (canvas, roles, plan = {}) => {
   const ctx = canvas.getContext('2d'), per = .6, words = ROLE_SAMPLE_WORDS;
