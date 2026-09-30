@@ -869,6 +869,8 @@ button.small.primary { padding: 4px 12px; }
         <button id="captionRedo" type="button" disabled>やり直す</button>
         <button id="captionVariation" type="button" class="ghost small" disabled>全体をランダムに決める</button>
         <button id="captionSave" type="button" disabled>Simpan</button>
+        <button id="captionStyleSave" type="button" class="ghost small" title="文字Gaya・エフェクト・Gayaの設定をすべてファイルにSimpanします">Simpan Gaya</button>
+        <label class="file caption-open-project" title="SimpanしたGayaを、いまの字幕に適用します">Muat Gaya<input id="captionStyleFile" type="file" accept=".json,application/json"></label>
         <button id="captionExport" type="button" class="primary" disabled title="字幕付き Ekspor MP4">Ekspor</button>
         <button id="captionTerms" type="button" class="ghost terms-open" title="Hak dan lisensi hasil ekspor">Tentang dan hak</button>
       </div>
@@ -7353,6 +7355,74 @@ J.randomCaptionLook = (project, options = {}) => {
     out[key] = pool.length ? pool[J.h(seed, index, 0x52) % pool.length] : standard[key];
   });
   return out;
+};
+})();
+
+/* ============================================================
+   JIZURA — caption style file ("Save style" / "Load style")
+
+   Everything that decides how captions look, without the words, timing or video:
+     style        project style: preset, treatment, accent, alignment, writing mode, motion, intensity, emphasis,
+                  the chosen effects (look) and their settings, editor mode
+     techniques   the effect techniques the advanced editor enabled
+     tracks[]     per track: its style overrides and its Word styles (base / active / emphasis roles)
+   Not included: caption text, timing, word density (segmentation), boxes and positions, per-caption overrides
+   and video edits. Those belong to the project, not to the look.
+   Tracks are matched by id (the primary track by its flag); tracks the file does not know are left alone.
+   ============================================================ */
+(() => {
+'use strict';
+
+const plain = value => !!value && typeof value === 'object' && !Array.isArray(value);
+const clone = value => JSON.parse(JSON.stringify(value));
+const presetError = (message, details) => new J.ProjectError('CAPTION_STYLE_FILE_INVALID', message, details);
+
+J.CAPTION_STYLE_FILE_KIND = 'jizura-caption-style';
+J.CAPTION_STYLE_FILE_VERSION = 1;
+
+const withoutSegmentation = style => { const out = clone(style); delete out.segmentation; return out; };
+
+/* The style file content for a project. */
+J.captionStylePreset = project => {
+  const source = project && project.style;
+  const style = plain(source) ? withoutSegmentation(source) : { preset: typeof source === 'string' ? source : 'creator' };
+  const preset = {
+    kind: J.CAPTION_STYLE_FILE_KIND, version: J.CAPTION_STYLE_FILE_VERSION,
+    style,
+    techniques: plain(project && project.techniques) ? clone(project.techniques) : {},
+    tracks: ((project && project.tracks) || []).map(track => ({
+      id: track.id, primary: !!track.primary,
+      style: withoutSegmentation(plain(track.style) ? track.style : {}),
+      roles: J.normalizeCaptionRoles(track.roles),
+    })),
+  };
+  return preset;
+};
+
+/* Parse text or an object into a validated, clean style file. Throws CAPTION_STYLE_FILE_INVALID. */
+J.parseCaptionStylePreset = input => {
+  let data = input;
+  if (typeof input === 'string') { try { data = JSON.parse(input); } catch (_) { throw presetError('This is not a JIZURA style file (the JSON could not be read).'); } }
+  if (!plain(data) || data.kind !== J.CAPTION_STYLE_FILE_KIND) throw presetError('This is not a JIZURA style file.');
+  if (!Number.isInteger(data.version) || data.version < 1 || data.version > J.CAPTION_STYLE_FILE_VERSION) throw presetError(`Style file version ${String(data.version)} is not supported.`);
+  if (!plain(data.style)) throw presetError('The style file has no style.');
+  const style = withoutSegmentation(data.style);
+  if (style.preset !== undefined && !(typeof style.preset === 'string' && J.CAPTION_STYLE_PROFILES && Object.prototype.hasOwnProperty.call(J.CAPTION_STYLE_PROFILES, style.preset))) throw presetError(`The style file uses an unknown caption style "${String(style.preset)}".`);
+  try {
+    if (style.look !== undefined) style.look = J.normalizeCaptionLook(style.look);
+    if (style.lookSettings !== undefined) style.lookSettings = J.normalizeCaptionLookSettings(style.lookSettings);
+  } catch (error) { throw presetError(error.message, error.details); }
+  const techniques = data.techniques === undefined ? {} : data.techniques;
+  if (!plain(techniques)) throw presetError('The style file techniques must be an object.');
+  if (data.tracks !== undefined && !Array.isArray(data.tracks)) throw presetError('The style file tracks must be a list.');
+  const tracks = (data.tracks || []).map(entry => {
+    if (!plain(entry)) throw presetError('A track in the style file must be an object.');
+    try {
+      return { id: typeof entry.id === 'string' ? entry.id : null, primary: entry.primary === true,
+        style: J.normalizeCaptionTrackStyle(withoutSegmentation(plain(entry.style) ? entry.style : {})), roles: J.normalizeCaptionRoles(entry.roles) };
+    } catch (error) { throw presetError(error.message, error.details); }
+  });
+  return { kind: data.kind, version: data.version, style, techniques: clone(techniques), tracks };
 };
 })();
 
@@ -43199,10 +43269,39 @@ class CaptionStore {
       case 'set-field-lock': this.setFieldLock(command); break;
       case 'reroll-segment': this.randomizeCaptionLook({ segmentId: command.segmentId, variation: command.variation }); break;
       case 'set-technique': this.setTechnique(command); break;
+      case 'apply-caption-style': this.applyCaptionStyle(command); break;
       default: fail('COMMAND_UNKNOWN', `Unknown caption command "${command.type}".`, { commandType: command.type });
     }
     if (this.project.tracks.length > 1) J.captionSortSegments(this.project);
     this.project.updatedAt = command.updatedAt || new Date().toISOString();
+  }
+
+  /* Load a style file: project style, techniques, and each known track's style and roles. Words, timing, boxes,
+     word density and per-caption overrides stay as they are. One command, so one undo restores everything. */
+  applyCaptionStyle(command) {
+    const preset = J.parseCaptionStylePreset(command.preset), project = this.project;
+    const keep = plainObject(project.style) && project.style.segmentation ? clone(project.style.segmentation) : null;
+    project.style = clone(preset.style);
+    if (keep) project.style.segmentation = keep; else delete project.style.segmentation;
+    const techniques = {};
+    for (const set of CAPTION_TECHNIQUE_SETS) if (typeof preset.techniques[set] === 'boolean') techniques[set] = preset.techniques[set];
+    const enabled = preset.techniques.enabled;
+    if (plainObject(enabled)) for (const group of J.GROUP_KEYS) {
+      if (!plainObject(enabled[group])) continue;
+      const registry = J.registry(group), kept = {};
+      for (const [id, value] of Object.entries(enabled[group])) if (typeof value === 'boolean' && Object.prototype.hasOwnProperty.call(registry, id)) kept[id] = value;
+      if (Object.keys(kept).length) { techniques.enabled = techniques.enabled || {}; techniques.enabled[group] = kept; }
+    }
+    if (Object.keys(techniques).length) project.techniques = techniques; else delete project.techniques;
+    for (const track of project.tracks) {
+      const entry = preset.tracks.find(item => item.id === track.id) || (track.primary ? preset.tracks.find(item => item.primary) : null);
+      if (!entry) continue;
+      const own = track.style && track.style.segmentation;
+      track.style = clone(entry.style); if (own) track.style.segmentation = clone(own);
+      track.roles = clone(entry.roles);
+    }
+    J.captionSyncDefaultBoxes(project);
+    this.replanAfterPlacement();
   }
 
   setTechnique(command) {
@@ -45080,6 +45179,17 @@ function bind() {
   $('captionUndo').addEventListener('click', () => { if (ui.store.undo()) renderAll(); }); $('captionRedo').addEventListener('click', () => { if (ui.store.redo()) renderAll(); });
   $('captionVariation').addEventListener('click', () => { if (runCommand({ type: 'randomize-caption-look', variation: ++ui.variation })) status('全体のエフェクトをランダムに決めました。元に戻すで戻せます。'); });
   $('captionSave').addEventListener('click', () => J.saveFile(`jizura-${ui.store.project.id}.json`, ui.store.serialize()));
+  $('captionStyleSave').addEventListener('click', () => { J.saveFile('jizura-caption-style.json', JSON.stringify(J.captionStylePreset(ui.store.project), null, 1)); status('スタイルを保存しました。'); });
+  $('captionStyleFile').addEventListener('change', async event => {
+    const file = event.target.files[0]; event.target.value = ''; if (!file) return;
+    try {
+      const preset = J.parseCaptionStylePreset(await file.text());
+      if (runCommand({ type: 'apply-caption-style', preset }, ui.selectedId)) {
+        if (J.ensureCaptionFonts) J.ensureCaptionFonts(ui.store.project).then(() => { if (ui.preview) ui.preview.renderNow(); renderRolesPanel(); }).catch(() => {});
+        status('スタイルを読み込みました。元に戻すで戻せます。');
+      }
+    } catch (error) { status(J.recoveryForError ? J.recoveryForError(error).display : error.message, true); }
+  });
   for (const id of ['captionExport', 'captionExportPanel']) $(id).addEventListener('click', () => exportCaptions().catch(error => status(error.message, true)));
   $('captionNew').addEventListener('click', () => { if (ui.preview) ui.preview.disconnect(); if (ui.media) ui.media.close(); ui.media = null; ui.preview = null; ui.selectedId = null; setProject(emptyProject()); $('captionProjectName').textContent = '無題の字幕プロジェクト'; $('captionRelinkNotice').hidden = true; $('captionPreviewEmpty').hidden = false; $('captionMediaName').textContent = '動画未選択'; $('captionPlay').disabled = true; $('captionScrub').disabled = true; status('新しいプロジェクトを作成しました。'); });
   $('captionLock').addEventListener('change', event => { const segment = selectedSegment(); if (!segment) return; runCommand({ type: 'set-segment-locks', segmentId: segment.id, locked: event.target.checked }, segment.id); });

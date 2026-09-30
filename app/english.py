@@ -161,6 +161,8 @@ BODY = {
     'id="captionRedo" type="button" disabled>やり直す': 'id="captionRedo" type="button" disabled>Redo',
     '>全体をランダムに決める</button>': '>Randomize look</button>',
     'id="captionSave" type="button" disabled>保存': 'id="captionSave" type="button" disabled>Save',
+    'title="文字スタイル・エフェクト・スタイルの設定をすべてファイルに保存します">スタイルを保存': 'title="Save every Word styles, Effects and Style setting to a file">Save Style',
+    'title="保存したスタイルを、いまの字幕に適用します">スタイルを読込': 'title="Apply a saved style to the current captions">Load Style',
     'title="字幕付き MP4 を書き出す">書き出し': 'title="Export a captioned MP4">Export',
     'title="安全な演出の中から選べます"': 'title="Choose from the safe set of effects"',
     'title="演出の技法を自分で選べます"': 'title="Choose the effect techniques yourself"',
@@ -509,6 +511,7 @@ UI = {
 }
 
 CAPTION_UI = {
+    'スタイルを保存しました。': 'Style saved.', 'スタイルを読み込みました。元に戻すで戻せます。': 'Style loaded. Undo brings the old one back.',
     # Caption tab
     ": '選んだ単語を移動';": ": 'Move picked words';",
     "tags.push('テキストブロック')": "tags.push('Text block')", "tags.push('固定中')": "tags.push('Kept as is')",

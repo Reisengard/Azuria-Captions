@@ -41,6 +41,7 @@ STYLES = {
 }
 
 BODY = {
+    '>スタイルを保存</button>': '>Simpan Gaya</button>', '>スタイルを読込<input': '>Muat Gaya<input',
     '文字PV系の部品を使う': 'Pakai bagian tipografi',
     'キネティックの部品を使う': 'Pakai bagian kinetik',
     'ホラーの演出も使う': 'Sertakan efek horor',
