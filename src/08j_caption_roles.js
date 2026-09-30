@@ -20,7 +20,7 @@ const activeKey = value => typeof value === 'string' && !!J.CAPTION_ACTIVE && Ob
 const color = value => typeof value === 'string' && HEX.test(value);
 
 /* Curated, redistributable (SIL OFL 1.1) faces offered for roles. Keys are J.FONTS keys. */
-J.CAPTION_FONTS = Object.freeze(['gothic_bold', 'gothic_black', 'gothic_med', 'zenkaku', 'round', 'sansui', 'mincho_bold', 'mincho_black', 'dela', 'klee', 'wakai', 'mono']);
+J.CAPTION_FONTS = Object.freeze(['gothic_bold', 'gothic_black', 'gothic_med', 'zenkaku', 'round', 'sansui', 'mincho_bold', 'mincho_black', 'dela', 'klee', 'wakai', 'gothic_light', 'mincho', 'mincho_light', 'tokumin', 'shippori', 'brush', 'potta', 'kiwi', 'pop', 'reggae', 'rampart', 'dot', 'mono']);
 J.CAPTION_ROLE_NAMES = Object.freeze(['base', 'active', 'emphasis']);
 J.CAPTION_ROLE_FIELDS = Object.freeze({
   base: { font: fontKey, color, fontSize: range(24, 200) },
