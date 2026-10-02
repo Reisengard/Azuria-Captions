@@ -3,6 +3,7 @@
 Browser app (single-file HTML per language) with two working modes: **Lyric Motion** (must not regress) and **Video Captions** (subtitles for one short-form video).
 
 ## Source of truth
+- `docs/architecture/captions-editor-rework-plan.md` — the captions editor rework (steps E0…U6). **Read this first for rework work** and update step status when a step finishes.
 - `docs/architecture/subtitle-mvp-delta-plan.md` — decisions, audit findings, filename mapping, step plan with status. **Read this first** and update step status when a step finishes.
 - `JIZURA_HANDOFF_SUBTITLE_MVP_REVISION.md` — original scope revision; the delta plan overrides it where they differ.
 - `docs/architecture/decisions/` — ADRs.

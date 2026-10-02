@@ -19,4 +19,8 @@ assert.match(shell, /ArrowLeft.*ArrowRight.*Home.*End/, 'tab keyboard navigation
 assert.match(shell, /jizura:product-mode/, 'mode changes do not expose an integration event');
 assert.match(shell, /\/\* The assembled script[\s\S]*\ninit\(\);\n\}\)\(\);/, 'product shell waits too late to bind in the single-file build');
 
+assert.match(shell, /const LYRIC_MOTION_ENABLED = false;/, 'Lyric Motion must be hidden behind the flag');
+assert.match(shell, /DEFAULT_MODE = LYRIC_MOTION_ENABLED \? 'lyrics' : 'video-captions'/, 'default mode must be Video Captions while the flag is off');
+assert.match(shell, /nav\.hidden = !LYRIC_MOTION_ENABLED/, 'mode switch must be hidden while the flag is off');
+
 console.log('Gate 5.1 product mode shell tests passed.');
