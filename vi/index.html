@@ -895,7 +895,6 @@ html[data-product-mode=video-captions] label.file:hover { border-color: var(--am
 .caption-main-menu > a.caption-menu-kofi { display: block; margin: 3px 0; padding: 6px 10px; border-radius: 4px; background: #1f2d47; color: #fff; font-size: 12px; text-decoration: none; text-align: center; }
 .caption-main-menu > a.caption-menu-kofi:hover { background: #2a3c5e; }
 .caption-main-menu hr { width: 100%; margin: 3px 0; border: 0; border-top: 1px solid var(--line); }
-.caption-menu-lang { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 10px 4px; color: var(--muted); font-size: 11px; }
 
 /* rail | drawer | stage, then the timeline strip across the full width */
 .caption-workbench { --caption-rail-w: 60px; --caption-drawer-w: 340px; position: relative; flex: 1 1 auto; min-height: 0; display: grid;
@@ -1025,6 +1024,7 @@ html[data-product-mode=video-captions] label.file:hover { border-color: var(--am
         <button id="captionModePro" type="button" aria-pressed="false" title="Hiệu ứngの技法を自分で選べます">Nâng cao</button>
       </div>
       <label class="file caption-open-project" title="LưuしたPhong cáchを、いまの字幕に適用します">Tải kiểu<input id="captionStyleFile" type="file" accept=".json,application/json"></label>
+      <label class="lang-switch"><span class="sr-only">Ngôn ngữ</span><select aria-label="Ngôn ngữ" onchange="if(this.value)location.href=this.value"><option value="../index.html" lang="ja">日本語</option><option value="../en/index.html" lang="en">English</option><option value="../vi/index.html" lang="vi" selected>Tiếng Việt</option></select></label>
       <div class="caption-menu-wrap">
         <button id="captionMenuButton" type="button" class="ghost caption-menu-button" aria-haspopup="true" aria-expanded="false" aria-controls="captionMenu" aria-label="メニュー" title="メニュー">⋯</button>
         <div id="captionMenu" class="caption-main-menu" hidden aria-label="メニュー">
@@ -1037,7 +1037,6 @@ html[data-product-mode=video-captions] label.file:hover { border-color: var(--am
           <button id="captionHelp" type="button" title="字幕編集の流れを見る">使い方</button>
           <button id="captionTerms" type="button" class="terms-open" title="Quyền và giấy phép đối với sản phẩm đã xuất">Giới thiệu & quyền sử dụng</button>
           <a class="caption-menu-kofi" href="https://ko-fi.com/S7W2281LS7" target="_blank" rel="noopener" title="Ko-fi">☕ Ko-fi</a>
-          <div class="caption-menu-lang"><span>言語</span><label class="lang-switch"><span class="sr-only">Ngôn ngữ</span><select aria-label="Ngôn ngữ" onchange="if(this.value)location.href=this.value"><option value="../index.html" lang="ja">日本語</option><option value="../en/index.html" lang="en">English</option><option value="../zh-hant/index.html" lang="zh-Hant">繁體中文</option><option value="../zh-hans/index.html" lang="zh-Hans">简体中文</option><option value="../ko/index.html" lang="ko">한국어</option><option value="../id/index.html" lang="id-ID">Bahasa Indonesia</option><option value="../vi/index.html" lang="vi" selected>Tiếng Việt</option></select></label></div>
         </div>
       </div>
       <button id="captionExport" type="button" class="primary" disabled title="字幕付き Xuất MP4">Xuất bản</button>

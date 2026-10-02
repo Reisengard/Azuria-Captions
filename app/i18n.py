@@ -83,12 +83,14 @@ def names_js(code):
             '})();\n')
 
 
-def nav(code):
-    """language menu (a select, so the editions fit the header), links relative to the edition's folder"""
+def nav(code, only=None):
+    """language menu (a select, so the editions fit the header), links relative to the edition's folder.
+    `only`: codes to offer (the captions top bar lists Japanese and English); the current edition is always kept so the select never lies."""
     here = dict((c, f) for c, f, _, _ in EDITIONS)[code]
     up = '../' if here else ''
     opts = []
     for c, folder, hl, name in EDITIONS:
+        if only and c not in only and c != code: continue
         href = up + (folder + '/' if folder else '') + 'index.html'
         opts.append(f'<option value="{href}" lang="{hl}"{" selected" if c == code else ""}>{name}</option>')
     label = 'Bahasa' if code == 'id' else 'Ngôn ngữ' if code == 'vi' else 'Language'

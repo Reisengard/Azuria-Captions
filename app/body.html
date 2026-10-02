@@ -29,6 +29,7 @@
         <button id="captionModePro" type="button" aria-pressed="false" title="演出の技法を自分で選べます">詳細</button>
       </div>
       <label class="file caption-open-project" title="保存したスタイルを、いまの字幕に適用します">スタイルを読込<input id="captionStyleFile" type="file" accept=".json,application/json"></label>
+      @LANG_CAPTIONS@
       <div class="caption-menu-wrap">
         <button id="captionMenuButton" type="button" class="ghost caption-menu-button" aria-haspopup="true" aria-expanded="false" aria-controls="captionMenu" aria-label="メニュー" title="メニュー">⋯</button>
         <div id="captionMenu" class="caption-main-menu" hidden aria-label="メニュー">
@@ -41,7 +42,6 @@
           <button id="captionHelp" type="button" title="字幕編集の流れを見る">使い方</button>
           <button id="captionTerms" type="button" class="terms-open" title="出力物の権利とライセンス">利用について</button>
           <a class="caption-menu-kofi" href="https://ko-fi.com/S7W2281LS7" target="_blank" rel="noopener" title="Ko-fi">☕ Ko-fi</a>
-          <div class="caption-menu-lang"><span>言語</span>@LANG_NAV@</div>
         </div>
       </div>
       <button id="captionExport" type="button" class="primary" disabled title="字幕付き MP4 を書き出す">書き出し</button>

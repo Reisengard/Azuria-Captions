@@ -16,7 +16,6 @@ BODY = {
     '<h2 id="captionDrawerTitle">字幕</h2>': '<h2 id="captionDrawerTitle">Captions</h2>',
     'aria-label="パネルを閉じる" title="パネルを閉じる"': 'aria-label="Close panel" title="Close panel"',
     'title="字幕編集の流れを見る">使い方</button>': 'title="How caption editing works">How to use</button>',
-    '<div class="caption-menu-lang"><span>言語</span>': '<div class="caption-menu-lang"><span>Language</span>',
     'title="縞模様の部分はトリムで削除され、書き出されません"': 'title="Striped parts are trimmed away and not exported"',
     # Caption tab
     '単語を押すと修正・強調できます。✂ で字幕を分けます。</p>': 'Press a word to fix or highlight it. ✂ splits the caption there.</p>',

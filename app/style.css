@@ -872,7 +872,6 @@ html[data-product-mode=video-captions] label.file:hover { border-color: var(--am
 .caption-main-menu > a.caption-menu-kofi { display: block; margin: 3px 0; padding: 6px 10px; border-radius: 4px; background: #1f2d47; color: #fff; font-size: 12px; text-decoration: none; text-align: center; }
 .caption-main-menu > a.caption-menu-kofi:hover { background: #2a3c5e; }
 .caption-main-menu hr { width: 100%; margin: 3px 0; border: 0; border-top: 1px solid var(--line); }
-.caption-menu-lang { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 10px 4px; color: var(--muted); font-size: 11px; }
 
 /* rail | drawer | stage, then the timeline strip across the full width */
 .caption-workbench { --caption-rail-w: 60px; --caption-drawer-w: 340px; position: relative; flex: 1 1 auto; min-height: 0; display: grid;
