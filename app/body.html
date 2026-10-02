@@ -19,7 +19,7 @@
   <section id="videoCaptionsWorkspace" class="product-surface caption-surface" role="tabpanel" aria-labelledby="productVideoCaptions" hidden>
 <header class="bar caption-bar">
       <div class="brand"><span class="word">Azuria<b>Sub</b></span><span class="ver">v@VERSION@</span></div>
-      <div class="proj"><strong id="captionProjectName" class="caption-project-name">無題の字幕プロジェクト</strong></div>
+      <div class="proj"><strong id="captionProjectName" class="caption-project-name">無題の字幕プロジェクト</strong><span id="captionSaveState" class="caption-save-state"></span></div>
       <div class="acts caption-history" role="group" aria-label="元に戻す・やり直す">
         <button id="captionUndo" type="button" disabled>元に戻す</button>
         <button id="captionRedo" type="button" disabled>やり直す</button>
@@ -617,6 +617,15 @@
     <progress id="captionExportProgress" class="caption-export-progress" max="1" value="0" hidden aria-label="書き出しの進み具合"></progress>
     <p id="captionExportState" class="caption-export-state" role="status"></p>
     <div class="terms-foot"><button value="close" class="ghost">閉じる</button><button id="captionExportPanel" type="button" class="primary" disabled>書き出しを開始</button></div>
+  </form>
+</dialog>
+<dialog id="captionRestoreDlg" class="terms" aria-labelledby="captionRestoreTitle">
+  <form method="dialog">
+    <h2 id="captionRestoreTitle">前回の作業を復元しますか？</h2>
+    <p>このブラウザに自動保存されたプロジェクトがあります。</p>
+    <dl class="caption-meta"><dt>名前</dt><dd id="captionRestoreName">—</dd><dt>保存</dt><dd id="captionRestoreTime">—</dd><dt>字幕</dt><dd id="captionRestoreCount">—</dd></dl>
+    <p class="terms-sub">動画ファイルは保存されません。復元後に元の動画を選び直してください。</p>
+    <div class="terms-foot"><button value="discard" class="ghost">破棄して新規</button><button value="restore" class="primary" autofocus>復元</button></div>
   </form>
 </dialog>
 <dialog id="captionHelpDlg" class="terms" aria-labelledby="captionHelpTitle">

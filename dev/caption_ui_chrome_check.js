@@ -489,11 +489,11 @@ const IN_PAGE = `(() => {
     let shell = await t('shell'); const drawerWidth = (await t('rect', '#captionDrawer')).width;
     step('shell: the Captions drawer is open by default, alone', shell.open && shell.drawer === 'captions' && shell.panes === 'captionLeftPane_transcript' && drawerWidth > 300, JSON.stringify(shell));
     await clickSel('#captionRail_text'); shell = await t('shell');
-    step('shell: the Text rail item opens one merged Text pane', shell.drawer === 'text' && shell.panes === 'captionStylePane_style' && shell.pref === '{"drawer":"text"}', JSON.stringify(shell));
+    step('shell: the Text rail item opens one merged Text pane', shell.drawer === 'text' && shell.panes === 'captionStylePane_style' && shell.pref.startsWith('{"drawer":"text"'), JSON.stringify(shell));
     await clickSel('#captionRail_effects'); shell = await t('shell');
     step('shell: another rail item replaces the drawer content', shell.drawer === 'effects' && shell.panes === 'captionStylePane_effects', JSON.stringify(shell));
     const frameOpen = shell.frame; await clickSel('#captionRail_effects'); shell = await t('shell');
-    step('shell: a second click closes the drawer and the preview grows', !shell.open && shell.pref === '{"drawer":""}' && (await t('rect', '#captionDrawer')).width === 0 && shell.frame.vw > frameOpen.vw + 250, JSON.stringify({ before: frameOpen, after: shell.frame }));
+    step('shell: a second click closes the drawer and the preview grows', !shell.open && shell.pref.startsWith('{"drawer":""') && (await t('rect', '#captionDrawer')).width === 0 && shell.frame.vw > frameOpen.vw + 250, JSON.stringify({ before: frameOpen, after: shell.frame }));
     await clickSel('#captionRail_video'); shell = await t('shell');
     step('shell: the Video rail item shows the video settings', shell.drawer === 'video' && shell.panes === 'captionStylePane_video');
     await clickSel('#captionMenuButton'); shell = await t('shell');
@@ -549,6 +549,24 @@ const IN_PAGE = `(() => {
     step('u5: the drawer is a sheet above the tab bar', u5.drawerOpen && u5.drawer.pos === 'fixed' && Math.abs(u5.drawer.bottom - u5.rail.top) < 2, JSON.stringify(u5));
     await clickSel('#captionRail_text');
     await client.send('Emulation.clearDeviceMetricsOverride'); await sleep(200);
+
+    // U6: autosave to IndexedDB, the "Saved" indicator, and the restore prompt after a reload
+    const u6Count = await t('count'), u6Name = await client.evaluate(`document.getElementById('captionProjectName').textContent`);
+    await client.evaluate(`J.captionWb.autosave.saveNow()`);
+    const rec = await client.evaluate(`J.captionWb.autosave.readRecord().then(r => r && ({ segments: r.segments, name: r.name, hasJson: typeof r.json === 'string' && r.json.length > 100 }))`);
+    step('u6: autosave writes the project to IndexedDB', !!rec && rec.segments === u6Count && rec.hasJson, JSON.stringify(rec));
+    step('u6: the top bar shows the save time', /^(自動保存|Saved) \d/.test(await client.evaluate(`document.getElementById('captionSaveState').textContent`)));
+    await client.send('Page.reload'); await sleep(800);
+    for (let i = 0; i < 300; i++) { if (await client.evaluate('document.readyState === "complete" && !!(window.J && J.captionWorkbench && J.captionWb.autosave && document.getElementById("productVideoCaptions"))').catch(() => false)) break; await sleep(100); }
+    await client.evaluate(IN_PAGE); await client.evaluate(`document.getElementById('productVideoCaptions').click()`);
+    for (let i = 0; i < 50 && !(await client.evaluate(`document.getElementById('captionRestoreDlg').open`)); i++) await sleep(100);
+    step('u6: the restore prompt opens after a reload', await client.evaluate(`document.getElementById('captionRestoreDlg').open`));
+    step('u6: autosave waits for the answer', await client.evaluate(`!J.captionWb.autosave.isReady()`));
+    await client.evaluate(`document.activeElement && document.activeElement.blur()`); await key('Escape', 'Escape', { vk: 27 }); await sleep(100);
+    step('u6: Esc does not dismiss the prompt', await client.evaluate(`document.getElementById('captionRestoreDlg').open`));
+    await clickSel('#captionRestoreDlg button[value=restore]'); await sleep(500);
+    const u6Restored = await client.evaluate(`({ open: document.getElementById('captionRestoreDlg').open, count: J.captionWorkbench.store.project.segments.length, name: document.getElementById('captionProjectName').textContent, relink: !document.getElementById('captionRelinkNotice').hidden, ready: J.captionWb.autosave.isReady() })`);
+    step('u6: Restore reopens the project and asks for the video again', !u6Restored.open && u6Restored.count === u6Count && u6Restored.relink && u6Restored.ready && u6Restored.name === u6Name, JSON.stringify(u6Restored));
 
     const problems = log.filter(line => !/favicon|Failed to load resource/.test(line));
     step('no page errors', problems.length === 0, problems.join(' | '));

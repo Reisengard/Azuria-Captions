@@ -171,6 +171,7 @@ BODY = {
     '色<span class="caption-role-pair">': 'Color<span class="caption-role-pair">',
     '強調の強さ<input id="captionEmphasisStrength"': 'Emphasis strength<input id="captionEmphasisStrength"',
     '無題の字幕プロジェクト': 'Untitled caption project',
+    '自動保存 ': 'Saved ', '自動保存できません': 'Autosave unavailable',
     'aria-label="字幕プロジェクト操作"': 'aria-label="Caption project actions"',
     '>新規</button>': '>New</button>',
     'id="captionUndo" type="button" disabled>元に戻す': 'id="captionUndo" type="button" disabled>Undo',
@@ -184,6 +185,13 @@ BODY = {
     'title="演出の技法を自分で選べます"': 'title="Choose the effect techniques yourself"',
     'title="字幕編集の流れを見る" aria-label="使い方"': 'title="How caption editing works" aria-label="Help"',
     'id="captionTerms" type="button" class="ghost terms-open" title="出力物の権利とライセンス"': 'id="captionTerms" type="button" class="ghost terms-open" title="Rights and license of the output"',
+    '<h2 id="captionRestoreTitle">前回の作業を復元しますか？</h2>': '<h2 id="captionRestoreTitle">Restore your last session?</h2>',
+    '<p>このブラウザに自動保存されたプロジェクトがあります。</p>': '<p>A project was autosaved in this browser.</p>',
+    '<dt>名前</dt><dd id="captionRestoreName">': '<dt>Name</dt><dd id="captionRestoreName">',
+    '<dt>保存</dt><dd id="captionRestoreTime">': '<dt>Saved</dt><dd id="captionRestoreTime">',
+    '<dt>字幕</dt><dd id="captionRestoreCount">': '<dt>Captions</dt><dd id="captionRestoreCount">',
+    '動画ファイルは保存されません。復元後に元の動画を選び直してください。': 'The video file is not stored. After restoring, choose the original video again.',
+    '<button value="discard" class="ghost">破棄して新規</button><button value="restore" class="primary" autofocus>復元</button>': '<button value="discard" class="ghost">Discard and start new</button><button value="restore" class="primary" autofocus>Restore</button>',
     '<h2 id="captionHelpTitle">字幕編集の流れ</h2>': '<h2 id="captionHelpTitle">How caption editing works</h2>',
     '<strong>動画を読み込む。</strong>動画は「動画設定」で、書き出す縦横比（9:16・4:5・1:1・16:9）、トリム、クロップを選びます。': '<strong>Import a video.</strong> In Video settings, choose the output shape (9:16, 4:5, 1:1 or 16:9), trim and crop.',
     '<strong>文字起こしを入れる。</strong>単語タイムスタンプ JSON、SRT、VTT を読み込むか、台本を貼り付けて「同期」で合わせます。': '<strong>Add a transcript.</strong> Import word-timestamp JSON, SRT or VTT, or paste a script and match it with Sync.',
@@ -997,6 +1005,35 @@ def localize_ae(source):
             .replace('preferredSize.width = 70', 'preferredSize.width = 95'))
 
 
+# Strings that were still falling through to Japanese (full-phrase keys so shorter label rules cannot half-translate them).
+BODY.update({
+    '字幕の文字<input id="captionEditText"': 'Caption text<input id="captionEditText"',
+    'title="この字幕をループ再生し、各単語が始まる瞬間に Space を押して単語のタイミングを合わせます">単語を同期': 'title="Loop this caption and press Space as each word starts to set the word timing">Sync words',
+    '<dt>タイミングの精度</dt>': '<dt>Timing source</dt>',
+    'title="タップ同期: 選んだ字幕から最後まで（またはルーラーで指定した範囲）を、動画を再生しながら Space で合わせます">同期': 'title="Tap sync: play the video and press Space as each caption starts, from the selected caption to the end (or inside the range marked on the ruler)">Sync',
+    'aria-label="時間目盛り（クリックまたはドラッグで移動）"': 'aria-label="Time ruler (click or drag to move)"',
+})
+CAPTION_UI.update({
+    "'ループする字幕を選ぶか、ルーラーを Alt+ドラッグして範囲を指定してください。'": "'Select a caption to loop, or Alt+drag on the ruler to mark a range.'",
+    '`ループ ${fmt(region.start)}–${fmt(region.end)}`': '`Loop ${fmt(region.start)}–${fmt(region.end)}`',
+    '`次: 「${label(next)}」（${done + 1} / ${total}）`': '`Next: “${label(next)}” (${done + 1} / ${total})`',
+    '`すべてタップしました（${total}件）。「確定」で反映します。`': '`All ${total} tapped. Press Confirm to apply.`',
+    "'単語を押すと強調を変えられます。'": "'Press a word to change its highlight.'",
+    "'台本のテキストを貼り付けてください。'": "'Paste the script text first.'",
+    '`台本は ${J.captionTimeline.SCRIPT_MAX_LINES} 行までです。`': '`A script can have at most ${J.captionTimeline.SCRIPT_MAX_LINES} lines.`',
+    "'ここには台本を入れる空きがありません。再生位置を動かすか、ルーラーで範囲を指定してください（1行あたり 0.1 秒以上必要です）。'": "'There is no room for a script here. Move the playhead or mark a range on the ruler (each line needs at least 0.1 s).'",
+    '`${count} 行 → ${count} 件の字幕`': "`${count} ${count === 1 ? 'line' : 'lines'} → ${count} ${count === 1 ? 'caption' : 'captions'}`",
+    '`${commands.length} 件の字幕を追加しました。「同期」で話すタイミングに合わせます。`': "`Added ${commands.length} ${commands.length === 1 ? 'caption' : 'captions'}. Use Sync to match the speech timing.`",
+    "{ text: '全体に合わせる'": "{ text: 'Match project'",
+    "ui.exportAbort ? 'キャンセル' : '書き出しを開始'": "ui.exportAbort ? 'Cancel' : 'Start export'",
+    "exportState('書き出しを準備しています…', 0)": "exportState('Preparing the export…', 0)",
+    "const done = `書き出しました（${result.frameCount}フレーム・音声${result.audio.mode !== 'none' ? '保持' : 'なし'}・${result.metrics.elapsedSeconds.toFixed(1)}秒）。`": "const done = `Export complete (${result.frameCount} frames · audio ${result.audio.mode !== 'none' ? 'preserved' : 'none'} · ${result.metrics.elapsedSeconds.toFixed(1)} s).`",
+    "showState('自動保存 ' + clock(record.savedAt))": "showState('Autosaved ' + clock(record.savedAt))",
+    "showState('自動保存できません', true)": "showState('Autosave unavailable', true)",
+    "['Every', '言葉', 'ひとつ', '100%']": "['Every', 'word', 'counts', '100%']",
+})
+
+
 def replace_copy(source, glossary):
     # Longest first protects complete phrases from shorter label replacements.
     for japanese, english in sorted(glossary.items(), key=lambda pair: -len(pair[0])):
@@ -1011,7 +1048,7 @@ def localize_body(source):
 def localize_js(source, filename):
     if filename.endswith('12_ui.js'):
         return replace_copy(source, UI)
-    if filename.endswith('12c_caption_workbench.js') or re.search(r'12b[o-x]_caption_', filename):
+    if filename.endswith('12c_caption_workbench.js') or filename.endswith('12d_caption_autosave.js') or re.search(r'12b[o-z]_caption_', filename):
         return replace_copy(source, CAPTION_UI)
     if filename.endswith('12a_video_edit_ui.js'):
         return replace_copy(source, VIDEO_UI)
