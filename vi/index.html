@@ -733,9 +733,7 @@ button.small.primary { padding: 4px 12px; }
 .caption-manual-entry { margin: 12px 0; padding: 12px; border: 1px solid var(--border, #444); border-radius: 8px; }
 .caption-manual-entry summary { cursor: pointer; margin-bottom: 8px; }
 .caption-manual-entry textarea { width: 100%; box-sizing: border-box; margin: 6px 0; }
-.caption-manual-times { display: flex; gap: 8px; margin-bottom: 8px; }
-.caption-manual-times label { flex: 1; min-width: 0; }
-.caption-manual-times input { width: 100%; box-sizing: border-box; }
+.caption-script-actions { display: flex; gap: 10px; align-items: center; margin-bottom: 8px; }
 .caption-manual-entry p { font-size: 12px; opacity: .7; }
 .caption-manual-track { display: grid; gap: 4px; margin-bottom: 8px; font-size: 12px; }
 .caption-manual-track select { width: 100%; }
@@ -970,18 +968,14 @@ button.small.primary { padding: 4px 12px; }
           <label class="file">動画を選択<input id="captionVideoFile" type="file" accept="video/*,.mp4,.webm,.mov,.m4v"></label>
           <label class="file">文字起こしを読込<input id="captionTranscriptFile" type="file" accept=".json,.srt,.vtt,application/json,text/vtt"></label>
         </div>
-        <details class="caption-manual-entry">
-          <summary>字幕を手入力</summary>
-          <label for="captionManualText">字幕テキスト</label>
-          <textarea id="captionManualText" rows="3"></textarea>
-          <div class="caption-manual-times">
-            <label>開始（秒）<input id="captionManualStart" type="number" min="0" step="0.01" value="0"></label>
-            <label>終了（秒）<input id="captionManualEnd" type="number" min="0" step="0.01" value="3"></label>
-          </div>
+        <details id="captionScriptEntry" class="caption-manual-entry">
+          <summary>台本を貼り付け</summary>
+          <label for="captionScriptText">台本（1行 = 1つの字幕）</label>
+          <textarea id="captionScriptText" rows="6"></textarea>
           <label id="captionManualTrackField" class="caption-manual-track">Mới先のトラック<select id="captionManualTrack"></select></label>
-          <button id="captionManualAdd" type="button">字幕をMới</button>
-          <p>単語タイミングは指定した範囲内で推定されます。</p>
-          <p>手入力の字幕はテキストブロックになります。Tự độngの区切り直しで分割されず、別のトラックなら話している字幕と同時に表示できます。</p>
+          <div class="caption-script-actions"><button id="captionScriptAdd" type="button" disabled>字幕にする</button><span id="captionScriptCount" class="muted" aria-live="polite"></span></div>
+          <p>Vị trí phát lạiからルーラーで指定した範囲の終わり（なければ動画の終わり）まで、同じ長さで並べます。「同期」で話すタイミングに合わせてください。</p>
+          <p>字幕はテキストブロックになります。Tự độngの区切り直しで分割されず、別のトラックなら話している字幕と同時に表示できます。</p>
         </details>
         <div id="captionMediaName" class="caption-source-name muted">動画未選択</div>
         <div id="captionRelinkNotice" class="caption-relink-notice" hidden>
@@ -990,7 +984,7 @@ button.small.primary { padding: 4px 12px; }
           <label class="file">動画を再リンク<input id="captionRelinkFile" type="file" accept="video/*,.mp4,.webm,.mov,.m4v"></label>
         </div>
         <ol id="captionSegmentList" class="caption-segment-list" aria-label="字幕セグメント"></ol>
-        <div id="captionTranscriptEmpty" class="caption-empty">動画と単語タイムスタンプ JSON、SRT、または VTT を読み込むと字幕が表示されます。</div>
+        <div id="captionTranscriptEmpty" class="caption-empty">① 動画を選ぶ → ② 字幕をMới（単語タイムスタンプ JSON・SRT・VTT を読み込む／台本を貼り付ける／タイムラインで入力）</div>
       </aside>
         <div id="captionLeftPane_roles" class="caption-panel caption-left-pane" role="tabpanel" aria-labelledby="captionLeftTab_roles" hidden>
         <section id="captionRolesPanel" class="caption-box-panel caption-roles-panel" aria-label="文字Phong cách">
@@ -1540,7 +1534,7 @@ button.small.primary { padding: 4px 12px; }
     <h2 id="captionHelpTitle">字幕編集の流れ</h2>
     <ol class="caption-help-steps">
       <li><strong>動画を読み込む。</strong>動画は「動画設定」で、書き出すChiều dọc横比（9:16・4:5・1:1・16:9）、トリム、クロップを選びます。</li>
-      <li><strong>文字起こしを入れる。</strong>単語タイムスタンプ JSON、SRT、VTT を読み込むか、字幕を手入力します。</li>
+      <li><strong>文字起こしを入れる。</strong>単語タイムスタンプ JSON、SRT、VTT を読み込むか、台本を貼り付けて「同期」で合わせます。</li>
       <li><strong>Phong cáchを選ぶ。</strong>エフェクトは「エフェクト」で自分で選びます（ランダムに決めることもできます）。位置ボックスは動画の上でドラッグして決めます。</li>
       <li><strong>タイムラインで整える。</strong>字幕の境界をドラッグし、トラックを分けて重ねることもできます。</li>
       <li><strong>書き出す。</strong>字幕付き MP4 は、このブラウザの中で作られます。</li>
@@ -44556,6 +44550,25 @@ function createRange(input) {
   start = round6(start); end = round6(end);
   return end - start >= MIN_SEGMENT - EPS ? { start, end, valid: true, code: null, snappedTo } : { start, end, valid: false, code: 'SEGMENT_TIMING_INVALID', snappedTo };
 }
+/* ---- Paste a script (C6): one caption per non-empty line, spread evenly over a stretch of one track ---- */
+const SCRIPT_MAX_LINES = 200;
+function scriptLines(text) { return String(text == null ? '' : text).split(/\r\n|\r|\n/).map(line => line.trim()).filter(Boolean); }
+/* Where the script goes: from `time` (the playhead, or the start of a marked range) to the end of the marked range / the video, never past the next caption on the track.
+   -> { start, end, trackId } or null when `time` is inside a caption. */
+function scriptSpan(layout, trackId, time, region) {
+  const gap = freeGap(layout, trackId, region ? region.start : time); if (!gap) return null;
+  const start = Math.max(gap.start, Math.min(region ? region.start : time, layout.duration)), end = Math.min(region ? region.end : layout.duration, gap.end);
+  return end - start > EPS ? { start: round6(start), end: round6(end), trackId } : null;
+}
+/* Even windows, one per line, touching each other. -> { ok, ranges: [{ text, start, end }] } or { ok: false, code: 'SCRIPT_EMPTY' | 'SCRIPT_TOO_LONG' | 'SCRIPT_NO_ROOM' }. */
+function scriptRanges(lines, span) {
+  if (!lines.length) return { ok: false, code: 'SCRIPT_EMPTY' };
+  if (lines.length > SCRIPT_MAX_LINES) return { ok: false, code: 'SCRIPT_TOO_LONG' };
+  const slot = span ? (span.end - span.start) / lines.length : 0;
+  if (!span || slot < MIN_SEGMENT - EPS) return { ok: false, code: 'SCRIPT_NO_ROOM', slot };
+  return { ok: true, ranges: lines.map((text, index) => ({ text, start: round6(span.start + slot * index), end: round6(index === lines.length - 1 ? span.end : span.start + slot * (index + 1)) })) };
+}
+
 /* Ids whose rectangle meets the marquee box. rects: [{ id, left, top, right, bottom }]. */
 function marqueeHits(rects, box) {
   const left = Math.min(box.left, box.right), right = Math.max(box.left, box.right), top = Math.min(box.top, box.bottom), bottom = Math.max(box.top, box.bottom);
@@ -44679,7 +44692,7 @@ function wordSyncTimes(tokens, taps, options) {
   return out;
 }
 
-J.captionTimeline = { MIN_WORD, wordSyncTimes, TAP_HOLD, REACTION_MAX, REACTION_DEFAULT, clampReaction, tapSyncScope, tapSyncWindows, WAVE_RATE, WAVE_MAX_SECONDS, waveformAllowed, waveformPeaks, waveformColumns, STRIP_MIN, clampStripHeight, NEW_LENGTH, createRange, freeGap, groupMoveOrder, marqueeHits, newBlockRange, resolveGroupMove, adjacentTrackId, reorderIndex, NUDGE, SNAP_PX, MIN_SEGMENT, nearestSnap, nudge, resolveDrag, snapTargets, trackNeighbors, FRAME, LOOP_LEAD, SPEEDS, adjacentSegment, keyAction, loopRegion, loopSeek, markRegion, nextSpeed, stepTime, MAX_PPS, TICK_MIN_PX, blockRect, clampPps, clampScroll, contentWidth, fitPps, followScroll, formatTick, overlapsRange, rulerTicks, tickStep, timeToX, visibleRange, wordLabelsVisible, wordTicksVisible, xToTime, zoomAround };
+J.captionTimeline = { MIN_WORD, wordSyncTimes, TAP_HOLD, REACTION_MAX, REACTION_DEFAULT, clampReaction, tapSyncScope, tapSyncWindows, WAVE_RATE, WAVE_MAX_SECONDS, waveformAllowed, waveformPeaks, waveformColumns, STRIP_MIN, clampStripHeight, NEW_LENGTH, createRange, freeGap, groupMoveOrder, marqueeHits, newBlockRange, SCRIPT_MAX_LINES, scriptLines, scriptSpan, scriptRanges, resolveGroupMove, adjacentTrackId, reorderIndex, NUDGE, SNAP_PX, MIN_SEGMENT, nearestSnap, nudge, resolveDrag, snapTargets, trackNeighbors, FRAME, LOOP_LEAD, SPEEDS, adjacentSegment, keyAction, loopRegion, loopSeek, markRegion, nextSpeed, stepTime, MAX_PPS, TICK_MIN_PX, blockRect, clampPps, clampScroll, contentWidth, fitPps, followScroll, formatTick, overlapsRange, rulerTicks, tickStep, timeToX, visibleRange, wordLabelsVisible, wordTicksVisible, xToTime, zoomAround };
 })();
 
 /* ============================================================
@@ -45373,7 +45386,7 @@ function init() {
   });
   on('project', renderSegments); on('selection', markSelection);
 }
-Object.assign(W, { loadWaveform, clearWaveform, toggleStrip, deleteSelected, duplicateSelected, newCaptionAtPlayhead, splitAtPlayhead, moveSelectedTrack, openTrackMenu, renameInline, cancelSegmentDrag, dragging, nudgeSegment, finishBoundary, fitTimeline, markNow, markSelection, moveBoundary, placeLoop, renderSegments, renderTimeline, revealTime, seekTimeline, startBoundaryDrag, timelineFollow, timelineTimeAt, updatePlayhead, zoomTimeline });
+Object.assign(W, { dragLayout, loadWaveform, clearWaveform, toggleStrip, deleteSelected, duplicateSelected, newCaptionAtPlayhead, splitAtPlayhead, moveSelectedTrack, openTrackMenu, renameInline, cancelSegmentDrag, dragging, nudgeSegment, finishBoundary, fitTimeline, markNow, markSelection, moveBoundary, placeLoop, renderSegments, renderTimeline, revealTime, seekTimeline, startBoundaryDrag, timelineFollow, timelineTimeAt, updatePlayhead, zoomTimeline });
 W.inits.push(init);
 })();
 
@@ -45917,6 +45930,33 @@ function renderManualTrack() {
   for (const track of tracks) { const option = document.createElement('option'); option.value = track.id; option.textContent = track.name || track.id; select.appendChild(option); }
   select.value = tracks.some(track => track.id === kept) ? kept : (activeTrack() || tracks[0] || {}).id || '';
   $('captionManualTrackField').hidden = tracks.length < 2;
+  const entry = $('captionScriptEntry'), empty = !ui.store.project.segments.length && !!ui.store.project.media;
+  if (empty !== ui.scriptEmpty) { ui.scriptEmpty = empty; if (empty && sourceVideo()) entry.open = true; }
+  renderScriptCount();
+}
+/* ---- Paste a script (C6): one caption per line, spread evenly from the playhead (or over the range marked on the ruler), then tap-synced ---- */
+const SCRIPT_MESSAGES = { SCRIPT_EMPTY: '台本のテキストを貼り付けてください。', SCRIPT_TOO_LONG: `台本は ${J.captionTimeline.SCRIPT_MAX_LINES} 行までです。`,
+  SCRIPT_NO_ROOM: 'ここには台本を入れる空きがありません。再生位置を動かすか、ルーラーで範囲を指定してください（1行あたり 0.1 秒以上必要です）。' };
+function renderScriptCount() {
+  const count = J.captionTimeline.scriptLines($('captionScriptText').value).length;
+  $('captionScriptCount').textContent = count ? `${count} 行 → ${count} 件の字幕` : '';
+  $('captionScriptAdd').disabled = !count;
+}
+function pasteScript() {
+  const TL = J.captionTimeline, video = sourceVideo(), lines = TL.scriptLines($('captionScriptText').value);
+  if (!video) { status('動画を読み込んでください。', true); return; }
+  const trackId = $('captionManualTrack').value || (activeTrack() || {}).id || J.CAPTION_PRIMARY_TRACK_ID, marked = ui.transport.marked;
+  const plan = TL.scriptRanges(lines, TL.scriptSpan(W.dragLayout(), trackId, video.currentTime, marked));
+  if (!plan.ok) { status(SCRIPT_MESSAGES[plan.code], true); return; }
+  const used = new Set(ui.store.project.segments.map(segment => segment.id)); let counter = 1;
+  const commands = plan.ranges.map(range => {
+    let id; do { id = `segment_${String(counter++).padStart(6, '0')}`; } while (used.has(id)); used.add(id);
+    return { type: 'create-text-block', segmentId: id, text: range.text, start: range.start, end: range.end, trackId };
+  });
+  if (!runCommand({ type: 'batch', commands, label: 'paste script' }, commands[0].segmentId)) return;
+  $('captionScriptText').value = ''; renderScriptCount();
+  selectSegment(commands[0].segmentId, true); if (ui.preview) ui.preview.renderNow();
+  toastUndo(`${commands.length} 件の字幕を追加しました。「同期」で話すタイミングに合わせます。`);
 }
 function applyTiming() {
   const segment = selectedSegment(); if (!segment) return;
@@ -46009,17 +46049,8 @@ function init() {
   window.addEventListener('resize', paintToolbar);
   on('project', () => { P.dismissToast(); paintToolbar(); }, 1); on('selection', paintToolbar);
   $('captionBoxEditor').addEventListener('dblclick', event => { if (!event.target.closest('[data-box-handle]')) editText(); });
-  $('captionManualAdd').addEventListener('click', () => {
-    const startText = $('captionManualStart').value, endText = $('captionManualEnd').value;
-    const id = ui.store.nextSegmentId();
-    if (runCommand({ type: 'create-text-block', text: $('captionManualText').value, trackId: $('captionManualTrack').value || undefined,
-      start: startText === '' ? NaN : Number(startText), end: endText === '' ? NaN : Number(endText) }, id, id)) {
-      selectSegment(id, true);   // seek there too, or the playhead would select the caption under it again
-      $('captionManualText').value = '';
-      $('captionManualStart').value = endText;
-      $('captionManualEnd').value = Number(endText) + 3;
-    }
-  });
+  $('captionScriptAdd').addEventListener('click', pasteScript);
+  $('captionScriptText').addEventListener('input', renderScriptCount);
   $('captionLock').addEventListener('change', event => { const segment = selectedSegment(); if (!segment) return; runCommand({ type: 'set-segment-locks', segmentId: segment.id, locked: event.target.checked }, segment.id); });
   $('captionReroll').addEventListener('click', () => { const segment = selectedSegment(); if (!segment) return; ui.variation += 1; if (runCommand({ type: 'randomize-caption-look', segmentId: segment.id, variation: ui.variation }, segment.id)) status('選択した字幕をランダムに決めました。'); });
   $('captionDisableAnimation').addEventListener('change', event => { const segment = selectedSegment(); if (!segment) return;
