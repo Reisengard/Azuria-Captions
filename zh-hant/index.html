@@ -935,16 +935,24 @@ html[data-product-mode=video-captions] label.file:hover { border-color: var(--am
   #app[data-product-mode=video-captions] { height: auto; }
   .caption-surface { flex: 0 0 auto; min-height: 0; }
   .caption-bar { flex-wrap: wrap; }
-  .caption-workbench { display: flex; height: auto; min-height: 0; flex-direction: column; }
-  .caption-rail { flex-direction: row; overflow-x: auto; overflow-y: visible; border-right: 0; border-bottom: 1px solid var(--line); }
-  .caption-rail button { min-width: 52px; }
-  .caption-drawer { position: static; width: auto; max-height: 60vh; box-shadow: none; }
+  /* U5: the rail is a bottom tab bar, the drawer a sheet above it, the timeline shows one track at a time */
+  .caption-workbench { --caption-tabbar-h: 56px; display: flex; height: auto; min-height: 0; flex-direction: column; padding-bottom: calc(var(--caption-tabbar-h) + env(safe-area-inset-bottom, 0px)); }
+  .caption-rail { position: fixed; z-index: 40; left: 0; right: 0; bottom: 0; flex-direction: row; justify-content: space-around; gap: 0; height: calc(var(--caption-tabbar-h) + env(safe-area-inset-bottom, 0px)); padding: 4px 4px env(safe-area-inset-bottom, 0px); overflow: hidden; border-right: 0; border-top: 1px solid var(--line2); box-sizing: border-box; }
+  .caption-rail button { flex: 1 1 0; min-width: 44px; min-height: 44px; }
+  .caption-rail button[hidden] { display: none; }
+  .caption-rail button[aria-expanded=true] { box-shadow: inset 0 2px 0 var(--amber); }
+  .caption-drawer { position: fixed; z-index: 35; left: 0; right: 0; top: auto; bottom: calc(var(--caption-tabbar-h) + env(safe-area-inset-bottom, 0px)); width: auto; max-height: 62vh; border-right: 0; border-top: 1px solid var(--line2); box-shadow: 0 -10px 30px rgba(0,0,0,.45); }
   .caption-stage { min-height: 420px; }
   .caption-timeline-strip { height: auto !important; max-height: none !important; }
   .caption-strip-grip { display: none; }
   .caption-timeline-strip.is-collapsed #captionTimeline, .caption-timeline-strip.is-collapsed .caption-timeline-toolbar { display: flex; }
   .caption-strip-head { flex-wrap: wrap; gap: 8px; }
+  .caption-track-row:not(.is-active-track), .caption-track-head:not(.is-active-track) { display: none; }
+  .caption-menu-button, .caption-bar button, .caption-tool { min-height: 40px; }
 }
+@media (prefers-reduced-motion: reduce) { .caption-drawer, .caption-rail, .caption-toast, .caption-popover { transition: none !important; animation: none !important; } }
+/* Visible keyboard focus on the shell's own controls (the rail and drawer buttons otherwise rely on the browser default) */
+.caption-rail button:focus-visible, .caption-main-menu > :focus-visible, .caption-menu-button:focus-visible, .caption-strip-grip:focus-visible { outline: 2px solid var(--cyan); outline-offset: -2px; }
 
 /* U3: box popover, export dialog */
 .caption-box-popover { width: 260px; max-width: calc(100vw - 8px); padding: 12px; }
@@ -1026,7 +1034,7 @@ html[data-product-mode=video-captions] label.file:hover { border-color: var(--am
         <button id="captionRail_tracks" type="button" data-drawer="tracks" aria-controls="captionDrawer" aria-expanded="false"><span class="caption-rail-icon" aria-hidden="true">☰</span><span class="caption-rail-label">トラック</span></button>
         <button id="captionRail_video" type="button" data-drawer="video" aria-controls="captionDrawer" aria-expanded="false"><span class="caption-rail-icon" aria-hidden="true">▶</span><span class="caption-rail-label">動画</span></button>
       </nav>
-      <section id="captionDrawer" class="caption-drawer" aria-labelledby="captionDrawerTitle">
+      <section id="captionDrawer" class="caption-drawer" role="region" aria-labelledby="captionDrawerTitle">
         <div class="caption-drawer-head"><h2 id="captionDrawerTitle">字幕</h2><button id="captionDrawerClose" type="button" class="ghost small" aria-label="パネルを關閉" title="パネルを關閉">✕</button></div>
         <div class="caption-drawer-body">
       <div id="captionLeftPane_transcript" class="caption-panel caption-transcript caption-left-pane" role="group" aria-label="文字起こしと字幕セグメント">
@@ -1133,7 +1141,7 @@ html[data-product-mode=video-captions] label.file:hover { border-color: var(--am
         </details>
         <details class="caption-fold"><summary>文字の見た目</summary>
           <label class="field">文字の装飾<select id="captionTreatment"><option value="outline">Outline</option><option value="backplate">Backplate</option><option value="neon">Neon Glow</option><option value="echo">Color Echo</option></select></label>
-          <label class="field">アクセント色<input id="captionAccent" type="color" value="#f5a50c"></label>
+          <label class="field">アクセント色<input id="captionAccent" type="color" value="#B39D68"></label>
           <label class="field caption-adv-only">文字方向<select id="captionWritingMode"><option value="horizontal">横書き</option><option value="vertical">直式書き</option></select></label>
         </details>
         <details class="caption-fold"><summary>位置と分量</summary>
@@ -1141,7 +1149,7 @@ html[data-product-mode=video-captions] label.file:hover { border-color: var(--am
           <label class="field caption-adv-only">字幕あたりの単語数<input id="captionDensity" type="range" min="2" max="8" value="6"><output id="captionDensityValue">6</output></label>
         </details>
         <details class="caption-fold caption-role" data-caption-role="active"><summary>話している単語</summary>
-          <label class="caption-role-row"><span>色</span><input id="captionRoleActiveColor" type="color" value="#f5a50c"><output data-role-value="captionRoleActiveColor"></output><button type="button" class="ghost small" data-role-clear="captionRoleActiveColor" title="自動に戻す" aria-label="色を自動に戻す">↺</button></label>
+          <label class="caption-role-row"><span>色</span><input id="captionRoleActiveColor" type="color" value="#B39D68"><output data-role-value="captionRoleActiveColor"></output><button type="button" class="ghost small" data-role-clear="captionRoleActiveColor" title="自動に戻す" aria-label="色を自動に戻す">↺</button></label>
             <p id="captionRoleActiveColorNote" class="caption-role-note" hidden>エフェクトの設定で話している単語の色が指定されているため、ここで選んだ色は使われません。</p>
             <p class="caption-role-note"><span id="captionRoleActiveHint"></span> <button id="captionRoleActiveOpen" type="button" class="ghost small" hidden>エフェクトを開啟</button></p>
             <div id="captionRoleActiveOverride" class="caption-warning caption-role-override" hidden><span id="captionRoleActiveOverrideText"></span><button id="captionRoleActiveOverrideClear" type="button" class="small">固定を外す</button></div>
@@ -1217,7 +1225,7 @@ html[data-product-mode=video-captions] label.file:hover { border-color: var(--am
           </div>
           <label class="field">トラックの風格<select id="captionTrackPreset"><option value="">全体に合わせる</option><option value="creator">Creator</option><option value="punchy">Punchy</option></select></label>
           <label class="field">トラックの装飾<select id="captionTrackTreatment"><option value="">全体に合わせる</option><option value="outline">Outline</option><option value="backplate">Backplate</option><option value="neon">Neon Glow</option><option value="echo">Color Echo</option></select></label>
-          <label class="field">トラックのアクセント色<span class="caption-role-pair"><input id="captionTrackAccent" type="color" value="#f5a50c"><button id="captionTrackAccentClear" type="button" class="small">既定</button></span></label>
+          <label class="field">トラックのアクセント色<span class="caption-role-pair"><input id="captionTrackAccent" type="color" value="#B39D68"><button id="captionTrackAccentClear" type="button" class="small">既定</button></span></label>
           <div id="captionTrackWarnings" class="caption-box-warnings" role="status"></div>
         </section>
         </div>
@@ -1269,7 +1277,7 @@ html[data-product-mode=video-captions] label.file:hover { border-color: var(--am
           </div>
           <div class="caption-timeline-toolbar"><span>タイムライン</span><div><button id="captionTimelineOut" type="button" class="small" aria-label="タイムラインを縮小">−</button><button id="captionTimelineIn" type="button" class="small" aria-label="タイムラインを拡大">＋</button><button id="captionTimelineFit" type="button" class="small">全体</button></div></div>
         </div>
-        <div id="captionTimeline" class="caption-timeline" aria-label="字幕タイムライン">
+        <div id="captionTimeline" class="caption-timeline" role="group" aria-label="字幕タイムライン">
           <div class="caption-timeline-heads">
             <div class="caption-ruler-head"></div>
             <div class="caption-track-label caption-video-head">VIDEO</div>
@@ -1278,9 +1286,9 @@ html[data-product-mode=video-captions] label.file:hover { border-color: var(--am
           </div>
           <div id="captionTimelineScroll" class="caption-timeline-scroll" tabindex="0">
             <div id="captionTimelineContent" class="caption-timeline-content">
-              <canvas id="captionRuler" class="caption-ruler" aria-label="時間目盛り（クリックまたはドラッグで移動）"></canvas>
+              <canvas id="captionRuler" class="caption-ruler" role="img" aria-label="時間目盛り（クリックまたはドラッグで移動）"></canvas>
               <div id="captionVideoTrack" class="caption-video-track" title="縞模様の部分はトリムで削除され、書き出されません"><canvas id="captionWaveform" class="caption-waveform" aria-hidden="true"></canvas></div>
-              <div id="captionSegmentTrack" class="caption-segment-track"></div>
+              <div id="captionSegmentTrack" class="caption-segment-track" role="group" aria-label="字幕ブロック（Tab で選び、Enter で編集）"></div>
               <div id="captionLoopRegion" class="caption-loop-region" hidden aria-hidden="true"></div>
               <div id="captionPlayhead" class="caption-playhead" aria-hidden="true"></div>
             </div>
@@ -1609,7 +1617,7 @@ html[data-product-mode=video-captions] label.file:hover { border-color: var(--am
       <kbd>↑ / ↓</kbd><span>前 / 次の字幕</span><kbd>Home / End</kbd><span>先頭 / 末尾</span>
       <kbd>+ / − / 0</kbd><span>拡大 / 縮小 / 全体</span><kbd>Esc</kbd><span>ドラッグ取消 / 循環解除 / 選択解除</span>
       <kbd>Alt+↑ / ↓</kbd><span>選んだ字幕を上 / 下のトラックへ</span><kbd>, / .</kbd><span>選んだ字幕を 0.05 秒ずらす</span><kbd>Shift+ドラッグ（端）</kbd><span>単語の長さも合わせて調整</span>
-      <kbd>N</kbd><span>播放ヘッドの位置に字幕を新增</span><kbd>S</kbd><span>播放ヘッドで字幕を分割</span><kbd>Delete</kbd><span>選んだ字幕を削除</span><kbd>Shift+クリック</kbd><span>選択に新增 / 解除</span>
+      <kbd>I / O</kbd><span>選んだ字幕の開始 / 終了を播放ヘッドに</span><kbd>Enter</kbd><span>選んだ字幕の文字を編集</span><kbd>Ctrl+Z / Ctrl+Shift+Z</kbd><span>元に戻す / やり直す</span><kbd>N</kbd><span>播放ヘッドの位置に字幕を新增</span><kbd>S</kbd><span>播放ヘッドで字幕を分割</span><kbd>Delete</kbd><span>選んだ字幕を削除</span><kbd>Shift+クリック</kbd><span>選択に新增 / 解除</span>
     </div>
     <p class="terms-sub">トラックの空いている所をドラッグまたはダブルクリックすると字幕を新增できます。Shift+ドラッグで範囲選択、右クリックでメニュー（分割・結合・複製・削除）。</p>
     <p class="terms-sub">ルーラーを Alt+ドラッグ（または上半分をドラッグ）すると、循環する範囲を指定できます。</p>
@@ -2569,7 +2577,14 @@ J.drawItem = (env, it) => {
       if (shadow && fill) { ctx.shadowColor = 'rgba(0,0,0,0)'; }
       ctx.lineJoin = 'round'; ctx.miterLimit = 2;
       ctx.lineWidth = (it.stroke > 0 ? it.stroke : Math.max(1, size * 0.02)) / Math.sqrt(Math.abs(csx * csy));
-      ctx.strokeStyle = (!ghostPass && c && c.color) || sCol;
+      // A per-glyph colour recolours the stroke only when the glyph is outline-only; an under-stroke keeps its own colour,
+      // and flips to dark/light when it would merge with the recoloured fill (e.g. active-word accent on an accent outline).
+      let strokeCol = sCol;
+      if (!ghostPass && c && c.color) {
+        if (!(fill && !outlineOnly && it.strokeUnder)) strokeCol = c.color;
+        else if (/^#/.test(sCol) && /^#/.test(gcol) && J.contrast(sCol, gcol) < 2) strokeCol = J.lum(gcol) > 0.5 ? '#080a10' : '#ffffff';
+      }
+      ctx.strokeStyle = strokeCol;
       if (dash != null) { const L = size * 3.2; ctx.setLineDash([Math.max(0.01, L * dash), L]); ctx.lineDashOffset = 0; }
       else if (it.strokeDash) ctx.setLineDash(it.strokeDash);
       ctx.strokeText(ch, 0, 0);
@@ -6345,7 +6360,7 @@ J.CAPTION_GENERATOR_VERSION = 'caption-planner-1';
 const clone = value => JSON.parse(JSON.stringify(value));
 const profiles = {
   creator: {
-    label: 'Creator', font: 'Inter', fontSize: 76, minFontSize: 44, alignment: 'center', accentColor: '#B7FF4A', textColor: '#FFFFFF', backgroundColor: '#111318', contrastStrategy: 'backplate',
+    label: 'Creator', font: 'Inter', fontSize: 76, minFontSize: 44, alignment: 'center', accentColor: '#B39D68', textColor: '#FFFFFF', backgroundColor: '#121827', contrastStrategy: 'backplate',
     zones: ['bottom', 'center', 'top'], layouts: ['captionBottomStack', 'captionBottomTwoLine', 'captionLeftAnchor', 'captionRightAnchor', 'captionCenterStack'],
     entrances: ['captionFade', 'captionSoftRise', 'captionSoftScale', 'captionWordFade', 'captionSoftReplace'], holds: ['captionStill'], exits: ['captionFadeOut'],
     activeTreatments: ['captionActiveColor', 'captionActiveWeight', 'captionActiveUnderline'], maxAttempts: 18, allowFullFrame: false,
@@ -6354,7 +6369,7 @@ const profiles = {
       continuity: { font: 'fixed', alignment: 'fixed', position: 'fixed', treatment: 'sticky', accentColor: 'fixed', animationFamily: 'sticky' } },
   },
   punchy: {
-    label: 'Punchy', font: 'Inter', fontSize: 84, minFontSize: 44, alignment: 'center', accentColor: '#FFDE59', textColor: '#FFFFFF', backgroundColor: '#111111', contrastStrategy: 'backplate',
+    label: 'Punchy', font: 'Inter', fontSize: 84, minFontSize: 44, alignment: 'center', accentColor: '#B39D68', textColor: '#FFFFFF', backgroundColor: '#121827', contrastStrategy: 'backplate',
     zones: ['center', 'bottom', 'top'], layouts: ['captionBottomStack', 'captionBottomTwoLine', 'captionCenterStack', 'captionSingleWordHero', 'captionLeftAnchor', 'captionRightAnchor', 'captionTwoLinePunch'],
     entrances: ['captionFade', 'captionSoftRise', 'captionSoftScale', 'captionWordFade', 'captionSoftReplace', 'captionImpact'], holds: ['captionStill'], exits: ['captionFadeOut'],
     activeTreatments: ['captionActiveColor', 'captionActiveScale', 'captionActiveLift'], maxAttempts: 20, allowFullFrame: false,
@@ -6363,7 +6378,7 @@ const profiles = {
       continuity: { font: 'fixed', alignment: 'sticky', position: 'sticky', treatment: 'sticky', accentColor: 'fixed', animationFamily: 'flexible' } },
   },
   'jizura-mv': {
-    label: 'JIZURA / MV', font: 'Noto Sans', fontSize: 80, minFontSize: 42, alignment: 'center', accentColor: '#57E6FF', textColor: '#FFFFFF', backgroundColor: '#0B1020', contrastStrategy: 'outline',
+    label: 'JIZURA / MV', font: 'Noto Sans', fontSize: 80, minFontSize: 42, alignment: 'center', accentColor: '#B39D68', textColor: '#FFFFFF', backgroundColor: '#121827', contrastStrategy: 'outline',
     zones: ['center', 'bottom', 'top'], layouts: ['captionBottomStack', 'captionBottomTwoLine', 'captionCenterStack', 'captionSingleWordHero', 'captionLeftAnchor', 'captionRightAnchor', 'captionTwoLinePunch'],
     entrances: ['captionFade', 'captionSoftRise', 'captionSoftScale', 'captionWordFade', 'captionSoftReplace', 'captionImpact', 'captionType', 'captionBlur', 'captionWipe', 'captionPop', 'captionDrop'],
     holds: ['captionStill', 'captionBreathe'], exits: ['captionFadeOut', 'captionShrinkOut'],
@@ -7441,24 +7456,24 @@ J.CAPTION_LOOK_SETTINGS = Object.freeze({
   hold: { all: { strength: range(0, 2, .05, 1) } },
   exit: { all: { duration: range(.05, 1.5, .05, .18) } },
   active: {
-    captionActiveColor: { color: color('#f5a50c') },
+    captionActiveColor: { color: color('#B39D68') },
     captionActiveScale: { scale: range(1, 1.04, .005, 1.04) },
     captionActiveLift: { lift: range(.2, 2, .1, 2) },
     captionActiveWeight: { weight: range(100, 900, 100, 700) },
-    captionActiveUnderline: { color: color('#f5a50c') },
+    captionActiveUnderline: { color: color('#B39D68') },
   },
   treat: {
-    splitColor: { colorA: color('#ffffff'), colorB: color('#f5a50c'), sp: range(.2, .8, .01, .535) },
-    gradientV: { colorA: color('#ffffff'), colorB: color('#f5a50c') },
+    splitColor: { colorA: color('#ffffff'), colorB: color('#B39D68'), sp: range(.2, .8, .01, .535) },
+    gradientV: { colorA: color('#ffffff'), colorB: color('#B39D68') },
     outline: { color: color('#ffffff'), k: range(.01, .08, .002, .03) },
-    outlineFill: { color: color('#f5a50c'), k: range(.03, .35, .005, .09) },
-    captionOutlined: { color: color('#f5a50c'), k: range(.03, .35, .005, .09) },
-    doubleOutline: { color: color('#f5a50c'), a: range(.03, .15, .005, .08), b: range(.03, .2, .005, .095) },
+    outlineFill: { color: color('#B39D68'), k: range(.03, .35, .005, .09) },
+    captionOutlined: { color: color('#B39D68'), k: range(.03, .35, .005, .09) },
+    doubleOutline: { color: color('#B39D68'), a: range(.03, .15, .005, .08), b: range(.03, .2, .005, .095) },
     extrude: { color: color('#7a4f06'), d: range(.03, .25, .005, .11) },
     longShadow: { color: color('#3a3f4a'), L: range(.1, 1, .01, .5), ang: range(0, 355, 5, 45) },
-    hardShadow: { color: color('#f5a50c'), d: range(.02, .15, .005, .065) },
+    hardShadow: { color: color('#B39D68'), d: range(.02, .15, .005, .065) },
     softShadow: { color: color('#000000'), b: range(.02, .3, .01, .11), dy: range(0, .15, .005, .05) },
-    glow: { color: color('#f5a50c'), b: range(.05, .4, .01, .21) },
+    glow: { color: color('#B39D68'), b: range(.05, .4, .01, .21) },
   },
 });
 
@@ -9685,7 +9700,7 @@ function drawCaptionSegment(ctx, project, segment, time, info, map) {
       try { cut.treatP = TD.plan ? TD.plan(J.rng(J.h(cut.seed, J.sid(treatId), 93)), baseStyle || {}) || {} : {}; } catch (e) { cut.treatP = {}; }
       cut.treatP = Object.assign({}, cut.treatP, settingsOf('treat', treatId));
     }
-    const sc = Object.assign({}, baseStyle && baseStyle.schemes && baseStyle.schemes[0], { fg: plan.textColor || '#ffffff', bg: plan.backgroundColor || '#111318', accent: plan.accentColor || '#f5a50c' });
+    const sc = Object.assign({}, baseStyle && baseStyle.schemes && baseStyle.schemes[0], { fg: plan.textColor || '#ffffff', bg: plan.backgroundColor || '#121827', accent: plan.accentColor || '#B39D68' });
     const env = J.Renderer.prototype.makeEnv(ctx, { W, H, fps: 30, style: baseStyle ? { fonts: baseStyle.fonts } : {}, fx: { motion }, }, cut, sc,
       { pass: 'main', t: time, lt: time - segment.start, scale: info.scale || 1, allowFilter: true });
     ctx.save();
@@ -9694,14 +9709,14 @@ function drawCaptionSegment(ctx, project, segment, time, info, map) {
       ctx.beginPath(); ctx.rect(zone.x, zone.y, zone.width, zone.height); ctx.clip();
       for (const source of layout.items) {
         const item = Object.assign({}, source, { seed: cut.seed, stroke: Math.max(2, fontSize * .065),
-          strokeColor: '#080a10', strokeUnder: true, vertical: plan.writingMode === 'vertical' });
+          strokeColor: '#121827', strokeUnder: true, vertical: plan.writingMode === 'vertical' });
         if (reduced && item.captionActive) item.captionActive = Object.assign({}, item.captionActive, { treatment: 'captionActiveColor' });
         const treatment = plan.captionTreatment || 'outline';
         if (treatment === 'neon') item.shadow = { color: sc.accent, blur: 12, dx: 0, dy: 0 };
         if (treatment === 'echo') item.echo = { n: 2, dx: -fontSize * .045, dy: fontSize * .05, a: .35, decay: .55, color: sc.accent };
         if (treatment === 'backplate') {
           const width = Math.max(...lines.map(line => J.measure({ text: line, font: item.font, size: item.size }).w));
-          ctx.fillStyle = 'rgba(8,10,16,.82)';
+          ctx.fillStyle = 'rgba(18,24,39,.85)';
           ctx.fillRect(anchor.x - (anchor.align === 'left' ? 0 : anchor.align === 'right' ? width : width / 2) - 12,
             anchor.y - lines.length * layout.lineHeight / 2 - 7, width + 24, lines.length * layout.lineHeight + 14);
         }
@@ -9721,7 +9736,7 @@ function drawCaptionSegment(ctx, project, segment, time, info, map) {
   const lineHeight = layout && layout.lineHeight || fontSize * 1.18, firstY = -(lines.length - 1) * lineHeight / 2;
   lines.forEach((line, lineIndex) => { const y = firstY + lineIndex * lineHeight; ctx.lineWidth = Math.max(5, fontSize * .11); ctx.strokeStyle = 'rgba(0,0,0,.88)'; ctx.strokeText(line, 0, y); ctx.fillStyle = plan.textColor || '#ffffff'; ctx.fillText(line, 0, y);
     if (active && lines.length === 1) { const beforeIndex = text.indexOf(active.text), before = beforeIndex >= 0 ? text.slice(0, beforeIndex) : '', total = ctx.measureText(text).width;
-      const left = (anchor.align === 'left' ? 0 : anchor.align === 'right' ? -total : -total / 2); ctx.textAlign = 'left'; ctx.fillStyle = plan.accentColor || project.style && project.style.accentColor || '#f5a50c'; ctx.fillText(active.text, left + ctx.measureText(before).width, y); ctx.textAlign = anchor.align || 'center'; }
+      const left = (anchor.align === 'left' ? 0 : anchor.align === 'right' ? -total : -total / 2); ctx.textAlign = 'left'; ctx.fillStyle = plan.accentColor || project.style && project.style.accentColor || '#B39D68'; ctx.fillText(active.text, left + ctx.measureText(before).width, y); ctx.textAlign = anchor.align || 'center'; }
   });
   ctx.restore(); return { segmentId: segment.id, activeTokenId: states.activeTokenId, plan };
 }
@@ -11627,7 +11642,7 @@ J.captionActiveCandidates = () => J.CAPTION_ACTIVE_ORDER.filter(id => {
 
 const activeMeta = (attentionCost = 0.06) => meta(0, 0, attentionCost, 0);
 J.registerCaptionActive('captionActiveColor', Object.assign({
-  name: '字幕・アクティブ色', style: context => ({ color: context.accentColor || '#B7FF4A' }),
+  name: '字幕・アクティブ色', style: context => ({ color: context.accentColor || '#B39D68' }),
 }, activeMeta(0.06)));
 J.registerCaptionActive('captionActiveScale', Object.assign({
   name: '字幕・アクティブ拡大', style: context => ({ scale: Math.min(1.04, Math.max(1, Number(context.scale) || 1.04)) }),
@@ -11639,7 +11654,7 @@ J.registerCaptionActive('captionActiveWeight', Object.assign({
   name: '字幕・アクティブウェイト', style: context => ({ weight: context.variableWeightSupported === false ? null : Math.min(900, Math.max(100, Number(context.weight) || 700)) }),
 }, activeMeta(0.05)));
 J.registerCaptionActive('captionActiveUnderline', Object.assign({
-  name: '字幕・アクティブ下線', style: context => ({ underline: true, underlineColor: context.accentColor || '#B7FF4A' }),
+  name: '字幕・アクティブ下線', style: context => ({ underline: true, underlineColor: context.accentColor || '#B39D68' }),
 }, activeMeta(0.06)));
 
 J.resolveCaptionActiveStyle = (id, state, context = {}) => {
@@ -45096,6 +45111,7 @@ function syncRows(project) {
     if (button.textContent !== name) { button.textContent = name; label.title = name; }
     grip.hidden = !!item.primary;
     button.setAttribute('aria-pressed', String(!!current && item.id === current.id));
+    row.classList.toggle('is-active-track', !!current && item.id === current.id); label.classList.toggle('is-active-track', !!current && item.id === current.id);
   });
   for (const [id, row] of rows) if (!seen.has(id)) { row.remove(); rows.delete(id); }
   for (const [id, label] of labels) if (!seen.has(id)) { label.remove(); labels.delete(id); headParts.delete(id); }
@@ -45606,6 +45622,8 @@ function markSelection() {
   $('captionSegmentList').querySelectorAll('[data-segment-id]').forEach(node => node.setAttribute('aria-selected', String(ui.selection.segmentIds.has(node.dataset.segmentId))));
   $('captionSegmentTrack').querySelectorAll('[data-segment-id]').forEach(node => node.classList.toggle('selected', ui.selection.segmentIds.has(node.dataset.segmentId)));
   $('captionTrackLabels').querySelectorAll('[data-track-select]').forEach(node => node.setAttribute('aria-pressed', String(!!current && node.dataset.trackSelect === current.id)));
+  for (const node of $('captionSegmentTrack').querySelectorAll('[data-track-id]')) node.classList.toggle('is-active-track', !!current && node.dataset.trackId === current.id);   // narrow screens show only this row
+  for (const node of $('captionTrackLabels').querySelectorAll('[data-track-head]')) node.classList.toggle('is-active-track', !!current && node.dataset.trackHead === current.id);
 }
 
 function init() {
@@ -45779,8 +45797,14 @@ function ignoresKey(event) {
 function onKey(event) {
   if (!ui.store || event.defaultPrevented || event.isComposing) return;
   const root = document.getElementById('app'); if (root && root.dataset.productMode && root.dataset.productMode !== 'video-captions') return;
+  if ((event.ctrlKey || event.metaKey) && !event.altKey && (event.code === 'KeyZ' || event.code === 'KeyY') && !ignoresKey(event)) {   // Ctrl+Z undo, Ctrl+Shift+Z / Ctrl+Y redo
+    const redo = event.code === 'KeyY' || event.shiftKey;
+    if (redo ? ui.store.canRedo() && ui.store.redo() : ui.store.canUndo() && ui.store.undo()) W.emit('project');
+    event.preventDefault(); event.stopImmediatePropagation(); return;
+  }
   const action = TL.keyAction(event); if (!action || ignoresKey(event)) return;
   const target = event.target || {};
+  if (action === 'escape' && !(W.syncKey && ui.transport.syncing) && target.closest && target.closest('#captionDrawer')) return;   // Esc inside the drawer closes the drawer (shell)
   if (W.syncKey && W.syncKey(event)) { event.preventDefault(); event.stopImmediatePropagation(); return; }   // during a tap-sync pass Space taps, Enter confirms, Esc discards
   // Native widgets that use the same keys keep them: buttons take Space, sliders take the arrows.
   if ((action === 'play' || action === 'edit') && target.tagName === 'BUTTON') return;
@@ -46418,7 +46442,7 @@ function fillRoleOptions() {
 function roleDefaults(project, track) {
   const style = J.captionTrackProjectStyle(project, track) || {}, profile = J.CAPTION_STYLE_PROFILES[J.captionStyleProfileId(project, track)] || {};
   const look = J.resolveCaptionLook(style, J.captionStyleProfileId(project, track)).look;
-  return { style, textColor: (profile.textColor || '#ffffff').toLowerCase(), fontSize: profile.fontSize || 76, accentColor: (style.accentColor || profile.accentColor || '#f5a50c').toLowerCase(), active: look.active };
+  return { style, textColor: (profile.textColor || '#ffffff').toLowerCase(), fontSize: profile.fontSize || 76, accentColor: (style.accentColor || profile.accentColor || '#B39D68').toLowerCase(), active: look.active };
 }
 
 function roleValueText(id, value, set, count) {
@@ -46434,7 +46458,7 @@ function renderRolesPanel() {
   const trackSelect = $('captionRoleTrack'); trackSelect.replaceChildren();
   for (const item of tracks) { const option = document.createElement('option'); option.value = item.id; option.textContent = item.name || item.id; trackSelect.appendChild(option); }
   trackSelect.value = track ? track.id : ''; $('captionRoleTrackField').hidden = tracks.length < 2;
-  const defaults = track ? roleDefaults(project, track) : { textColor: '#ffffff', fontSize: 76, accentColor: '#f5a50c' };
+  const defaults = track ? roleDefaults(project, track) : { textColor: '#ffffff', fontSize: 76, accentColor: '#B39D68' };
   const baseColor = roles.base && roles.base.color || defaults.textColor;
   const shown = { captionRoleBaseColor: defaults.textColor, captionRoleBaseFontSize: defaults.fontSize, captionRoleActiveColor: defaults.accentColor,
     captionRoleEmphasisColor: baseColor, captionRoleEmphasisScale: 1, captionRoleEmphasisAmount: J.CAPTION_EMPHASIS_THRESHOLD };
@@ -46544,7 +46568,7 @@ function renderStyleControls() {
   $('captionIntensity').value = Math.round((style.intensity == null ? .5 : style.intensity) * 100);
   $('captionMotion').value = Math.round((style.motion == null ? .45 : style.motion) * 100);
   $('captionDensity').value = segmentation.maxWords || 6; $('captionDensityValue').value = $('captionDensity').value;
-  $('captionAlignment').value = style.alignment || 'center'; $('captionAccent').value = style.accentColor || '#f5a50c';
+  $('captionAlignment').value = style.alignment || 'center'; $('captionAccent').value = style.accentColor || '#B39D68';
   $('captionWritingMode').value = style.writingMode || 'horizontal'; $('captionEmphasisStrength').value = Math.round((style.emphasisStrength == null ? 1 : style.emphasisStrength) * 100);
   $('captionReducedMotion').checked = !!(ui.store.project.settings && ui.store.project.settings.reducedMotionPreview);
   $('captionPreviewFrame').dataset.reducedMotion = String($('captionReducedMotion').checked);
@@ -47292,7 +47316,7 @@ const PREF_KEY = 'jizura.captionShell', DEFAULT_DRAWER = 'captions';
 /* View preference, kept per browser (not in the project). `drawer` is a drawer name, or '' when the preview has the whole width. */
 function readPref() {
   try { const value = JSON.parse(localStorage.getItem(PREF_KEY) || 'null'); if (value && typeof value.drawer === 'string' && (value.drawer === '' || DRAWERS[value.drawer])) return value.drawer; } catch (error) {}
-  return DEFAULT_DRAWER;
+  return typeof matchMedia === 'function' && matchMedia('(max-width: 680px)').matches ? '' : DEFAULT_DRAWER;   // on a phone the preview comes first
 }
 function writePref(drawer) { try { localStorage.setItem(PREF_KEY, JSON.stringify({ drawer })); } catch (error) {} }
 
@@ -47356,6 +47380,11 @@ function syncTracksItem() {
 function init() {
   for (const button of document.querySelectorAll('#captionRail [data-drawer]')) button.addEventListener('click', () => toggleDrawer(button.dataset.drawer));
   $('captionDrawerClose').addEventListener('click', () => { setDrawer(''); const rail = document.querySelector('#captionRail [data-drawer]'); if (rail) rail.focus(); });
+  $('captionDrawer').addEventListener('keydown', event => {   // Esc inside the drawer closes it and puts focus back on its rail item
+    if (event.key !== 'Escape' || event.defaultPrevented || !ui.drawer || event.target.closest('[role=menu], .caption-popover')) return;
+    const current = document.querySelector(`#captionRail [data-drawer="${ui.drawer}"]`);
+    setDrawer(''); if (current) current.focus();
+  });
   bindMenu();
   setDrawer(readPref(), { persist: false, layout: false });
   W.on('project', syncTracksItem, 5); syncTracksItem();
@@ -47388,7 +47417,7 @@ J.captionSampleProject = (plan = {}, options = {}) => {
   const segment = { id: 's1', start: 0, end: duration, tokenIds: tokens.map(token => token.id), trackId: J.CAPTION_PRIMARY_TRACK_ID };
   const box = { x: .05, y: .1, width: .9, height: .8 };
   const generated = Object.assign({ id: 'p1', segmentId: 's1', trackId: J.CAPTION_PRIMARY_TRACK_ID, layout: 'captionCenterStack', entrance: 'cut', hold: 'captionStill', exit: 'cut',
-    activeWordTreatment: 'captionActiveColor', captionTreatment: 'outline', motion: .7, seed: 7, fontSize: 56, box, accentColor: '#4fd6ff', textColor: '#ffffff' }, plan);
+    activeWordTreatment: 'captionActiveColor', captionTreatment: 'outline', motion: .7, seed: 7, fontSize: 56, box, accentColor: '#B39D68', textColor: '#ffffff' }, plan);
   const track = Object.assign({ id: J.CAPTION_PRIMARY_TRACK_ID, primary: true, box }, options.roles ? { roles: options.roles } : {});
   return { mode: 'video-captions', media: { width: frame.width, height: frame.height, duration }, transcript: { tokens }, tracks: [track],
     segments: [segment], plans: { s1: { id: 'p1', segmentId: 's1', generated, manual: {}, lockedFields: [] } }, style: { preset: 'creator' }, settings: {}, seed: 1 };
