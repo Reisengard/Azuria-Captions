@@ -153,26 +153,34 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .caption-transport input { flex: 1 1 auto; min-width: 0; }
 .caption-timeline-toolbar { display: flex; align-items: center; justify-content: space-between; color: var(--muted); font: 10px var(--mono); }
 .caption-timeline-toolbar div { display: flex; gap: 4px; }
-.caption-timeline { overflow-x: auto; border: 1px solid var(--line); border-radius: 6px; background: #101014; }
-.caption-timeline-content { position: relative; display: grid; grid-template-columns: 66px minmax(0,1fr); grid-template-rows: 22px auto 30px; min-width: 100%; }
-.caption-track-label { display: grid; place-items: center start; padding-left: 8px; border-right: 1px solid var(--line); color: var(--faint); font: 9px var(--mono); }
-.caption-video-track { margin: 6px 8px; border-radius: 3px; background: #292932; }
-.caption-segment-track { position: relative; margin: 5px 8px; }
+.caption-timeline { display: flex; border: 1px solid var(--line); border-radius: 6px; background: #101014; }
+.caption-timeline-heads { flex: 0 0 72px; border-right: 1px solid var(--line); }
+.caption-ruler-head { height: 22px; border-bottom: 1px solid var(--line); }
+.caption-track-label { display: grid; place-items: center start; padding-left: 8px; color: var(--faint); font: 9px var(--mono); }
+.caption-video-head { height: 30px; }
+.caption-track-labels { display: grid; grid-auto-rows: 28px; row-gap: 4px; align-content: start; padding: 5px 0; }
+.caption-track-labels .caption-track-name { display: block; overflow: hidden; padding: 0 4px 0 8px; border: 0; background: none; color: var(--faint); font: 9px var(--mono); line-height: 28px; text-align: left; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+.caption-track-labels .caption-track-name[aria-pressed=true] { color: var(--cyan); }
+.caption-timeline-scroll { flex: 1 1 auto; min-width: 0; overflow-x: auto; overflow-y: hidden; outline-offset: -2px; }
+.caption-timeline-content { position: relative; min-width: 100%; }
+.caption-ruler { position: sticky; left: 0; display: block; height: 22px; border-bottom: 1px solid var(--line); cursor: col-resize; touch-action: none; }
+.caption-video-track { position: relative; height: 30px; }
+.caption-video-track::before { content: ""; position: absolute; inset: 6px 0; border-radius: 3px; background: #292932; }
+.caption-video-cut { position: absolute; top: 6px; bottom: 6px; border-radius: 3px; background: repeating-linear-gradient(45deg, #101014 0 4px, #3a2b30 4px 8px); }
+.caption-segment-track { position: relative; padding: 5px 0; }
 .caption-track-row { position: relative; height: 28px; margin-bottom: 4px; }
 .caption-track-row:last-child { margin-bottom: 0; }
-.caption-track-labels { display: grid; grid-auto-rows: 28px; row-gap: 4px; align-content: start; padding: 5px 0; }
-.caption-track-labels .caption-track-name { display: block; overflow: hidden; padding: 0 4px 0 8px; border: 0; background: none; color: inherit; font: inherit; line-height: 28px; text-align: left; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
-.caption-track-labels .caption-track-name[aria-pressed=true] { color: var(--cyan); }
-.caption-timeline-segment { position: absolute; top: 0; height: 28px; min-width: 2px; overflow: visible; border: 1px solid #8d610e; border-radius: 3px; background: rgba(245,165,12,.22); color: var(--text); font-size: 9px; text-overflow: ellipsis; }
+.caption-timeline-segment { position: absolute; top: 0; height: 28px; box-sizing: border-box; min-width: 2px; overflow: visible; border: 1px solid #8d610e; border-radius: 3px; background: rgba(245,165,12,.22); color: var(--text); font-size: 9px; }
 .caption-timeline-segment.selected { border-color: var(--cyan); background: rgba(22,244,212,.17); }
+.caption-block-text { display: block; overflow: hidden; padding: 0 3px; line-height: 26px; text-overflow: ellipsis; white-space: nowrap; pointer-events: none; }
+.caption-block-words { position: absolute; inset: 0; overflow: hidden; border-radius: 2px; pointer-events: none; }
+.caption-word-mark { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--faint); opacity: .7; pointer-events: auto; }
+.caption-word-mark:hover { background: var(--cyan); opacity: 1; }
+.caption-word-mark span { position: absolute; top: 14px; left: 3px; display: none; width: max-content; max-width: 90px; overflow: hidden; color: var(--muted); font: 8px var(--mono); text-overflow: ellipsis; pointer-events: none; }
+.caption-timeline[data-word-labels=true] .caption-word-mark span { display: block; }
+.caption-timeline[data-word-labels=true] .caption-block-text { line-height: 14px; }
 .caption-boundary-handle { position: absolute; z-index: 3; top: -3px; right: -5px; width: 9px; height: 32px; padding: 0; border: 0; border-radius: 2px; background: var(--amber); cursor: ew-resize; }
-.caption-word-track { position: relative; margin: 3px 8px; border-top: 1px solid var(--line); }
-.caption-word-mark { position: absolute; top: 2px; display: none; width: 2px; height: 20px; padding: 0; border: 0; border-radius: 0; background: var(--faint); overflow: visible; }
-.caption-timeline[data-zoomed=true] .caption-word-mark { display: block; }
-.caption-word-mark:hover, .caption-word-mark:focus-visible { background: var(--cyan); }
-.caption-word-mark span { position: absolute; top: 11px; left: 3px; display: none; width: max-content; max-width: 90px; overflow: hidden; color: var(--muted); font: 8px var(--mono); text-overflow: ellipsis; }
-.caption-timeline[data-zoomed=true] .caption-word-mark span { display: block; }
-.caption-playhead { position: absolute; z-index: 4; top: 0; bottom: 0; left: 66px; width: 1px; background: var(--rose); pointer-events: none; }
+.caption-playhead { position: absolute; z-index: 4; top: 0; bottom: 0; left: 0; width: 1px; background: var(--rose); pointer-events: none; will-change: transform; }
 .caption-inspector .field, .caption-left .field { display: grid; gap: 5px; margin-bottom: 12px; color: var(--muted); font-size: 11px; }
 .caption-inspector .field select, .caption-left .field select { width: 100%; }
 .caption-inspector .field input[type=range], .caption-left .field input[type=range] { width: 100%; }
@@ -1148,18 +1156,24 @@ button.small.primary { padding: 4px 12px; }
         <div class="caption-strip-head">
           <div class="caption-transport">
             <button id="captionPlay" type="button" class="play" disabled aria-label="Putar">▶</button>
-            <span id="captionTime" class="tc">00:00.00</span>
-            <input id="captionScrub" type="range" min="0" max="1000" value="0" disabled aria-label="動画のPosisi pemutaran">
-            <span id="captionDuration" class="tc muted">00:00.00</span>
+            <span id="captionTime" class="tc">00:00.00</span><span class="tc muted">/</span><span id="captionDuration" class="tc muted">00:00.00</span>
+            <input id="captionScrub" class="sr-only" type="range" min="0" max="1000" value="0" disabled aria-label="動画のPosisi pemutaran">
           </div>
           <div class="caption-timeline-toolbar"><span>タイムライン</span><div><button id="captionTimelineOut" type="button" class="small" aria-label="タイムラインを縮小">−</button><button id="captionTimelineIn" type="button" class="small" aria-label="タイムラインを拡大">＋</button><button id="captionTimelineFit" type="button" class="small">全体</button></div></div>
         </div>
-        <div id="captionTimeline" class="caption-timeline" aria-label="字幕タイムライン" tabindex="0">
-          <div id="captionTimelineContent" class="caption-timeline-content">
-            <div class="caption-track-label">VIDEO</div><div id="captionVideoTrack" class="caption-video-track" title="縞模様の部分はトリムで削除され、書き出されません"></div>
-            <div id="captionTrackLabels" class="caption-track-label caption-track-labels">CAPTIONS</div><div id="captionSegmentTrack" class="caption-segment-track"></div>
-            <div class="caption-track-label">WORDS</div><div id="captionWordTrack" class="caption-word-track"></div>
-            <div id="captionPlayhead" class="caption-playhead" aria-hidden="true"></div>
+        <div id="captionTimeline" class="caption-timeline" aria-label="字幕タイムライン">
+          <div class="caption-timeline-heads">
+            <div class="caption-ruler-head"></div>
+            <div class="caption-track-label caption-video-head">VIDEO</div>
+            <div id="captionTrackLabels" class="caption-track-labels"></div>
+          </div>
+          <div id="captionTimelineScroll" class="caption-timeline-scroll" tabindex="0">
+            <div id="captionTimelineContent" class="caption-timeline-content">
+              <canvas id="captionRuler" class="caption-ruler" aria-label="時間目盛り（クリックまたはドラッグで移動）"></canvas>
+              <div id="captionVideoTrack" class="caption-video-track" title="縞模様の部分はトリムで削除され、書き出されません"></div>
+              <div id="captionSegmentTrack" class="caption-segment-track"></div>
+              <div id="captionPlayhead" class="caption-playhead" aria-hidden="true"></div>
+            </div>
           </div>
         </div>
       </footer>
@@ -44034,7 +44048,7 @@ function emit(name, detail) { for (const item of (listeners[name] || []).slice()
 
 /* Selection is state of its own: the playhead never changes it (it only marks the captions on screen in `currentIds`).
    `ui.selectedId`, `ui.trackId` and `ui.wordId` read and write this object. */
-const ui = { store: null, media: null, preview: null, moveTokens: new Set(), variation: 0, lookScope: 'project', errors: {}, timelineZoom: 1, boundaryDrag: null,
+const ui = { store: null, media: null, preview: null, moveTokens: new Set(), variation: 0, lookScope: 'project', errors: {}, timeline: { fit: true, pps: 0, scrollLeft: 0, follow: true }, boundaryDrag: null,
   exporter: null, exportAbort: null, currentIds: new Set(), selection: { segmentIds: new Set(), trackId: null, wordId: null } };
 Object.defineProperties(ui, {
   selectedId: { enumerable: true, get() { const ids = ui.selection.segmentIds; return ids.size ? ids.values().next().value : null; },
@@ -44131,25 +44145,193 @@ Object.assign(W, { $, BOX_WARNINGS, LOOK_FIELD_NAMES, PRESET_LABELS, PRIMARY_TRA
 })();
 
 /* ============================================================
-   JIZURA — Video Captions workbench: caption list and timeline (parity with the old strip; rebuilt in T1)
+   JIZURA — Video Captions timeline: pure maths (no DOM). Units are pixels per second (pps).
+   ============================================================ */
+(() => {
+'use strict';
+const MAX_PPS = 400, MIN_BLOCK_PX = 2, TICK_MIN_PX = 80;
+const TICK_STEPS = [.01, .02, .05, .1, .2, .5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 1800, 3600];
+const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+
+const timeToX = (time, pps) => time * pps;
+const xToTime = (x, pps, duration) => clamp(x / Math.max(1e-9, pps), 0, Math.max(0, duration));
+const contentWidth = (duration, pps) => Math.max(0, duration) * pps;
+/* "Whole video fits" is the lowest zoom; the highest is MAX_PPS. */
+const fitPps = (duration, viewportWidth) => duration > 0 && viewportWidth > 0 ? viewportWidth / duration : 1;
+const clampPps = (pps, duration, viewportWidth) => clamp(pps, Math.min(fitPps(duration, viewportWidth), MAX_PPS), MAX_PPS);
+const clampScroll = (scrollLeft, duration, pps, viewportWidth) => clamp(scrollLeft, 0, Math.max(0, contentWidth(duration, pps) - viewportWidth));
+
+/* Zoom by `factor` so that the time under `anchorX` (a pixel inside the viewport) stays under it. */
+function zoomAround({ pps, scrollLeft }, factor, anchorX, duration, viewportWidth) {
+  const next = clampPps(pps * factor, duration, viewportWidth), anchorTime = (scrollLeft + anchorX) / pps;
+  return { pps: next, scrollLeft: clampScroll(anchorTime * next - anchorX, duration, next, viewportWidth) };
+}
+
+/* The smallest step whose labelled ticks are at least TICK_MIN_PX apart; minor ticks subdivide it. */
+const MINOR_DIVISIONS = { .01: 2, .02: 2, .2: 4, 2: 4, 15: 3, 30: 3, 60: 6, 120: 4 };
+function tickStep(pps) {
+  const major = TICK_STEPS.find(step => step * pps >= TICK_MIN_PX) || TICK_STEPS[TICK_STEPS.length - 1];
+  return { major, minor: major / (MINOR_DIVISIONS[major] || 5) };
+}
+function formatTick(time, step) {
+  const decimals = step >= 1 ? 0 : step >= .1 ? 1 : 2, minutes = Math.floor(time / 60), seconds = time - minutes * 60;
+  return `${minutes}:${seconds.toFixed(decimals).padStart(decimals ? decimals + 3 : 2, '0')}`;
+}
+/* Ticks inside [from, to] seconds: { time, major, label? } — minor ticks have no label. */
+function rulerTicks(pps, from, to, duration) {
+  const { major, minor } = tickStep(pps), ticks = [], start = Math.max(0, Math.floor(from / minor - 1e-9)), end = Math.min(duration, to);
+  for (let index = start; index * minor <= end + 1e-9; index++) {
+    const time = +(index * minor).toFixed(6), isMajor = Math.abs(time / major - Math.round(time / major)) < 1e-6;
+    ticks.push(isMajor ? { time, major: true, label: formatTick(time, major) } : { time, major: false });
+  }
+  return ticks;
+}
+
+/* The time range that is on screen, widened by `margin` pixels on both sides (for culling). */
+function visibleRange(scrollLeft, viewportWidth, pps, duration, margin = 0) {
+  return { from: Math.max(0, (scrollLeft - margin) / pps), to: Math.min(duration, (scrollLeft + viewportWidth + margin) / pps) };
+}
+const blockRect = (segment, pps) => ({ left: segment.start * pps, width: Math.max(MIN_BLOCK_PX, (segment.end - segment.start) * pps) });
+const overlapsRange = (segment, range) => segment.end >= range.from && segment.start <= range.to;
+/* Word ticks inside a block need room; their text needs more. */
+const wordTicksVisible = pps => pps >= 40;
+const wordLabelsVisible = pps => pps >= 80;
+
+/* While playing, page the view when the playhead reaches the right edge (or leaves to the left). Returns the new scrollLeft. */
+function followScroll(scrollLeft, viewportWidth, playheadX, duration, pps) {
+  if (playheadX >= scrollLeft && playheadX <= scrollLeft + viewportWidth * .95) return scrollLeft;
+  return clampScroll(playheadX - viewportWidth * .1, duration, pps, viewportWidth);
+}
+
+J.captionTimeline = { MAX_PPS, TICK_MIN_PX, blockRect, clampPps, clampScroll, contentWidth, fitPps, followScroll, formatTick, overlapsRange, rulerTicks, tickStep, timeToX, visibleRange, wordLabelsVisible, wordTicksVisible, xToTime, zoomAround };
+})();
+
+/* ============================================================
+   JIZURA — Video Captions workbench: caption list and timeline
+   (T1: timeline blocks are kept and updated in place; positions are pixels per second)
    ============================================================ */
 (() => {
 'use strict';
 if (typeof document === 'undefined' || typeof document.getElementById !== 'function') return;
-const W = J.captionWb;
+const W = J.captionWb, TL = J.captionTimeline;
 const { ui, $, fmt, status, segmentTrackId, activeTrack, trackName, segmentText, tokenMap, sourceVideo, escapeHtml, runCommand, accessibilityWarnings, selectSegment, on, emit } = W;
-function renderSegments() {
-  const list = $('captionSegmentList'), track = $('captionSegmentTrack'), wordTrack = $('captionWordTrack');
-  list.replaceChildren(); track.replaceChildren(); wordTrack.replaceChildren();
-  const project = ui.store.project, duration = Number(project.media.duration) || Math.max(1, ...project.transcript.tokens.map(token => token.end));
-  // One timeline row (and label) per track; later tracks are drawn on top of earlier ones.
-  const tracks = project.tracks || [], rows = new Map(), labels = $('captionTrackLabels'), current = activeTrack();
-  labels.replaceChildren();
-  for (const item of tracks) {
-    const row = document.createElement('div'); row.className = 'caption-track-row'; row.dataset.trackId = item.id; track.appendChild(row); rows.set(item.id, row);
-    const label = document.createElement('button'); label.type = 'button'; label.className = 'caption-track-name'; label.dataset.trackSelect = item.id; label.textContent = item.name || item.id; label.title = item.name || item.id;
-    label.setAttribute('aria-pressed', String(!!current && item.id === current.id)); labels.appendChild(label);
+const blocks = new Map(), rows = new Map(), labels = new Map();
+let expectedScroll = null, scrubbing = false, wordsFrame = 0;
+
+const scrollEl = () => $('captionTimelineScroll');
+const viewportWidth = () => scrollEl().clientWidth || 600;
+function mediaDuration() { const project = ui.store.project; return Number(project.media.duration) || Math.max(1, ...project.transcript.tokens.map(token => token.end)); }
+/* Scrolls from code are remembered so the scroll handler can tell them from the user's (a manual scroll stops following the playhead). */
+function setScroll(value) {
+  const el = scrollEl(), target = TL.clampScroll(value, mediaDuration(), ui.timeline.pps, viewportWidth());
+  if (Math.abs(el.scrollLeft - target) >= 1) { expectedScroll = target; el.scrollLeft = target; }
+}
+/* Zoom about a pixel inside the viewport; the time under it stays put. */
+function zoomTimeline(factor, anchorX) {
+  const duration = mediaDuration(), width = viewportWidth();
+  const next = TL.zoomAround({ pps: ui.timeline.pps, scrollLeft: scrollEl().scrollLeft }, factor, anchorX === undefined ? width / 2 : anchorX, duration, width);
+  ui.timeline.fit = next.pps <= TL.fitPps(duration, width) + 1e-9; ui.timeline.pps = next.pps; renderTimeline(); setScroll(next.scrollLeft);
+}
+function fitTimeline() { ui.timeline.fit = true; renderTimeline(); setScroll(0); }
+function timelineFollow(on) { ui.timeline.follow = !!on; }
+function revealTime(time) {
+  const el = scrollEl(), x = TL.timeToX(time, ui.timeline.pps);
+  if (x < el.scrollLeft || x > el.scrollLeft + viewportWidth()) setScroll(x - viewportWidth() * .3);
+}
+
+function drawRuler() {
+  const canvas = $('captionRuler'), ctx = canvas.getContext && canvas.getContext('2d'); if (!ctx) return;
+  const width = viewportWidth(), dpr = window.devicePixelRatio || 1, height = 22;
+  if (canvas.width !== Math.round(width * dpr)) { canvas.width = Math.round(width * dpr); canvas.height = height * dpr; canvas.style.width = `${width}px`; }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, width, height);
+  const css = getComputedStyle(document.documentElement), faint = css.getPropertyValue('--faint').trim() || '#777', muted = css.getPropertyValue('--muted').trim() || '#aaa';
+  const duration = mediaDuration(), pps = ui.timeline.pps, left = scrollEl().scrollLeft, range = TL.visibleRange(left, width, pps, duration, 40);
+  ctx.font = '9px monospace'; ctx.textBaseline = 'top';
+  for (const tick of TL.rulerTicks(pps, range.from, range.to, duration)) {
+    const x = Math.round(tick.time * pps - left) + .5;
+    ctx.fillStyle = tick.major ? muted : faint; ctx.fillRect(x, tick.major ? 10 : 16, 1, tick.major ? 12 : 6);
+    if (tick.label) { ctx.fillStyle = muted; ctx.fillText(tick.label, x + 3, 2); }
   }
+}
+
+/* One row and one header per track, reused between renders. */
+function syncRows(project) {
+  const track = $('captionSegmentTrack'), heads = $('captionTrackLabels'), current = activeTrack(), seen = new Set();
+  (project.tracks || []).forEach((item, index) => {
+    seen.add(item.id);
+    let row = rows.get(item.id), label = labels.get(item.id);
+    if (!row) { row = document.createElement('div'); row.className = 'caption-track-row'; row.dataset.trackId = item.id; rows.set(item.id, row); }
+    if (!label) { label = document.createElement('button'); label.type = 'button'; label.className = 'caption-track-name'; label.dataset.trackSelect = item.id; labels.set(item.id, label); }
+    if (track.children[index] !== row) track.insertBefore(row, track.children[index] || null);
+    if (heads.children[index] !== label) heads.insertBefore(label, heads.children[index] || null);
+    const name = item.name || item.id; if (label.textContent !== name) { label.textContent = name; label.title = name; }
+    label.setAttribute('aria-pressed', String(!!current && item.id === current.id));
+  });
+  for (const [id, row] of rows) if (!seen.has(id)) { row.remove(); rows.delete(id); }
+  for (const [id, label] of labels) if (!seen.has(id)) { label.remove(); labels.delete(id); }
+}
+
+function buildBlock(id) {
+  const block = document.createElement('div'); block.className = 'caption-timeline-segment'; block.setAttribute('role', 'button'); block.tabIndex = 0; block.dataset.segmentId = id;
+  const text = document.createElement('span'), words = document.createElement('span'); text.className = 'caption-block-text'; words.className = 'caption-block-words';
+  block.append(words, text);
+  const entry = { block, text, words, handle: null, sig: '', label: '' }; blocks.set(id, entry); return entry;
+}
+
+/* Words are ticks inside their block, drawn only when zoomed in and the block is near the viewport; rebuilt only when their signature changes. */
+function syncBlockWords(entry, segment, tokens, range, pps) {
+  const show = TL.wordTicksVisible(pps) && TL.overlapsRange(segment, range);
+  const sig = show ? `${pps}|${segment.start}|` + segment.tokenIds.map(id => { const token = tokens.get(id); return token ? `${id}:${token.start}:${token.text}` : id; }).join(',') : '';
+  if (sig === entry.sig) return; entry.sig = sig;
+  const marks = [];
+  if (show) for (const id of segment.tokenIds) {
+    const token = tokens.get(id), x = token ? (token.start - segment.start) * pps - 1 : -1; if (!token || x < 2) continue;
+    const mark = document.createElement('span'); mark.className = 'caption-word-mark'; mark.dataset.wordId = id; mark.style.left = `${x}px`; mark.title = `${token.text} ${fmt(token.start)}–${fmt(token.end)}`;
+    const label = document.createElement('span'); label.textContent = token.text; mark.appendChild(label); marks.push(mark);
+  }
+  entry.words.replaceChildren(...marks);
+}
+
+function renderTimeline() {
+  const project = ui.store.project, duration = mediaDuration(), width = viewportWidth(), state = ui.timeline;
+  state.pps = state.fit || !state.pps ? TL.fitPps(duration, width) : TL.clampPps(state.pps, duration, width);
+  const pps = state.pps, tokens = tokenMap(), range = TL.visibleRange(scrollEl().scrollLeft, width, pps, duration, 300), seen = new Set();
+  $('captionTimelineContent').style.width = `${Math.max(width, TL.contentWidth(duration, pps))}px`;
+  $('captionTimeline').dataset.wordLabels = String(TL.wordLabelsVisible(pps));
+  syncRows(project);
+  const firstRow = rows.values().next().value;
+  for (const segment of project.segments) {
+    seen.add(segment.id);
+    const entry = blocks.get(segment.id) || buildBlock(segment.id), { block } = entry, text = segmentText(segment), rect = TL.blockRect(segment, pps), row = rows.get(segmentTrackId(segment)) || firstRow;
+    if (entry.label !== text) { entry.label = text; entry.text.textContent = text; }
+    block.title = `${fmt(segment.start)}–${fmt(segment.end)} ${text}`;
+    block.style.left = `${rect.left}px`; block.style.width = `${rect.width}px`;
+    block.classList.toggle('selected', segment.id === ui.selectedId); block.classList.toggle('is-now', ui.currentIds.has(segment.id));
+    if (row && block.parentNode !== row) row.appendChild(block);
+    const rollable = !!J.captionTrackNeighbor(project, segment, 1) && !(segment.locks && segment.locks.segmentation);
+    if (rollable && !entry.handle) { const handle = document.createElement('span'); handle.className = 'caption-boundary-handle'; handle.dataset.boundarySegment = segment.id; handle.setAttribute('role', 'slider'); handle.tabIndex = 0; block.appendChild(handle); entry.handle = handle; }
+    else if (!rollable && entry.handle) { entry.handle.remove(); entry.handle = null; }
+    if (entry.handle) entry.handle.setAttribute('aria-label', `${text} の終了境界`);
+    syncBlockWords(entry, segment, tokens, range, pps);
+  }
+  for (const [id, entry] of blocks) if (!seen.has(id)) { entry.block.remove(); blocks.delete(id); }
+  // Trimmed-away parts of the source are striped in the VIDEO row (caption times stay source times).
+  const kept = J.videoClips(project, duration), cuts = [];
+  kept.forEach((clip, i) => { const from = i ? kept[i - 1].end : 0; if (clip.start - from > .001) cuts.push([from, clip.start]); });
+  if (kept.length && duration - kept[kept.length - 1].end > .001) cuts.push([kept[kept.length - 1].end, duration]);
+  $('captionVideoTrack').replaceChildren(...cuts.map(([from, to]) => { const cut = document.createElement('span'); cut.className = 'caption-video-cut'; cut.style.left = `${from * pps}px`; cut.style.width = `${(to - from) * pps}px`; cut.title = `${fmt(from)}–${fmt(to)}`; return cut; }));
+  drawRuler(); placePlayhead(sourceVideo() ? sourceVideo().currentTime : 0);
+}
+/* Scrolling only changes which blocks are near the viewport: word ticks are (re)built for those. */
+function updateWords() {
+  wordsFrame = 0; if (!ui.store) return;
+  const project = ui.store.project, tokens = tokenMap(), range = TL.visibleRange(scrollEl().scrollLeft, viewportWidth(), ui.timeline.pps, mediaDuration(), 300);
+  for (const segment of project.segments) { const entry = blocks.get(segment.id); if (entry) syncBlockWords(entry, segment, tokens, range, ui.timeline.pps); }
+}
+
+function renderList() {
+  const list = $('captionSegmentList'), project = ui.store.project, tracks = project.tracks || [];
+  list.replaceChildren();
   project.segments.forEach(segment => {
     const text = segmentText(segment), item = document.createElement('li'), button = document.createElement('button');
     button.type = 'button'; button.className = 'caption-segment'; button.dataset.segmentId = segment.id; button.classList.toggle('is-now', ui.currentIds.has(segment.id));
@@ -44158,40 +44340,36 @@ function renderSegments() {
     const tag = tracks.length > 1 ? `<span class="caption-segment-track-tag">${escapeHtml(trackName(segmentTrackId(segment)))}</span>` : '';
     button.innerHTML = `<span class="caption-segment-time">${fmt(segment.start)}</span><span>${tag}${escapeHtml(text)} ${warning}</span>`;
     item.appendChild(button); list.appendChild(item);
-    const block = document.createElement('div'); block.className = 'caption-timeline-segment' + (segment.id === ui.selectedId ? ' selected' : '') + (ui.currentIds.has(segment.id) ? ' is-now' : ''); block.setAttribute('role', 'button'); block.tabIndex = 0;
-    block.dataset.segmentId = segment.id; block.textContent = text; block.title = `${fmt(segment.start)}–${fmt(segment.end)} ${text}`;
-    block.style.left = `${segment.start / duration * 100}%`; block.style.width = `${Math.max(.25, (segment.end - segment.start) / duration * 100)}%`;
-    if (J.captionTrackNeighbor(project, segment, 1) && !(segment.locks && segment.locks.segmentation)) { const handle = document.createElement('span'); handle.className = 'caption-boundary-handle'; handle.dataset.boundarySegment = segment.id; handle.setAttribute('role', 'slider'); handle.setAttribute('aria-label', `${text} の終了境界`); handle.tabIndex = 0; block.appendChild(handle); }
-    (rows.get(segmentTrackId(segment)) || rows.values().next().value).appendChild(block);
   });
-  for (const token of project.transcript.tokens) { const mark = document.createElement('button'); mark.type = 'button'; mark.className = 'caption-word-mark'; mark.dataset.wordId = token.id; mark.style.left = `${token.start / duration * 100}%`; mark.title = `${token.text} ${fmt(token.start)}–${fmt(token.end)}`; const label = document.createElement('span'); label.textContent = token.text; mark.appendChild(label); wordTrack.appendChild(mark); }
-  // Trimmed-away parts of the source are striped in the VIDEO row (caption times stay source times).
-  const kept = J.videoClips(project, duration), cuts = [];
-  kept.forEach((clip, i) => { const from = i ? kept[i - 1].end : 0; if (clip.start - from > .001) cuts.push([from, clip.start]); });
-  if (kept.length && duration - kept[kept.length - 1].end > .001) cuts.push([kept[kept.length - 1].end, duration]);
-  $('captionVideoTrack').replaceChildren(...cuts.map(([from, to]) => { const cut = document.createElement('span'); cut.className = 'caption-video-cut'; cut.style.left = `${from / duration * 100}%`; cut.style.width = `${(to - from) / duration * 100}%`; cut.title = `${fmt(from)}–${fmt(to)}`; return cut; }));
-  $('captionTimelineContent').style.width = `${ui.timelineZoom * 100}%`; $('captionTimeline').dataset.zoomed = String(ui.timelineZoom >= 2);
   $('captionTranscriptEmpty').hidden = project.segments.length > 0;
   const quality = project.transcript.timingQuality || 'word';
   $('captionTimingBadge').title = quality === 'estimated' ? 'SRT/VTT and manually entered captions use estimated word timings. Captions are ready to preview.' : '';
   $('captionTimingBadge').textContent = project.transcript.tokens.length ? (quality === 'estimated' ? '推定タイミング' : '単語タイミング') : '未読込';
 }
+function renderSegments() { renderList(); renderTimeline(); }
+
+function placePlayhead(time) { $('captionPlayhead').style.transform = `translateX(${TL.timeToX(time, ui.timeline.pps)}px)`; }
 function updatePlayhead(time) {
-  const duration = sourceVideo() ? Number(sourceVideo().duration) || 0 : Number(ui.store.project.media.duration) || 0;
+  const video = sourceVideo(), duration = video ? Number(video.duration) || 0 : Number(ui.store.project.media.duration) || 0;
   $('captionTime').textContent = fmt(time); $('captionDuration').textContent = fmt(duration);
   $('captionScrub').value = duration ? Math.round(time / duration * 1000) : 0;
-  $('captionPlayhead').style.left = `calc(66px + (100% - 66px) * ${duration ? time / duration : 0})`;
+  placePlayhead(time);
+  if (ui.timeline.follow && video && !video.paused) {
+    const el = scrollEl(), next = TL.followScroll(el.scrollLeft, viewportWidth(), TL.timeToX(time, ui.timeline.pps), mediaDuration(), ui.timeline.pps);
+    if (next !== el.scrollLeft) setScroll(next);
+  }
   markNow(time); emit('time', time);
 }
 
 function seekTimeline(time) {
   const duration = Number(ui.store.project.media.duration) || 0, target = Math.max(0, Math.min(duration, time));
   if (sourceVideo()) { sourceVideo().currentTime = target; if (ui.preview) ui.preview.renderNow(target); } else updatePlayhead(target);
+  revealTime(target);
 }
 
 function timelineTimeAt(clientX) {
-  const content = $('captionTimelineContent'), rect = content.getBoundingClientRect(), label = 66;
-  return Math.max(0, Math.min(1, (clientX - rect.left - label) / Math.max(1, rect.width - label))) * (Number(ui.store.project.media.duration) || 0);
+  const el = scrollEl(), rect = el.getBoundingClientRect();
+  return TL.xToTime(clientX - rect.left + el.scrollLeft, ui.timeline.pps, Number(ui.store.project.media.duration) || 0);
 }
 
 function startBoundaryDrag(event, segmentId) {
@@ -44202,9 +44380,9 @@ function startBoundaryDrag(event, segmentId) {
 
 function moveBoundary(event) {
   if (!ui.boundaryDrag) return; ui.boundaryDrag.time = Math.max(ui.boundaryDrag.min, Math.min(ui.boundaryDrag.max, timelineTimeAt(event.clientX)));
-  const segment = ui.store.project.segments.find(item => item.id === ui.boundaryDrag.segmentId), next = J.captionTrackNeighbor(ui.store.project, segment, 1), duration = Number(ui.store.project.media.duration) || 1;
-  const left = $('captionSegmentTrack').querySelector(`[data-segment-id="${segment.id}"]`), right = $('captionSegmentTrack').querySelector(`[data-segment-id="${next.id}"]`);
-  if (left && right) { left.style.width = `${(ui.boundaryDrag.time - segment.start) / duration * 100}%`; right.style.left = `${ui.boundaryDrag.time / duration * 100}%`; right.style.width = `${(next.end - ui.boundaryDrag.time) / duration * 100}%`; }
+  const segment = ui.store.project.segments.find(item => item.id === ui.boundaryDrag.segmentId), next = J.captionTrackNeighbor(ui.store.project, segment, 1), pps = ui.timeline.pps;
+  const left = blocks.get(segment.id), right = blocks.get(next.id);
+  if (left && right) { left.block.style.width = `${Math.max(2, (ui.boundaryDrag.time - segment.start) * pps)}px`; right.block.style.left = `${ui.boundaryDrag.time * pps}px`; right.block.style.width = `${Math.max(2, (next.end - ui.boundaryDrag.time) * pps)}px`; }
   status(`境界 ${fmt(ui.boundaryDrag.time)}（${fmt(ui.boundaryDrag.min)}〜${fmt(ui.boundaryDrag.max)}）`);
 }
 
@@ -44230,8 +44408,13 @@ function markSelection() {
 }
 
 function init() {
+  const scroll = scrollEl(), ruler = $('captionRuler');
   $('captionSegmentList').addEventListener('click', event => { const target = event.target.closest('[data-segment-id]'); if (target) selectSegment(target.dataset.segmentId); });
-  $('captionSegmentTrack').addEventListener('click', event => { const target = event.target.closest('[data-segment-id]'); if (target) selectSegment(target.dataset.segmentId); });
+  $('captionSegmentTrack').addEventListener('click', event => {
+    const word = event.target.closest('[data-word-id]'), target = event.target.closest('[data-segment-id]');
+    if (target) selectSegment(target.dataset.segmentId);
+    if (word) { const token = tokenMap().get(word.dataset.wordId); if (token) { seekTimeline(token.start); status(`${token.text}: ${fmt(token.start)}–${fmt(token.end)}`); } }
+  });
   $('captionSegmentTrack').addEventListener('keydown', event => {
     const handle = event.target.closest('[data-boundary-segment]');
     if (handle && (event.key === 'ArrowLeft' || event.key === 'ArrowRight')) { event.preventDefault(); const segment = ui.store.project.segments.find(item => item.id === handle.dataset.boundarySegment), next = J.captionTrackNeighbor(ui.store.project, segment, 1), tokens = tokenMap();
@@ -44239,17 +44422,30 @@ function init() {
       runCommand({ type: 'set-segment-boundary', segmentId: segment.id, time: +time.toFixed(6) }, segment.id); return; }
     const target = event.target.closest('[data-segment-id]'); if (target && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); selectSegment(target.dataset.segmentId); }
   });
-  $('captionWordTrack').addEventListener('click', event => { const target = event.target.closest('[data-word-id]'); if (!target || ui.timelineZoom < 2) return; const token = tokenMap().get(target.dataset.wordId); if (token) { seekTimeline(token.start); status(`${token.text}: ${fmt(token.start)}–${fmt(token.end)}`); } });
-  $('captionTimeline').addEventListener('click', event => { if (event.target.closest('button,[data-segment-id],.caption-boundary-handle')) return; seekTimeline(timelineTimeAt(event.clientX)); });
+  // Empty space in the rows or the video row moves the playhead; the ruler scrubs while dragging.
+  scroll.addEventListener('click', event => { if (event.target.closest('[data-segment-id],.caption-boundary-handle,#captionRuler')) return; seekTimeline(timelineTimeAt(event.clientX)); });
+  ruler.addEventListener('pointerdown', event => { scrubbing = true; event.preventDefault(); ruler.setPointerCapture && ruler.setPointerCapture(event.pointerId); seekTimeline(timelineTimeAt(event.clientX)); });
+  ruler.addEventListener('pointermove', event => { if (scrubbing) seekTimeline(timelineTimeAt(event.clientX)); });
+  for (const name of ['pointerup', 'pointercancel']) ruler.addEventListener(name, () => { scrubbing = false; });
   $('captionSegmentTrack').addEventListener('pointerdown', event => { const handle = event.target.closest('[data-boundary-segment]'); if (handle) startBoundaryDrag(event, handle.dataset.boundarySegment); });
   window.addEventListener('pointermove', moveBoundary); window.addEventListener('pointerup', finishBoundary);
-  $('captionTimelineIn').addEventListener('click', () => { ui.timelineZoom = Math.min(8, ui.timelineZoom * 2); renderSegments(); });
-  $('captionTimelineOut').addEventListener('click', () => { ui.timelineZoom = Math.max(1, ui.timelineZoom / 2); renderSegments(); });
-  $('captionTimelineFit').addEventListener('click', () => { ui.timelineZoom = 1; $('captionTimeline').scrollLeft = 0; renderSegments(); });
-  for (const id of ['captionSegmentList', 'captionSegmentTrack']) $(id).addEventListener('dblclick', event => { const target = event.target.closest('[data-segment-id]'); if (target) selectSegment(target.dataset.segmentId); });
+  scroll.addEventListener('wheel', event => {
+    if (event.ctrlKey || event.metaKey) { event.preventDefault(); ui.timeline.follow = false; zoomTimeline(Math.exp(-event.deltaY * .0025), event.clientX - scroll.getBoundingClientRect().left); return; }
+    if (scroll.scrollWidth <= scroll.clientWidth + 1) return;
+    event.preventDefault(); scroll.scrollLeft += (Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY) * (event.deltaMode === 1 ? 16 : 1);
+  }, { passive: false });
+  scroll.addEventListener('scroll', () => {
+    if (expectedScroll !== null && Math.abs(scroll.scrollLeft - expectedScroll) < 1) expectedScroll = null; else { expectedScroll = null; ui.timeline.follow = false; }
+    ui.timeline.scrollLeft = scroll.scrollLeft; drawRuler(); if (!wordsFrame) wordsFrame = requestAnimationFrame(updateWords);
+  });
+  if (typeof ResizeObserver === 'function') new ResizeObserver(() => { if (ui.store) renderTimeline(); }).observe(scroll);
+  $('captionTimelineIn').addEventListener('click', () => { ui.timeline.follow = false; zoomTimeline(2); });
+  $('captionTimelineOut').addEventListener('click', () => { ui.timeline.follow = false; zoomTimeline(.5); });
+  $('captionTimelineFit').addEventListener('click', fitTimeline);
+  for (const id of ['captionSegmentList', 'captionSegmentTrack']) $(id).addEventListener('dblclick', event => { const target = event.target.closest('[data-segment-id]'); if (target) selectSegment(target.dataset.segmentId, true); });
   on('project', renderSegments); on('selection', markSelection);
 }
-Object.assign(W, { finishBoundary, markNow, markSelection, moveBoundary, renderSegments, seekTimeline, startBoundaryDrag, timelineTimeAt, updatePlayhead });
+Object.assign(W, { finishBoundary, fitTimeline, markNow, markSelection, moveBoundary, renderSegments, renderTimeline, revealTime, seekTimeline, startBoundaryDrag, timelineFollow, timelineTimeAt, updatePlayhead, zoomTimeline });
 W.inits.push(init);
 })();
 
@@ -44277,7 +44473,7 @@ function scrubTo(value) {
 }
 
 function attachVideo(video) {
-  video.addEventListener('play', () => { $('captionPlay').textContent = '❚❚'; });
+  video.addEventListener('play', () => { $('captionPlay').textContent = '❚❚'; W.timelineFollow(true); });
   video.addEventListener('pause', () => { $('captionPlay').textContent = '▶'; });
 }
 
