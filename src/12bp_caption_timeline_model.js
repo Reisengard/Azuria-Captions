@@ -85,6 +85,7 @@ function adjacentSegment(segments, time, direction) {
 }
 /* Keyboard map of the transport; the handler decides when keys are ignored (typing, dialogs). */
 function keyAction(event) {
+  if (event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) { if (event.code === 'ArrowUp') return 'track-up'; if (event.code === 'ArrowDown') return 'track-down'; }
   if (event.ctrlKey || event.metaKey || event.altKey) return null;
   const shift = !!event.shiftKey;
   switch (event.code) {
@@ -105,6 +106,19 @@ function keyAction(event) {
   if (event.key === '-' || event.key === '_') return 'zoom-out';
   if (event.key === '0') return 'zoom-fit';
   return null;
+}
+
+/* ---- Tracks (T4) ---- */
+/* Id of the track above (-1) or below (+1) `trackId` in the row order, or null at the edge. */
+function adjacentTrackId(tracks, trackId, direction) {
+  const index = tracks.findIndex(item => item.id === trackId), next = tracks[index + direction];
+  return index < 0 || !next ? null : next.id;
+}
+/* Where a dragged header lands: the index of the row whose vertical centre is nearest `y`, never before the primary track (index 0 is fixed). */
+function reorderIndex(centers, y) {
+  let best = 1, distance = Infinity;
+  centers.forEach((center, index) => { const d = Math.abs(y - center); if (index >= 1 && d < distance) { distance = d; best = index; } });
+  return Math.min(best, Math.max(1, centers.length - 1));
 }
 
 /* ---- Drag maths (T3): snapping and the resolution of a move / trim drag. Pure: the view passes plain data, the store has the last word. ----
@@ -187,5 +201,5 @@ function nudge(layout, segmentId, direction, step = NUDGE) {
   return resolveDrag({ layout, segmentId, mode: 'move', time: segment.start + direction * step, grab: 0, trackId: segment.trackId, pps: 1, snap: false });
 }
 
-J.captionTimeline = { NUDGE, SNAP_PX, MIN_SEGMENT, nearestSnap, nudge, resolveDrag, snapTargets, trackNeighbors, FRAME, LOOP_LEAD, SPEEDS, adjacentSegment, keyAction, loopRegion, loopSeek, markRegion, nextSpeed, stepTime, MAX_PPS, TICK_MIN_PX, blockRect, clampPps, clampScroll, contentWidth, fitPps, followScroll, formatTick, overlapsRange, rulerTicks, tickStep, timeToX, visibleRange, wordLabelsVisible, wordTicksVisible, xToTime, zoomAround };
+J.captionTimeline = { adjacentTrackId, reorderIndex, NUDGE, SNAP_PX, MIN_SEGMENT, nearestSnap, nudge, resolveDrag, snapTargets, trackNeighbors, FRAME, LOOP_LEAD, SPEEDS, adjacentSegment, keyAction, loopRegion, loopSeek, markRegion, nextSpeed, stepTime, MAX_PPS, TICK_MIN_PX, blockRect, clampPps, clampScroll, contentWidth, fitPps, followScroll, formatTick, overlapsRange, rulerTicks, tickStep, timeToX, visibleRange, wordLabelsVisible, wordTicksVisible, xToTime, zoomAround };
 })();

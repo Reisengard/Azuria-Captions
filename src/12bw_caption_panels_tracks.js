@@ -184,16 +184,22 @@ function addTrack() {
   if (runCommand({ type: 'add-track', trackId: id })) { ui.trackId = id; emit('project'); status('トラックを追加しました。'); }
 }
 
-function deleteTrack() {
-  const track = activeTrack(); if (!track || track.primary) return;
+function deleteTrack(trackId) {
+  const track = trackId ? J.captionTrack(ui.store.project, trackId) : activeTrack(); if (!track || track.primary) return;
   const count = J.captionTrackSegments(ui.store.project, track.id).length;
   if (!window.confirm(`トラック「${track.name || track.id}」を削除します。このトラックの字幕（${count}件）と単語も削除されます。「元に戻す」で復元できます。続けますか？`)) return;
   if (runCommand({ type: 'remove-track', trackId: track.id })) { ui.trackId = PRIMARY_TRACK; emit('project'); status('トラックを削除しました。'); }
 }
 
-function reorderTrack(step) {
-  const project = ui.store.project, track = activeTrack(); if (!track) return;
-  runCommand({ type: 'reorder-track', trackId: track.id, toIndex: project.tracks.indexOf(track) + step });
+function reorderTrack(step, trackId) {
+  const project = ui.store.project, track = trackId ? J.captionTrack(project, trackId) : activeTrack(); if (!track) return false;
+  return runCommand({ type: 'reorder-track', trackId: track.id, toIndex: project.tracks.indexOf(track) + step });
+}
+function renameTrack(trackId, name) { return runCommand({ type: 'rename-track', trackId, name }); }
+function rerollTrack(trackId) {
+  if (!J.captionTrackSegments(ui.store.project, trackId).length) { status('このトラックには字幕がありません。', true); return false; }
+  const done = runCommand({ type: 'randomize-caption-look', trackId, variation: ++ui.variation }); if (done) status('トラックのエフェクトをランダムに決めました。');
+  return done;
 }
 
 function moveToTrack(whole) {
@@ -242,10 +248,10 @@ function init() {
   $('captionBoxScope').addEventListener('change', renderBoxPanel); $('captionBoxReset').addEventListener('click', resetBox);
   $('captionTrackList').addEventListener('click', event => { const target = event.target.closest('[data-track-select]'); if (target) selectTrack(target.dataset.trackSelect); });
   $('captionTrackLabels').addEventListener('click', event => { const target = event.target.closest('[data-track-select]'); if (target) selectTrack(target.dataset.trackSelect); });
-  $('captionTrackAdd').addEventListener('click', addTrack); $('captionTrackDelete').addEventListener('click', deleteTrack);
+  $('captionTrackAdd').addEventListener('click', addTrack); $('captionTrackDelete').addEventListener('click', () => deleteTrack());
   $('captionTrackForward').addEventListener('click', () => reorderTrack(1)); $('captionTrackBack').addEventListener('click', () => reorderTrack(-1));
   $('captionTrackName').addEventListener('change', () => { const track = activeTrack(); if (track) runCommand({ type: 'rename-track', trackId: track.id, name: $('captionTrackName').value }); });
-  $('captionTrackReroll').addEventListener('click', () => { const track = activeTrack(); if (track && runCommand({ type: 'randomize-caption-look', trackId: track.id, variation: ++ui.variation })) status('トラックのエフェクトをランダムに決めました。'); });
+  $('captionTrackReroll').addEventListener('click', () => { const track = activeTrack(); if (track) rerollTrack(track.id); });
   $('captionTrackPreset').addEventListener('change', () => applyTrackStyle('preset', $('captionTrackPreset').value || null));
   $('captionTrackTreatment').addEventListener('change', () => applyTrackStyle('captionTreatment', $('captionTrackTreatment').value || null));
   $('captionTrackAccent').addEventListener('change', () => { $('captionTrackAccent').dataset.unset = ''; applyTrackStyle('accentColor', $('captionTrackAccent').value); });
@@ -253,6 +259,6 @@ function init() {
   $('captionMoveSegment').addEventListener('click', () => moveToTrack(true)); $('captionMoveTokens').addEventListener('click', () => moveToTrack(false));
   on('project', () => { renderTracksPanel(); renderBoxPanel(); }); on('selection', onSelectionChanged);
 }
-Object.assign(W, { BOX_STEP, addTrack, alignPreviewZone, applyBoxInputs, applyTrackStyle, boxContext, boxFrame, buildBoxGhosts, commitBox, deleteTrack, finishBoxDrag, moveBoxDrag, moveToTrack, nudgeBox, onSelectionChanged, paintBoxEditor, paintSnapLines, positionBoxGhosts, renderBoxPanel, renderTracksPanel, reorderTrack, resetBox, selectTrack, startBoxDrag });
+Object.assign(W, { BOX_STEP, addTrack, renameTrack, rerollTrack, alignPreviewZone, applyBoxInputs, applyTrackStyle, boxContext, boxFrame, buildBoxGhosts, commitBox, deleteTrack, finishBoxDrag, moveBoxDrag, moveToTrack, nudgeBox, onSelectionChanged, paintBoxEditor, paintSnapLines, positionBoxGhosts, renderBoxPanel, renderTracksPanel, reorderTrack, resetBox, selectTrack, startBoxDrag });
 W.inits.push(init);
 })();

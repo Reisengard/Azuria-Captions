@@ -86,7 +86,7 @@ const TYPING = /^(INPUT|TEXTAREA|SELECT)$/;
 function ignoresKey(event) {
   const target = event.target || {}, tag = target.tagName || '';
   if (TYPING.test(tag) && target.type !== 'checkbox') return true;       // fields and sliders keep their keys
-  if (target.isContentEditable) return true;
+  if (target.isContentEditable || (target.closest && target.closest('[role=menu]'))) return true;   // open menus keep their own keys
   return !!document.querySelector && !!document.querySelector('dialog[open]');
 }
 function onKey(event) {
@@ -97,7 +97,7 @@ function onKey(event) {
   // Native widgets that use the same keys keep them: buttons take Space, sliders take the arrows.
   if (action === 'play' && target.tagName === 'BUTTON') return;
   if (/^(back|forward)-/.test(action) || action === 'prev-caption' || action === 'next-caption') { if (target.closest && target.closest('[data-boundary-segment]')) return; }
-  if (!sourceVideo() && action !== 'escape' && !/^nudge-/.test(action)) return;
+  if (!sourceVideo() && action !== 'escape' && !/^(nudge|track)-/.test(action)) return;
   const handled = run(action); if (!handled) return;
   event.preventDefault(); event.stopImmediatePropagation();
 }
@@ -115,6 +115,8 @@ function run(action) {
     case 'loop': setLoop(!tr.loopOn); return true;
     case 'nudge-back': return W.nudgeSegment(-1);
     case 'nudge-forward': return W.nudgeSegment(1);
+    case 'track-up': return W.moveSelectedTrack(-1);
+    case 'track-down': return W.moveSelectedTrack(1);
     case 'zoom-in': ui.timeline.follow = false; W.zoomTimeline(2); return true;
     case 'zoom-out': ui.timeline.follow = false; W.zoomTimeline(.5); return true;
     case 'zoom-fit': W.fitTimeline(); return true;

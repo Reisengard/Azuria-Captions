@@ -95,6 +95,11 @@ const IN_PAGE = `(() => {
     lockTiming(id) { ui.store.execute({ type: 'set-field-lock', segmentId: id, field: 'timing', locked: true }); J.captionWb.emit('project'); ui.store.undoStack.length = 0; },
     lockBadge(id) { const b = document.querySelector('[data-segment-id="' + id + '"] .caption-lock-badge'); return !!b && !b.hidden; },
     status() { return $('captionStatus').textContent; },
+    order() { return ui.store.project.tracks.map(item => item.id).join(','); },
+    names() { return ui.store.project.tracks.map(item => item.name).join(','); },
+    menuItems() { return [...document.querySelectorAll('.caption-menu [role=menuitem]')].map(b => b.textContent + (b.disabled ? '(off)' : '')); },
+    addVisible() { return !$('captionTrackAddInline').hidden; },
+    removeTrack(id) { ui.store.execute({ type: 'remove-track', trackId: id }); J.captionWb.emit('project'); },
     errors() { return JSON.stringify(ui.errors); },
   };
   return true;
@@ -200,6 +205,50 @@ const IN_PAGE = `(() => {
     await t('select', 'blockA'); c = await center('blockA'); await mouse('mouseMoved', c.x, c.y); await mouse('mousePressed', c.x, c.y); await mouse('mouseReleased', c.x, c.y);   // click selects and focuses
     await key('.', 'Period', { text: '.', vk: 190 }); a = await t('seg', 'blockA'); near(a.start, 1.05, 1e-6, 'nudge: . moves later by 0.05 s');
     await key(',', 'Comma', { text: ',', vk: 188 }); await key(',', 'Comma', { text: ',', vk: 188 }); a = await t('seg', 'blockA'); near(a.start, .95, 1e-6, 'nudge: , moves earlier'); near(a.end - a.start, 2, 1e-6, 'nudge: length unchanged');
+
+    // 10. tracks (T4): Alt+arrows retrack the selected caption, headers rename / reorder / menu, + track
+    await t('select', 'blockB'); c = await center('blockB'); await mouse('mouseMoved', c.x, c.y); await mouse('mousePressed', c.x, c.y); await mouse('mouseReleased', c.x, c.y);
+    const depth10 = await t('depth');
+    await key('ArrowDown', 'ArrowDown', { vk: 40, modifiers: 1 }); a = await t('seg', 'blockB');
+    step('alt+down: the caption moves to the track below, same time', a.trackId === 'track_3' && Math.abs(a.start - 4) < 1e-6 && Math.abs(a.end - 6) < 1e-6, JSON.stringify(a) + ' ' + await t('status'));
+    step('alt+down: it is one undo step', (await t('depth')) === depth10 + 1);
+    await key('ArrowDown', 'ArrowDown', { vk: 40, modifiers: 1 }); step('alt+down at the last track says so and changes nothing', (await t('seg', 'blockB')).trackId === 'track_3' && /下のトラック/.test(await t('status')));
+    await key('ArrowUp', 'ArrowUp', { vk: 38, modifiers: 1 }); step('alt+up: back to the track above', (await t('seg', 'blockB')).trackId === 'track_2');
+    await t('select', 'blockA'); const refusedBase = await t('snapshot');
+    await key('ArrowDown', 'ArrowDown', { vk: 40, modifiers: 1 }); step('alt+down onto a taken slot is refused', (await t('snapshot')) === refusedBase && /重なります/.test(await t('status')));
+
+    let name = await t('rect', '[data-track-head="track_3"] [data-track-select]'); const names0 = await t('names');
+    await mouse('mouseMoved', name.left + 8, (name.top + name.bottom) / 2); await mouse('mousePressed', name.left + 8, (name.top + name.bottom) / 2, { clickCount: 2 }); await mouse('mouseReleased', name.left + 8, (name.top + name.bottom) / 2, { clickCount: 2 });
+    await sleep(80); step('rename: double-click opens an inline field', (await t('rect', '.caption-track-rename')) !== null);
+    await client.send('Input.insertText', { text: 'Zed' }); await key('Enter', 'Enter', { vk: 13, text: '\r' }); await sleep(80);
+    step('rename: Enter commits the name', /,Zed$/.test(await t('names')) && (await t('rect', '.caption-track-rename')) === null, await t('names'));
+    await t('undo'); step('rename: undo restores it', (await t('names')) === names0);
+    name = await t('rect', '[data-track-head="track_3"] [data-track-select]');
+    await mouse('mousePressed', name.left + 8, (name.top + name.bottom) / 2, { clickCount: 2 }); await mouse('mouseReleased', name.left + 8, (name.top + name.bottom) / 2, { clickCount: 2 }); await sleep(80);
+    await client.send('Input.insertText', { text: 'Nope' }); await key('Escape', 'Escape', { vk: 27 }); await sleep(80);
+    step('rename: Esc cancels without a command', (await t('names')) === names0 && (await t('rect', '.caption-track-rename')) === null);
+
+    const grip = await t('rect', '[data-track-head="track_3"] .caption-track-grip'), upper = await t('rect', '[data-track-head="track_2"]'), orderBefore = await t('order');
+    await drag({ x: (grip.left + grip.right) / 2, y: (grip.top + grip.bottom) / 2 }, { x: (grip.left + grip.right) / 2, y: (upper.top + upper.bottom) / 2 - 2 }, { release: false });
+    step('reorder: a drop line shows where the track lands', (await t('rect', '.caption-track-drop')) !== null); await shot('05-reorder');
+    await key('Escape', 'Escape', { vk: 27 }); await mouse('mouseReleased', (grip.left + grip.right) / 2, (upper.top + upper.bottom) / 2); await sleep(80);
+    step('reorder: Esc leaves the order alone', (await t('order')) === orderBefore && (await t('rect', '.caption-track-drop')) === null);
+    await drag({ x: (grip.left + grip.right) / 2, y: (grip.top + grip.bottom) / 2 }, { x: (grip.left + grip.right) / 2, y: (upper.top + upper.bottom) / 2 - 2 });
+    step('reorder: dropping the grip on the row above swaps them', (await t('order')) === 'track_main,track_3,track_2', await t('order'));
+    await t('undo'); step('reorder: undo restores the order', (await t('order')) === orderBefore);
+    const primaryGrip = await t('rect', '[data-track-head="track_main"] .caption-track-grip'); step('reorder: the primary track has no grip', primaryGrip === null || primaryGrip.width === 0 || (await client.evaluate('getComputedStyle(document.querySelector(\'[data-track-head="track_main"] .caption-track-grip\')).visibility')) === 'hidden');
+
+    const more = await t('rect', '[data-track-head="track_2"] .caption-track-more'); await mouse('mouseMoved', (more.left + more.right) / 2, (more.top + more.bottom) / 2); await mouse('mousePressed', (more.left + more.right) / 2, (more.top + more.bottom) / 2); await mouse('mouseReleased', (more.left + more.right) / 2, (more.top + more.bottom) / 2); await sleep(80);
+    const items = await t('menuItems'); step('menu: opens with rename / up / down / randomize / delete', items.length === 5 && /名前/.test(items[0]) && /削除/.test(items[4]), JSON.stringify(items)); await shot('06-track-menu');
+    await key('Escape', 'Escape', { vk: 27 }); await sleep(50); step('menu: Esc closes it', (await t('menuItems')).length === 0);
+    const moreMain = await t('rect', '[data-track-head="track_main"] .caption-track-more'); await mouse('mousePressed', (moreMain.left + moreMain.right) / 2, (moreMain.top + moreMain.bottom) / 2); await mouse('mouseReleased', (moreMain.left + moreMain.right) / 2, (moreMain.top + moreMain.bottom) / 2); await sleep(80);
+    step('menu: the primary track cannot move or be deleted', (await t('menuItems')).filter(label => /\(off\)/.test(label)).length === 3, JSON.stringify(await t('menuItems')));
+    await mouse('mousePressed', 700, 900); await mouse('mouseReleased', 700, 900); await sleep(50); step('menu: a click outside closes it', (await t('menuItems')).length === 0);
+
+    step('+ track: hidden while three tracks exist', (await t('addVisible')) === false);
+    await t('removeTrack', 'track_3'); step('+ track: shown again after a track is removed', (await t('addVisible')) === true);
+    const add = await t('rect', '#captionTrackAddInline'); await mouse('mousePressed', (add.left + add.right) / 2, (add.top + add.bottom) / 2); await mouse('mouseReleased', (add.left + add.right) / 2, (add.top + add.bottom) / 2); await sleep(80);
+    step('+ track: the button adds a track', (await t('order')).split(',').length === 3 && (await t('addVisible')) === false, await t('order'));
 
     const problems = log.filter(line => !/favicon|Failed to load resource/.test(line));
     step('no page errors', problems.length === 0, problems.join(' | '));

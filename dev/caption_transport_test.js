@@ -48,7 +48,7 @@ assert.equal(key('Space'), 'play'); assert.equal(key('KeyL'), 'loop'); assert.eq
 assert.equal(key('ArrowLeft'), 'back-frame'); assert.equal(key('ArrowRight', { shiftKey: true }), 'forward-1s');
 assert.equal(key('ArrowUp'), 'prev-caption'); assert.equal(key('ArrowDown'), 'next-caption'); assert.equal(key('Home'), 'start'); assert.equal(key('End'), 'end');
 assert.equal(key('Equal', { key: '+' }), 'zoom-in'); assert.equal(key('Minus', { key: '-' }), 'zoom-out'); assert.equal(key('Digit0', { key: '0' }), 'zoom-fit');
-assert.equal(key('KeyZ', { ctrlKey: true }), null); assert.equal(key('ArrowLeft', { altKey: true }), null); assert.equal(key('KeyL', { metaKey: true }), null); assert.equal(key('KeyQ'), null);
+assert.equal(key('KeyZ', { ctrlKey: true }), null); assert.equal(key('ArrowLeft', { altKey: true }), null); assert.equal(key('ArrowUp', { altKey: true }), 'track-up'); assert.equal(key('ArrowDown', { altKey: true }), 'track-down'); assert.equal(key('ArrowUp', { altKey: true, shiftKey: true }), null); assert.equal(key('ArrowUp', { altKey: true, ctrlKey: true }), null); assert.equal(key('KeyL', { metaKey: true }), null); assert.equal(key('KeyQ'), null);
 
 // wiring: the transport owns the loop/speed/key handler; the view marks the region; markup + localized copy exist
 const src = name => fs.readFileSync(path.join(root, 'src', name), 'utf8');

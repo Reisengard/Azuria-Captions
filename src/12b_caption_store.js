@@ -471,7 +471,8 @@ class CaptionStore {
     if (retrack) { this.assertUnlocked(segment, 'trackAssignment'); this.assertUnlocked(segment, 'trackAssignment', 'visualPlan'); }
     this.requireFits(segment, start, end, target, { fit: true });
     if (J.isCaptionTextBlock(project, segment)) {
-      this.editTextBlock({ segmentId: segment.id, start: +start.toFixed(6), end: +end.toFixed(6), trackId: target });
+      // A track change alone leaves the time untouched, so a timing lock does not stop it.
+      this.editTextBlock(Object.assign({ segmentId: segment.id, trackId: target }, shifts ? { start: +start.toFixed(6), end: +end.toFixed(6) } : {}));
       return;
     }
     for (const id of segment.tokenIds) {

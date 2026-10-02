@@ -7,7 +7,7 @@
 if (typeof document === 'undefined' || typeof document.getElementById !== 'function') return;
 const W = J.captionWb, TL = J.captionTimeline;
 const { ui, $, fmt, status, commandError, segmentTrackId, activeTrack, trackName, segmentText, tokenMap, sourceVideo, escapeHtml, runCommand, accessibilityWarnings, selectSegment, on, emit } = W;
-const blocks = new Map(), rows = new Map(), labels = new Map();
+const blocks = new Map(), rows = new Map(), labels = new Map(), headParts = new Map();
 let expectedScroll = null, scrubbing = false, wordsFrame = 0;
 
 const scrollEl = () => $('captionTimelineScroll');
@@ -53,14 +53,100 @@ function syncRows(project) {
     seen.add(item.id);
     let row = rows.get(item.id), label = labels.get(item.id);
     if (!row) { row = document.createElement('div'); row.className = 'caption-track-row'; row.dataset.trackId = item.id; rows.set(item.id, row); }
-    if (!label) { label = document.createElement('button'); label.type = 'button'; label.className = 'caption-track-name'; label.dataset.trackSelect = item.id; labels.set(item.id, label); }
+    if (!label) label = buildHead(item.id);
     if (track.children[index] !== row) track.insertBefore(row, track.children[index] || null);
     if (heads.children[index] !== label) heads.insertBefore(label, heads.children[index] || null);
-    const name = item.name || item.id; if (label.textContent !== name) { label.textContent = name; label.title = name; }
-    label.setAttribute('aria-pressed', String(!!current && item.id === current.id));
+    const name = item.name || item.id, { name: button, grip } = headParts.get(item.id);
+    if (button.textContent !== name) { button.textContent = name; label.title = name; }
+    grip.hidden = !!item.primary;
+    button.setAttribute('aria-pressed', String(!!current && item.id === current.id));
   });
   for (const [id, row] of rows) if (!seen.has(id)) { row.remove(); rows.delete(id); }
-  for (const [id, label] of labels) if (!seen.has(id)) { label.remove(); labels.delete(id); }
+  for (const [id, label] of labels) if (!seen.has(id)) { label.remove(); labels.delete(id); headParts.delete(id); }
+  const add = $('captionTrackAddInline'); if (add) add.hidden = (project.tracks || []).length >= J.CAPTION_MAX_TRACKS;
+}
+
+/* ---- Track headers (T4): grip = drag to reorder, double-click the name = rename, ⋯ = menu ---- */
+function buildHead(id) {
+  const head = document.createElement('div'); head.className = 'caption-track-head'; head.dataset.trackHead = id;
+  const grip = document.createElement('span'); grip.className = 'caption-track-grip'; grip.dataset.trackGrip = id; grip.textContent = '⠿'; grip.title = 'ドラッグで重なり順を変更'; grip.setAttribute('aria-hidden', 'true');
+  const name = document.createElement('button'); name.type = 'button'; name.className = 'caption-track-name'; name.dataset.trackSelect = id;
+  const more = document.createElement('button'); more.type = 'button'; more.className = 'caption-track-more'; more.dataset.trackMenu = id; more.textContent = '⋯'; more.setAttribute('aria-haspopup', 'menu'); more.setAttribute('aria-label', 'トラックのメニュー');
+  head.append(grip, name, more); labels.set(id, head); headParts.set(id, { grip, name, more }); return head;
+}
+function renameInline(trackId) {
+  const head = labels.get(trackId), track = J.captionTrack(ui.store.project, trackId); if (!head || !track || head.dataset.renaming) return;
+  const button = headParts.get(trackId).name, input = document.createElement('input'); input.className = 'caption-track-rename'; input.value = track.name || ''; input.maxLength = 40; input.setAttribute('aria-label', 'トラック名');
+  let done = false;
+  const close = commit => { if (done) return; done = true; const value = input.value.trim(); input.remove(); button.hidden = false; delete head.dataset.renaming; if (commit && value && value !== (track.name || '')) W.renameTrack(trackId, value); };
+  input.addEventListener('keydown', event => { event.stopPropagation(); if (event.key === 'Enter') { event.preventDefault(); close(true); } else if (event.key === 'Escape') { event.preventDefault(); close(false); } });
+  input.addEventListener('blur', () => close(true));
+  head.dataset.renaming = '1'; button.hidden = true; head.insertBefore(input, button); input.focus(); input.select();
+}
+/* Small menu anchored under a button: arrows move, Enter runs, Esc / outside click closes and returns focus. */
+let openMenuEl = null;
+function closeMenu(restore) {
+  if (!openMenuEl) return; const { menu, anchor } = openMenuEl; openMenuEl = null; menu.remove();
+  document.removeEventListener('pointerdown', onMenuOutside, true); if (restore && anchor.isConnected) anchor.focus();
+}
+function onMenuOutside(event) { if (openMenuEl && !openMenuEl.menu.contains(event.target)) closeMenu(false); }
+function openMenu(anchor, items) {
+  closeMenu(false);
+  const menu = document.createElement('div'); menu.className = 'caption-menu'; menu.setAttribute('role', 'menu');
+  for (const item of items) {
+    const button = document.createElement('button'); button.type = 'button'; button.className = 'caption-menu-item'; button.setAttribute('role', 'menuitem'); button.textContent = item.label; button.disabled = !!item.disabled;
+    button.addEventListener('click', () => { closeMenu(true); item.run(); }); menu.appendChild(button);
+  }
+  menu.addEventListener('keydown', event => {
+    const list = [...menu.querySelectorAll('button:not(:disabled)')], at = list.indexOf(document.activeElement);
+    if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); closeMenu(true); }
+    else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') { event.preventDefault(); event.stopPropagation(); if (list.length) list[(at + (event.key === 'ArrowDown' ? 1 : -1) + list.length) % list.length].focus(); }
+    else if (event.key === 'Tab') closeMenu(false);
+  });
+  document.body.appendChild(menu); openMenuEl = { menu, anchor };
+  const rect = anchor.getBoundingClientRect(), box = menu.getBoundingClientRect();
+  menu.style.left = `${Math.max(4, Math.min(rect.left, window.innerWidth - box.width - 4))}px`;
+  menu.style.top = `${rect.bottom + box.height + 4 > window.innerHeight ? Math.max(4, rect.top - box.height - 4) : rect.bottom + 4}px`;
+  document.addEventListener('pointerdown', onMenuOutside, true);
+  const first = menu.querySelector('button:not(:disabled)'); if (first) first.focus();
+}
+function openTrackMenu(trackId) {
+  const project = ui.store.project, tracks = project.tracks || [], track = J.captionTrack(project, trackId), anchor = headParts.has(trackId) ? headParts.get(trackId).more : null; if (!track || !anchor) return;
+  const index = tracks.indexOf(track), primary = !!track.primary;
+  openMenu(anchor, [
+    { label: '名前を変更', run: () => renameInline(trackId) },
+    { label: '上へ（下に重なる）', disabled: primary || index <= 1, run: () => W.reorderTrack(-1, trackId) },
+    { label: '下へ（上に重なる）', disabled: primary || index >= tracks.length - 1, run: () => W.reorderTrack(1, trackId) },
+    { label: 'エフェクトをランダムに決める', run: () => W.rerollTrack(trackId) },
+    { label: 'トラックを削除', disabled: primary, run: () => W.deleteTrack(trackId) }
+  ]);
+}
+/* Dragging the grip reorders: a line shows where the track will land; one reorder-track command on release, Esc cancels. */
+let headDrag = null;
+function startHeadDrag(event) {
+  const grip = event.target.closest('[data-track-grip]'); if (!grip || event.button !== 0 || ui.drag || ui.boundaryDrag) return;
+  event.preventDefault(); const id = grip.dataset.trackGrip, line = document.createElement('div'); line.className = 'caption-track-drop'; line.hidden = true; $('captionTrackLabels').appendChild(line);
+  headDrag = { id, pointerId: event.pointerId, y: event.clientY, started: false, line, to: null }; labels.get(id).classList.add('is-grabbed');
+}
+function moveHeadDrag(event) {
+  const drag = headDrag; if (!drag || event.pointerId !== drag.pointerId) return;
+  if (!drag.started && Math.abs(event.clientY - drag.y) < DRAG_THRESHOLD) return; drag.started = true;
+  const tracks = ui.store.project.tracks || [], centers = tracks.map(item => { const rect = labels.get(item.id).getBoundingClientRect(); return rect.top + rect.height / 2; });
+  drag.to = TL.reorderIndex(centers, event.clientY); const target = labels.get(tracks[drag.to].id), host = $('captionTrackLabels').getBoundingClientRect(), rect = target.getBoundingClientRect(), from = tracks.findIndex(item => item.id === drag.id);
+  drag.line.hidden = drag.to === from; drag.line.style.top = `${(drag.to > from ? rect.bottom : rect.top) - host.top - 1}px`;
+}
+function endHeadDrag(commit) {
+  const drag = headDrag; if (!drag) return; headDrag = null; drag.line.remove(); const head = labels.get(drag.id); if (head) head.classList.remove('is-grabbed');
+  if (!commit || !drag.started || drag.to === null) return;
+  const from = (ui.store.project.tracks || []).findIndex(item => item.id === drag.id); if (from >= 0 && drag.to !== from) W.reorderTrack(drag.to - from, drag.id);
+}
+/* Alt+↑ / Alt+↓: the selected caption moves to the track above / below, keeping its time. */
+function moveSelectedTrack(direction) {
+  const segment = W.selectedSegment(); if (!segment) { status('字幕を選んでください。', true); return true; }
+  const target = TL.adjacentTrackId(ui.store.project.tracks || [], segmentTrackId(segment), direction);
+  if (!target) { status(direction < 0 ? 'これより上のトラックはありません。' : 'これより下のトラックはありません。', true); return true; }
+  runCommand({ type: 'move-segment', segmentId: segment.id, start: segment.start, trackId: target }, segment.id); if (ui.preview) ui.preview.renderNow();
+  return true;
 }
 
 function buildBlock(id) {
@@ -330,6 +416,11 @@ function markSelection() {
 function init() {
   const scroll = scrollEl(), ruler = $('captionRuler');
   $('captionSegmentList').addEventListener('click', event => { const target = event.target.closest('[data-segment-id]'); if (target) selectSegment(target.dataset.segmentId); });
+  const heads = $('captionTrackLabels');
+  heads.addEventListener('click', event => { const more = event.target.closest('[data-track-menu]'); if (more) openTrackMenu(more.dataset.trackMenu); });
+  heads.addEventListener('dblclick', event => { const name = event.target.closest('[data-track-select]'); if (name) renameInline(name.dataset.trackSelect); });
+  heads.addEventListener('pointerdown', startHeadDrag);
+  $('captionTrackAddInline').addEventListener('click', () => W.addTrack());
   $('captionSegmentTrack').addEventListener('click', event => {
     const word = event.target.closest('[data-word-id]'), target = event.target.closest('[data-segment-id]');
     if (target) selectSegment(target.dataset.segmentId);
@@ -359,11 +450,11 @@ function init() {
   ruler.addEventListener('pointerup', event => { if (marking && !marking.moved) { if (ui.transport.marked) W.setMarked(null); seekTimeline(timelineTimeAt(event.clientX)); } marking = null; scrubbing = false; });
   ruler.addEventListener('pointercancel', () => { marking = null; scrubbing = false; });
   $('captionSegmentTrack').addEventListener('pointerdown', event => { const handle = event.target.closest('[data-boundary-segment]'); if (handle) startBoundaryDrag(event, handle.dataset.boundarySegment); else startSegmentDrag(event); });
-  window.addEventListener('pointermove', event => { moveBoundary(event); moveSegmentDrag(event); });
-  window.addEventListener('pointerup', event => { finishBoundary(); finishSegmentDrag(event); });
-  window.addEventListener('pointercancel', cancelSegmentDrag);
+  window.addEventListener('pointermove', event => { moveBoundary(event); moveSegmentDrag(event); moveHeadDrag(event); });
+  window.addEventListener('pointerup', event => { finishBoundary(); finishSegmentDrag(event); endHeadDrag(true); });
+  window.addEventListener('pointercancel', () => { cancelSegmentDrag(); endHeadDrag(false); });
   // Esc cancels a drag before any other Esc handler (stop loop, deselect) sees it.
-  document.addEventListener('keydown', event => { if (event.key === 'Escape' && ui.drag && cancelSegmentDrag()) { event.preventDefault(); event.stopImmediatePropagation(); } }, true);
+  document.addEventListener('keydown', event => { if (event.key === 'Escape' && headDrag) { endHeadDrag(false); event.preventDefault(); event.stopImmediatePropagation(); return; } if (event.key === 'Escape' && ui.drag && cancelSegmentDrag()) { event.preventDefault(); event.stopImmediatePropagation(); } }, true);
   scroll.addEventListener('wheel', event => {
     if (event.ctrlKey || event.metaKey) { event.preventDefault(); ui.timeline.follow = false; zoomTimeline(Math.exp(-event.deltaY * .0025), event.clientX - scroll.getBoundingClientRect().left); return; }
     if (scroll.scrollWidth <= scroll.clientWidth + 1) return;
@@ -380,6 +471,6 @@ function init() {
   for (const id of ['captionSegmentList', 'captionSegmentTrack']) $(id).addEventListener('dblclick', event => { const target = event.target.closest('[data-segment-id]'); if (target) selectSegment(target.dataset.segmentId, true); });
   on('project', renderSegments); on('selection', markSelection);
 }
-Object.assign(W, { cancelSegmentDrag, dragging, nudgeSegment, finishBoundary, fitTimeline, markNow, markSelection, moveBoundary, placeLoop, renderSegments, renderTimeline, revealTime, seekTimeline, startBoundaryDrag, timelineFollow, timelineTimeAt, updatePlayhead, zoomTimeline });
+Object.assign(W, { moveSelectedTrack, openTrackMenu, renameInline, cancelSegmentDrag, dragging, nudgeSegment, finishBoundary, fitTimeline, markNow, markSelection, moveBoundary, placeLoop, renderSegments, renderTimeline, revealTime, seekTimeline, startBoundaryDrag, timelineFollow, timelineTimeAt, updatePlayhead, zoomTimeline });
 W.inits.push(init);
 })();

@@ -131,12 +131,26 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .caption-timeline-toolbar { display: flex; align-items: center; justify-content: space-between; color: var(--muted); font: 10px var(--mono); }
 .caption-timeline-toolbar div { display: flex; gap: 4px; }
 .caption-timeline { display: flex; border: 1px solid var(--line); border-radius: 6px; background: #101014; }
-.caption-timeline-heads { flex: 0 0 72px; border-right: 1px solid var(--line); }
+.caption-timeline-heads { flex: 0 0 112px; border-right: 1px solid var(--line); }
 .caption-ruler-head { height: 22px; border-bottom: 1px solid var(--line); }
 .caption-track-label { display: grid; place-items: center start; padding-left: 8px; color: var(--faint); font: 9px var(--mono); }
 .caption-video-head { height: 30px; }
-.caption-track-labels { display: grid; grid-auto-rows: 28px; row-gap: 4px; align-content: start; padding: 5px 0; }
-.caption-track-labels .caption-track-name { display: block; overflow: hidden; padding: 0 4px 0 8px; border: 0; background: none; color: var(--faint); font: 9px var(--mono); line-height: 28px; text-align: left; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+.caption-track-labels { position: relative; display: grid; grid-auto-rows: 28px; row-gap: 4px; align-content: start; padding: 5px 0; }
+.caption-track-head { display: flex; align-items: center; min-width: 0; height: 28px; }
+.caption-track-head.is-grabbed { background: rgba(22,244,212,.08); }
+.caption-track-grip { flex: 0 0 14px; color: var(--faint); font-size: 11px; line-height: 28px; text-align: center; cursor: grab; touch-action: none; user-select: none; }
+.caption-track-grip[hidden] { display: block; visibility: hidden; }
+.caption-track-more { flex: 0 0 22px; height: 24px; padding: 0; border: 0; background: none; color: var(--faint); font-size: 13px; line-height: 24px; cursor: pointer; }
+.caption-track-more:hover, .caption-track-more:focus-visible { color: var(--text); }
+.caption-track-rename { flex: 1 1 auto; min-width: 0; height: 22px; padding: 0 4px; font: 10px var(--mono); }
+.caption-track-drop { position: absolute; left: 0; right: 0; height: 2px; background: var(--cyan); pointer-events: none; }
+.caption-track-add { display: block; margin: 0 0 6px 8px; padding: 2px 4px; border: 1px dashed var(--line); border-radius: 4px; background: none; color: var(--faint); font: 9px var(--mono); cursor: pointer; }
+.caption-track-add:hover, .caption-track-add:focus-visible { border-color: var(--cyan); color: var(--cyan); }
+.caption-menu { position: fixed; z-index: 60; display: grid; min-width: 180px; padding: 4px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); box-shadow: 0 6px 20px rgba(0,0,0,.5); }
+.caption-menu-item { padding: 6px 10px; border: 0; border-radius: 4px; background: none; color: var(--text); font-size: 12px; text-align: left; cursor: pointer; }
+.caption-menu-item:hover:not(:disabled), .caption-menu-item:focus-visible { background: rgba(22,244,212,.12); }
+.caption-menu-item:disabled { color: var(--faint); cursor: default; }
+.caption-track-labels .caption-track-name { display: block; flex: 1 1 auto; min-width: 0; overflow: hidden; padding: 0 4px 0 2px; border: 0; background: none; color: var(--faint); font: 9px var(--mono); line-height: 28px; text-align: left; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
 .caption-track-labels .caption-track-name[aria-pressed=true] { color: var(--cyan); }
 .caption-timeline-scroll { flex: 1 1 auto; min-width: 0; overflow-x: auto; overflow-y: hidden; outline-offset: -2px; }
 .caption-timeline-content { position: relative; min-width: 100%; }
