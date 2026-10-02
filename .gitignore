@@ -3,4 +3,5 @@ __pycache__/
 dev/fixtures/media/generated/
 dev/www/
 dev/node_modules/
-.claude/worktrees/
+.claude/
+audio_transcript.json
