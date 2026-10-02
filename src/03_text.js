@@ -242,7 +242,14 @@ J.drawItem = (env, it) => {
       if (shadow && fill) { ctx.shadowColor = 'rgba(0,0,0,0)'; }
       ctx.lineJoin = 'round'; ctx.miterLimit = 2;
       ctx.lineWidth = (it.stroke > 0 ? it.stroke : Math.max(1, size * 0.02)) / Math.sqrt(Math.abs(csx * csy));
-      ctx.strokeStyle = (!ghostPass && c && c.color) || sCol;
+      // A per-glyph colour recolours the stroke only when the glyph is outline-only; an under-stroke keeps its own colour,
+      // and flips to dark/light when it would merge with the recoloured fill (e.g. active-word accent on an accent outline).
+      let strokeCol = sCol;
+      if (!ghostPass && c && c.color) {
+        if (!(fill && !outlineOnly && it.strokeUnder)) strokeCol = c.color;
+        else if (/^#/.test(sCol) && /^#/.test(gcol) && J.contrast(sCol, gcol) < 2) strokeCol = J.lum(gcol) > 0.5 ? '#080a10' : '#ffffff';
+      }
+      ctx.strokeStyle = strokeCol;
       if (dash != null) { const L = size * 3.2; ctx.setLineDash([Math.max(0.01, L * dash), L]); ctx.lineDashOffset = 0; }
       else if (it.strokeDash) ctx.setLineDash(it.strokeDash);
       ctx.strokeText(ch, 0, 0);
