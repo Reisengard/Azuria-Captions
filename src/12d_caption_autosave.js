@@ -7,7 +7,7 @@ if (typeof document === 'undefined' || typeof document.getElementById !== 'funct
 const W = J.captionWb;
 const { ui, $, status } = W;
 const DB_NAME = 'azuria-sub', STORE = 'autosave', KEY = 'last', DELAY = 1500;
-let timer = 0, ready = false, saving = null, lastJson = '';
+let timer = 0, ready = false, saving = null, lastJson = '', lastName = '';
 
 /* One small record: { json, name, savedAt, segments }. The video file is never stored, so a restored project asks for a relink. */
 function database() {
@@ -47,10 +47,10 @@ async function saveNow() {
   if (!ready || saving) return;
   const project = ui.store.project;
   if (!hasContent(project)) return;
-  const json = ui.store.serialize();
-  if (json === lastJson) return;
-  const record = { json, name: $('captionProjectName').textContent, savedAt: Date.now(), segments: project.segments.length };
-  saving = writeRecord(record).then(() => { lastJson = json; showState('自動保存 ' + clock(record.savedAt)); })
+  const json = ui.store.serialize(), name = $('captionProjectName').value;
+  if (json === lastJson && name === lastName) return;
+  const record = { json, name: $('captionProjectName').value, savedAt: Date.now(), segments: project.segments.length };
+  saving = writeRecord(record).then(() => { lastJson = json; lastName = name; showState('自動保存 ' + clock(record.savedAt)); })
     .catch(() => showState('自動保存できません', true))
     .finally(() => { saving = null; });
   await saving;
@@ -80,7 +80,7 @@ async function offerRestore(record) {
   if (restore) {
     try {
       await W.openProject({ name: (record.name || 'project') + '.json', text: async () => record.json });
-      lastJson = record.json; showState('自動保存 ' + clock(record.savedAt));
+      lastJson = record.json; lastName = $('captionProjectName').value; showState('自動保存 ' + clock(record.savedAt));
     } catch (error) { status(J.recoveryForError ? J.recoveryForError(error).display : error.message, true); }
   } else { try { await clearRecord(); } catch (error) { /* nothing to clear */ } }
   ready = true;
@@ -105,6 +105,7 @@ async function start() {
 
 function init() {
   W.on('project', schedule, 20);
+  $('captionProjectName').addEventListener('input', schedule);
   $('captionNew').addEventListener('click', () => { lastJson = ''; showState(''); clearRecord().catch(() => {}); });   // an empty project must not bring the old one back
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') saveNow(); });
   window.addEventListener('pagehide', () => { saveNow(); });

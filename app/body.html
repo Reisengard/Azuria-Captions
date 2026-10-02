@@ -19,7 +19,7 @@
   <section id="videoCaptionsWorkspace" class="product-surface caption-surface" role="tabpanel" aria-labelledby="productVideoCaptions" hidden>
 <header class="bar caption-bar">
       <div class="brand"><span class="word">Azuria<b>Sub</b></span><span class="ver">v@VERSION@</span></div>
-      <div class="proj"><strong id="captionProjectName" class="caption-project-name">無題の字幕プロジェクト</strong><span id="captionSaveState" class="caption-save-state"></span></div>
+      <div class="proj"><input id="captionProjectName" class="caption-project-name" type="text" value="無題の字幕プロジェクト" maxlength="80" spellcheck="false" autocomplete="off" aria-label="プロジェクト名" title="クリックしてプロジェクト名を変更"><span id="captionSaveState" class="caption-save-state"></span></div>
       <div class="acts caption-history" role="group" aria-label="元に戻す・やり直す">
         <button id="captionUndo" type="button" disabled>元に戻す</button>
         <button id="captionRedo" type="button" disabled>やり直す</button>
@@ -28,6 +28,7 @@
         <button id="captionModeEasy" type="button" aria-pressed="true" title="安全な演出の中から選べます">かんたん</button>
         <button id="captionModePro" type="button" aria-pressed="false" title="演出の技法を自分で選べます">詳細</button>
       </div>
+      <label class="file caption-open-project" title="保存したスタイルを、いまの字幕に適用します">スタイルを読込<input id="captionStyleFile" type="file" accept=".json,application/json"></label>
       <div class="caption-menu-wrap">
         <button id="captionMenuButton" type="button" class="ghost caption-menu-button" aria-haspopup="true" aria-expanded="false" aria-controls="captionMenu" aria-label="メニュー" title="メニュー">⋯</button>
         <div id="captionMenu" class="caption-main-menu" hidden aria-label="メニュー">
@@ -36,7 +37,6 @@
           <button id="captionSave" type="button" disabled>保存</button>
           <hr>
           <button id="captionStyleSave" type="button" title="文字スタイル・エフェクト・スタイルの設定をすべてファイルに保存します">スタイルを保存</button>
-          <label class="file caption-open-project" title="保存したスタイルを、いまの字幕に適用します">スタイルを読込<input id="captionStyleFile" type="file" accept=".json,application/json"></label>
           <hr>
           <button id="captionHelp" type="button" title="字幕編集の流れを見る">使い方</button>
           <button id="captionTerms" type="button" class="terms-open" title="出力物の権利とライセンス">利用について</button>

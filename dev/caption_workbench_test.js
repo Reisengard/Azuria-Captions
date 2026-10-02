@@ -36,7 +36,7 @@ assert.ok(body.indexOf('id="captionStylePane_style"') > body.indexOf('id="captio
 const bar = body.slice(body.indexOf('<header class="bar caption-bar">'), body.indexOf('</header>'));
 const menu = bar.slice(bar.indexOf('id="captionMenu"'));
 for (const id of ['captionUndo', 'captionRedo', 'captionModeEasy', 'captionModePro', 'captionMenuButton', 'captionExport']) assert.match(bar, new RegExp(`id="${id}"`), `top bar lacks #${id}`);
-for (const id of ['captionNew', 'captionProjectFile', 'captionSave', 'captionStyleSave', 'captionStyleFile', 'captionHelp', 'captionTerms']) assert.ok(menu.includes(`id="${id}"`), `#${id} is not in the ⋯ menu`);
+for (const id of ['captionNew', 'captionProjectFile', 'captionSave', 'captionStyleSave', 'captionHelp', 'captionTerms']) assert.ok(menu.includes(`id="${id}"`), `#${id} is not in the ⋯ menu`);
 assert.match(bar, /<div class="brand"><span class="word">Azuria<b>Sub<\/b><\/span>/, 'the brand is Azuria Sub');
 assert.ok(body.slice(body.indexOf('id="captionStylePane_effects"')).indexOf('id="captionVariation"') < body.slice(body.indexOf('id="captionStylePane_effects"')).indexOf('id="captionLookPanel"'), 'Randomize everything belongs at the top of the Effects pane');
 assert.match(css, /html\[data-product-mode=video-captions\] \{[^}]*#b39d68[^}]*\}/i, 'the captions product must use the Azuria Sub gold');

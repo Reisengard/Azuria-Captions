@@ -121,7 +121,7 @@ async function openProject(file) {
   const loaded = J.loadProject(await file.text());
   if (loaded.mode !== 'video-captions') { const error = new Error('Video Captions プロジェクトを選んでください。'); error.code = 'CAPTION_PROJECT_REQUIRED'; throw error; }
   if (ui.preview) ui.preview.disconnect(); if (ui.media) ui.media.close(); ui.preview = null; ui.media = null; ui.selectedId = null; W.clearWaveform();
-  setProject(loaded); $('captionProjectName').textContent = file.name.replace(/\.json$/i, '') || loaded.id;
+  setProject(loaded); $('captionProjectName').value = file.name.replace(/\.json$/i, '') || loaded.id;
   const needsRelink = !!(loaded.media && (loaded.media.fingerprint || loaded.media.relinkRequired));
   $('captionRelinkNotice').hidden = !needsRelink; $('captionPreviewEmpty').hidden = false; $('captionPlay').disabled = true; $('captionScrub').disabled = true;
   $('captionMediaName').textContent = needsRelink ? `${loaded.media.name || '元動画'} · 再リンクが必要` : '動画未選択';
@@ -137,7 +137,11 @@ async function importTranscript(file) {
   setProject(project); status(`${project.segments.length}件の字幕を作成しました。`);
 }
 
+function projectFileStem() { return $('captionProjectName').value.trim().replace(/[\/:*?"<>|]+/g, '-') || `jizura-${ui.store.project.id}`; }
+
 function bind() {
+  $('captionProjectName').addEventListener('keydown', event => { if (event.key === 'Enter') event.target.blur(); });
+  $('captionProjectName').addEventListener('blur', event => { if (!event.target.value.trim()) event.target.value = '無題の字幕プロジェクト'; });
   setProject(emptyProject());
   $('captionVideoFile').addEventListener('change', event => { const file = event.target.files[0]; if (file) importVideo(file).catch(error => { if (error.code !== 'MEDIA_RELINK_MISMATCH') status(J.recoveryForError ? J.recoveryForError(error).display : error.message, true); }); event.target.value = ''; });
   $('captionRelinkFile').addEventListener('change', event => { const file = event.target.files[0], expected = clone(ui.store.project.media); if (file) importVideo(file, expected).catch(error => { if (error.code !== 'MEDIA_RELINK_MISMATCH') status(J.recoveryForError ? J.recoveryForError(error).display : error.message, true); }); event.target.value = ''; });
@@ -145,7 +149,7 @@ function bind() {
   $('captionTranscriptFile').addEventListener('change', event => { const file = event.target.files[0]; if (file) importTranscript(file).catch(error => status(J.recoveryForError ? J.recoveryForError(error).display : error.message, true)); event.target.value = ''; });
   $('captionUndo').addEventListener('click', () => { if (ui.store.undo()) emit('project'); }); $('captionRedo').addEventListener('click', () => { if (ui.store.redo()) emit('project'); });
   $('captionVariation').addEventListener('click', () => { if (runCommand({ type: 'randomize-caption-look', variation: ++ui.variation })) status('全体のエフェクトをランダムに決めました。元に戻すで戻せます。'); });
-  $('captionSave').addEventListener('click', () => J.saveFile(`jizura-${ui.store.project.id}.json`, ui.store.serialize()));
+  $('captionSave').addEventListener('click', () => J.saveFile(`${projectFileStem()}.json`, ui.store.serialize()));
   $('captionStyleSave').addEventListener('click', () => { J.saveFile('jizura-caption-style.json', JSON.stringify(J.captionStylePreset(ui.store.project), null, 1)); status('スタイルを保存しました。'); });
   $('captionStyleFile').addEventListener('change', async event => {
     const file = event.target.files[0]; event.target.value = ''; if (!file) return;
@@ -159,7 +163,7 @@ function bind() {
   });
   $('captionExport').addEventListener('click', openExportDialog);
   $('captionExportPanel').addEventListener('click', () => exportCaptions().catch(error => { status(error.message, true); exportState(error.message, null, true); }));
-  $('captionNew').addEventListener('click', () => { if (ui.preview) ui.preview.disconnect(); if (ui.media) ui.media.close(); ui.media = null; ui.preview = null; ui.selectedId = null; W.clearWaveform(); setProject(emptyProject()); $('captionProjectName').textContent = '無題の字幕プロジェクト'; $('captionRelinkNotice').hidden = true; $('captionPreviewEmpty').hidden = false; $('captionMediaName').textContent = '動画未選択'; $('captionPlay').disabled = true; $('captionScrub').disabled = true; status('新しいプロジェクトを作成しました。'); });
+  $('captionNew').addEventListener('click', () => { if (ui.preview) ui.preview.disconnect(); if (ui.media) ui.media.close(); ui.media = null; ui.preview = null; ui.selectedId = null; W.clearWaveform(); setProject(emptyProject()); $('captionProjectName').value = '無題の字幕プロジェクト'; $('captionRelinkNotice').hidden = true; $('captionPreviewEmpty').hidden = false; $('captionMediaName').textContent = '動画未選択'; $('captionPlay').disabled = true; $('captionScrub').disabled = true; status('新しいプロジェクトを作成しました。'); });
   $('captionHelp').addEventListener('click', () => { const dialog = $('captionHelpDlg'); if (dialog.showModal) { if (!dialog.open) dialog.showModal(); } else dialog.setAttribute('open', ''); });
   window.addEventListener('resize', onWorkbenchResize);
   if (typeof ResizeObserver === 'function') { const observer = new ResizeObserver(onWorkbenchResize); observer.observe($('captionStageView')); }   // strip height changes with the track count

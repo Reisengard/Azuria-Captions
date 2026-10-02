@@ -551,7 +551,7 @@ const IN_PAGE = `(() => {
     await client.send('Emulation.clearDeviceMetricsOverride'); await sleep(200);
 
     // U6: autosave to IndexedDB, the "Saved" indicator, and the restore prompt after a reload
-    const u6Count = await t('count'), u6Name = await client.evaluate(`document.getElementById('captionProjectName').textContent`);
+    const u6Count = await t('count'), u6Name = await client.evaluate(`document.getElementById('captionProjectName').value`);
     await client.evaluate(`J.captionWb.autosave.saveNow()`);
     const rec = await client.evaluate(`J.captionWb.autosave.readRecord().then(r => r && ({ segments: r.segments, name: r.name, hasJson: typeof r.json === 'string' && r.json.length > 100 }))`);
     step('u6: autosave writes the project to IndexedDB', !!rec && rec.segments === u6Count && rec.hasJson, JSON.stringify(rec));
@@ -565,7 +565,7 @@ const IN_PAGE = `(() => {
     await client.evaluate(`document.activeElement && document.activeElement.blur()`); await key('Escape', 'Escape', { vk: 27 }); await sleep(100);
     step('u6: Esc does not dismiss the prompt', await client.evaluate(`document.getElementById('captionRestoreDlg').open`));
     await clickSel('#captionRestoreDlg button[value=restore]'); await sleep(500);
-    const u6Restored = await client.evaluate(`({ open: document.getElementById('captionRestoreDlg').open, count: J.captionWorkbench.store.project.segments.length, name: document.getElementById('captionProjectName').textContent, relink: !document.getElementById('captionRelinkNotice').hidden, ready: J.captionWb.autosave.isReady() })`);
+    const u6Restored = await client.evaluate(`({ open: document.getElementById('captionRestoreDlg').open, count: J.captionWorkbench.store.project.segments.length, name: document.getElementById('captionProjectName').value, relink: !document.getElementById('captionRelinkNotice').hidden, ready: J.captionWb.autosave.isReady() })`);
     step('u6: Restore reopens the project and asks for the video again', !u6Restored.open && u6Restored.count === u6Count && u6Restored.relink && u6Restored.ready && u6Restored.name === u6Name, JSON.stringify(u6Restored));
 
     const problems = log.filter(line => !/favicon|Failed to load resource/.test(line));

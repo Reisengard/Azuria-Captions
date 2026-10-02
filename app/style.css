@@ -45,7 +45,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .product-build-status { display: inline-block; margin-top: 24px; padding: 7px 10px; border: 1px solid var(--line2); border-radius: var(--r); color: var(--muted); font: 12px var(--mono); }
 #app[data-product-mode=video-captions] { height: 100vh; height: 100dvh; }
 .caption-surface { display: flex; flex-direction: column; flex: 1 1 0; min-height: 640px; padding: 0; background: var(--ink); overflow: hidden; }
-.caption-project-name { display: block; min-width: 0; overflow: hidden; color: var(--text); font: 500 12px var(--mono); text-overflow: ellipsis; white-space: nowrap; }
+.caption-project-name { display: block; width: 100%; min-width: 0; max-width: 280px; padding: 4px 6px; overflow: hidden; border: 1px solid transparent; border-radius: 4px; background: transparent; color: var(--text); font: 500 12px var(--mono); text-overflow: ellipsis; white-space: nowrap; }
+.caption-project-name:hover { border-color: var(--line2); }
+.caption-project-name:focus { border-color: var(--amber); background: var(--raised); outline: none; }
 .caption-bar .proj { flex: 1 1 120px; align-items: center; }
 .caption-help-steps { margin: 0 0 12px; padding-left: 20px; line-height: 1.7; }
 .caption-panel { min-width: 0; padding: 14px; overflow: auto; background: var(--panel); }
