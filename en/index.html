@@ -1085,10 +1085,10 @@ html[data-product-mode=video-captions] label.file:hover { border-color: var(--am
 
           <section class="caption-section" aria-labelledby="captionTextHeading">
             <h3 id="captionTextHeading">Text</h3>
-            <label class="caption-edit-text">字幕の文字<input id="captionEditText" type="text" autocomplete="off" spellcheck="false"></label>
+            <label class="caption-edit-text">Caption text<input id="captionEditText" type="text" autocomplete="off" spellcheck="false"></label>
             <p id="captionWordHint" class="caption-section-hint">Press a word to fix or highlight it. ✂ splits the caption there.</p>
             <div id="captionTokenList" class="caption-word-chips" role="group" aria-label="Caption words"></div>
-            <button id="captionSyncWords" type="button" class="small" title="この字幕をLoopPlayし、各単語が始まる瞬間に Space を押して単語のタイミングを合わせます">単語を同期</button>
+            <button id="captionSyncWords" type="button" class="small" title="Loop this caption and press Space as each word starts to set the word timing">Sync words</button>
             <div id="captionWordEditor" class="caption-word-editor" hidden>
               <label id="captionWordTextField">Word text<input id="captionWordText" type="text"></label>
               <div class="caption-emphasis-toggle" role="group" aria-labelledby="captionWordEmphasisLabel">
@@ -1108,7 +1108,7 @@ html[data-product-mode=video-captions] label.file:hover { border-color: var(--am
             </div>
             <div class="caption-button-row"><button id="captionStartAtPlayhead" type="button" class="small">Start at playhead</button><button id="captionEndAtPlayhead" type="button" class="small">End at playhead</button></div>
             <div class="caption-button-row"><button id="captionMergePrev" type="button" class="small">⇤ Merge with previous</button><button id="captionMerge" type="button" class="small">Merge with next ⇥</button></div>
-            <dl class="caption-meta"><dt>タイミングの精度</dt><dd id="captionSelectedQuality">—</dd><dt>Layout</dt><dd id="captionSelectedLayout">—</dd></dl>
+            <dl class="caption-meta"><dt>Timing source</dt><dd id="captionSelectedQuality">—</dd><dt>Layout</dt><dd id="captionSelectedLayout">—</dd></dl>
           <div id="captionMoveSection" class="caption-subsection"><h3>Track</h3>
             <label class="field">Move to track<select id="captionMoveTrack"></select></label>
             <button id="captionMoveSegment" type="button" class="small">Move the whole caption</button>
@@ -1278,7 +1278,7 @@ html[data-product-mode=video-captions] label.file:hover { border-color: var(--am
             <button id="captionPlay" type="button" class="play" disabled aria-label="Play" title="Play / pause (Space)">▶</button>
             <button id="captionLoop" type="button" class="small" aria-pressed="false" title="Loop the selected caption or the marked range (L). Alt+drag on the ruler to mark a range">Loop</button>
             <button id="captionSpeed" type="button" class="small" title="Playback speed">1×</button>
-            <button id="captionSync" type="button" class="small" aria-pressed="false" title="タップ同期: 選んだ字幕から最後まで（またはルーラーで指定した範囲）を、動画をPlayしながら Space で合わせます">同期</button>
+            <button id="captionSync" type="button" class="small" aria-pressed="false" title="Tap sync: play the video and press Space as each caption starts, from the selected caption to the end (or inside the range marked on the ruler)">Sync</button>
             <button id="captionSnap" type="button" class="small" aria-pressed="true" title="Snap to the playhead and to other captions while dragging (hold Alt to turn off for one drag)">Snap</button>
             <span id="captionTime" class="tc">00:00.00</span><span class="tc muted">/</span><span id="captionDuration" class="tc muted">00:00.00</span>
             <input id="captionScrub" class="sr-only" type="range" min="0" max="1000" value="0" disabled aria-label="Video position">
@@ -1294,7 +1294,7 @@ html[data-product-mode=video-captions] label.file:hover { border-color: var(--am
           </div>
           <div id="captionTimelineScroll" class="caption-timeline-scroll" tabindex="0">
             <div id="captionTimelineContent" class="caption-timeline-content">
-              <canvas id="captionRuler" class="caption-ruler" role="img" aria-label="時間目盛り（クリックまたはドラッグで移動）"></canvas>
+              <canvas id="captionRuler" class="caption-ruler" role="img" aria-label="Time ruler (click or drag to move)"></canvas>
               <div id="captionVideoTrack" class="caption-video-track" title="Striped parts are trimmed away and not exported"><canvas id="captionWaveform" class="caption-waveform" aria-hidden="true"></canvas></div>
               <div id="captionSegmentTrack" class="caption-segment-track" role="group" aria-label="Caption blocks (Tab to select, Enter to edit)"></div>
               <div id="captionLoopRegion" class="caption-loop-region" hidden aria-hidden="true"></div>
@@ -45547,10 +45547,10 @@ function setLoop(on) {
   const video = sourceVideo(); if (!video) return;
   if (!on) { tr.loopOn = false; tr.region = null; renderLoop(); return; }
   const region = TL.loopRegion(tr.marked, W.selectedSegment(), duration());
-  if (!region) { status('ループする字幕を選ぶか、ルーラーを Alt+ドラッグして範囲を指定してください。', true); return; }
+  if (!region) { status('Select a caption to loop, or Alt+drag on the ruler to mark a range.', true); return; }
   tr.region = region; tr.loopOn = true;
   if (video.currentTime < region.start || video.currentTime >= region.end) W.seekTimeline(region.start);
-  renderLoop(); status(`ループ ${fmt(region.start)}–${fmt(region.end)}`);
+  renderLoop(); status(`Loop ${fmt(region.start)}–${fmt(region.end)}`);
 }
 function setMarked(region) {
   tr.marked = region;
@@ -45699,7 +45699,7 @@ function renderPanel() {
   if (!panel) return;
   panel.hidden = !session; if (!session) return;
   const done = session.taps.length, total = session.items.length, next = session.items[done];
-  parts.next.textContent = next ? `次: 「${label(next)}」（${done + 1} / ${total}）` : `All ${total} tapped. Press Confirm to apply.`;
+  parts.next.textContent = next ? `Next: “${label(next)}” (${done + 1} / ${total})` : `All ${total} tapped. Press Confirm to apply.`;
   parts.tap.disabled = !next && session.holding === null; parts.tap.classList.toggle('is-down', session.holding !== null);
   parts.offset.value = String(tr.syncOffset); parts.offsetValue.textContent = `${tr.syncOffset.toFixed(2)}s`;
 }
@@ -45945,7 +45945,7 @@ function renderWordChips(segment, segmentTokens, resolved, isBlock, cutLocked) {
     chip.setAttribute('aria-pressed', String(ui.wordId === token.id)); chip.title = `${fmt(token.start)}–${fmt(token.end)}${emphasized.has(token.id) ? ' · highlighted' : ''}`;
     list.appendChild(chip);
   });
-  $('captionWordHint').textContent = isBlock ? 'Wordを押すと強調を変えられます。'
+  $('captionWordHint').textContent = isBlock ? 'Press a word to change its highlight.'
     : cutLocked ? 'Press a word to fix or highlight it. This caption is kept as is, so it cannot be split.' : 'Press a word to fix or highlight it. ✂ splits the caption there.';
 }
 
@@ -46044,11 +46044,11 @@ function renderManualTrack() {
   renderScriptCount();
 }
 /* ---- Paste a script (C6): one caption per line, spread evenly from the playhead (or over the range marked on the ruler), then tap-synced ---- */
-const SCRIPT_MESSAGES = { SCRIPT_EMPTY: '台本のテキストを貼り付けてください。', SCRIPT_TOO_LONG: `台本は ${J.captionTimeline.SCRIPT_MAX_LINES} 行までです。`,
-  SCRIPT_NO_ROOM: 'ここには台本を入れる空きがありません。再生位置を動かすか、ルーラーで範囲を指定してください（1行あたり 0.1 秒以上必要です).' };
+const SCRIPT_MESSAGES = { SCRIPT_EMPTY: 'Paste the script text first.', SCRIPT_TOO_LONG: `A script can have at most ${J.captionTimeline.SCRIPT_MAX_LINES} lines.`,
+  SCRIPT_NO_ROOM: 'There is no room for a script here. Move the playhead or mark a range on the ruler (each line needs at least 0.1 s).' };
 function renderScriptCount() {
   const count = J.captionTimeline.scriptLines($('captionScriptText').value).length;
-  $('captionScriptCount').textContent = count ? `${count} 行 → ${count}  captions` : '';
+  $('captionScriptCount').textContent = count ? `${count} ${count === 1 ? 'line' : 'lines'} → ${count} ${count === 1 ? 'caption' : 'captions'}` : '';
   $('captionScriptAdd').disabled = !count;
 }
 function pasteScript() {
@@ -46065,7 +46065,7 @@ function pasteScript() {
   if (!runCommand({ type: 'batch', commands, label: 'paste script' }, commands[0].segmentId)) return;
   $('captionScriptText').value = ''; renderScriptCount();
   selectSegment(commands[0].segmentId, true); if (ui.preview) ui.preview.renderNow();
-  toastUndo(`${commands.length}  captionsを追加しました。「同期」で話すタイミングに合わせます。`);
+  toastUndo(`Added ${commands.length} ${commands.length === 1 ? 'caption' : 'captions'}. Use Sync to match the speech timing.`);
 }
 function applyTiming() {
   const segment = selectedSegment(); if (!segment) return;
@@ -46438,7 +46438,7 @@ function renderLookPanel() {
     else own[key] = projectResolved.explicit[key] ? projectResolved.look[key] : null;
   }
   const locked = !!(scope.segment && scope.segment.locks && scope.segment.locks.visualPlan);
-  const inherit = scope.segment ? { text: 'Match track', look: trackLook } : scope.track ? { text: '全体に合わせる', look: projectResolved.look } : { text: 'Standard', look: J.CAPTION_STANDARD_LOOKS[profileId] || J.CAPTION_STANDARD_LOOKS.creator };
+  const inherit = scope.segment ? { text: 'Match track', look: trackLook } : scope.track ? { text: 'Match project', look: projectResolved.look } : { text: 'Standard', look: J.CAPTION_STANDARD_LOOKS[profileId] || J.CAPTION_STANDARD_LOOKS.creator };
   // Effect settings at this scope, and the values it inherits (a caption: its track + project; a track: the project).
   const projectSettings = project.style && project.style.lookSettings || {};
   inherit.settings = scope.segment ? { own: manual.lookSettings || {}, from: (J.captionTrackProjectStyle(project, track) || {}).lookSettings || {} }
@@ -47250,7 +47250,7 @@ J.captionSampleProject = (plan = {}, options = {}) => {
 
 /* A still sample of a track's word styles: the second word is being spoken, the last one is emphasised.
    `plan` carries what the track resolves to (font, colours, spoken-word effect, text finish); `roles` are the track's roles. */
-const ROLE_SAMPLE_WORDS = ['Every', '言葉', 'ひとつ', '100%'];
+const ROLE_SAMPLE_WORDS = ['Every', 'word', 'counts', '100%'];
 const ROLE_SAMPLE_FRAME = { width: 400, height: 125 };
 J.paintCaptionRoleSample = (canvas, roles, plan = {}) => {
   const ctx = canvas.getContext('2d'), per = .6, words = ROLE_SAMPLE_WORDS;
@@ -47372,7 +47372,7 @@ function renderActions() {
   $('captionUndo').disabled = !ui.store.canUndo(); $('captionRedo').disabled = !ui.store.canRedo();
   $('captionVariation').disabled = !hasTranscript; $('captionSave').disabled = !(hasTranscript || sourceVideo() || ui.store.project.settings.videoEdit);
   $('captionExport').disabled = $('captionExportPanel').disabled = ui.exportAbort ? false : !sourceVideo();
-  $('captionExportPanel').textContent = ui.exportAbort ? 'Cancel' : 'Exportを開始';
+  $('captionExportPanel').textContent = ui.exportAbort ? 'Cancel' : 'Start export';
   const out = J.videoOutputSize ? J.videoOutputSize(ui.store.project) : null;
   $('captionExportFormat').textContent = out ? `${out.width} × ${out.height}` : '—';
   $('captionExportDuration').textContent = fmt(J.videoEditDuration(J.videoClips(ui.store.project)));
@@ -47423,13 +47423,13 @@ async function exportCaptions() {
     if (typeof window.showSaveFilePicker === 'function') { const handle = await window.showSaveFilePicker({ suggestedName: `jizura-${ui.store.project.id}.mp4`,
       types: [{ description: 'MP4 video', accept: { 'video/mp4': ['.mp4'] } }] }); writable = await handle.createWritable(); }
   } catch (error) { if (error && error.name === 'AbortError') return; throw error; }
-  ui.exportAbort = new AbortController(); ui.exporter = new J.CaptionVideoExporter(); exportState('Exportを準備しています…', 0); $('captionExport').textContent = 'Exporting…'; $('captionExport').disabled = $('captionExportPanel').disabled = false; renderActions();
+  ui.exportAbort = new AbortController(); ui.exporter = new J.CaptionVideoExporter(); exportState('Preparing the export…', 0); $('captionExport').textContent = 'Exporting…'; $('captionExport').disabled = $('captionExportPanel').disabled = false; renderActions();
   try {
     const result = await ui.exporter.export(current.file, clone(ui.store.project), { writable, signal: ui.exportAbort.signal,
       onProgress: event => { const labels = { checking: 'Checking export support', video: 'Exporting captioned video', audio: 'Preserving original audio', finalizing: 'Finalizing MP4' };
         const line = `${labels[event.phase] || 'Exporting'}… ${Math.round(event.progress * 100)}%`; status(line); exportState(line, event.progress); } });
     if (result.blob) await J.saveFile(`jizura-${ui.store.project.id}.mp4`, result.blob);
-    const done = `Export complete (${result.frameCount} frames · audio ${result.audio.mode !== 'none' ? 'preserved' : 'none'}・${result.metrics.elapsedSeconds.toFixed(1)}秒).`; status(done); exportState(done, 1);
+    const done = `Export complete (${result.frameCount} frames · audio ${result.audio.mode !== 'none' ? 'preserved' : 'none'} · ${result.metrics.elapsedSeconds.toFixed(1)} s).`; status(done); exportState(done, 1);
   } catch (error) { const recovery = J.recoveryForError ? J.recoveryForError(error) : { display: error.message || 'Export failed.' };
     const cancelled = error.code === 'MEDIA_EXPORT_CANCELLED', text = cancelled ? 'Export canceled.' : recovery.display; status(text, !cancelled); exportState(text, null, !cancelled); }
   finally { ui.exportAbort = null; ui.exporter = null; $('captionExport').textContent = 'Export'; renderActions(); }
@@ -47589,8 +47589,8 @@ async function saveNow() {
   const json = ui.store.serialize();
   if (json === lastJson) return;
   const record = { json, name: $('captionProjectName').textContent, savedAt: Date.now(), segments: project.segments.length };
-  saving = writeRecord(record).then(() => { lastJson = json; showState('自動保存 ' + clock(record.savedAt)); })
-    .catch(() => showState('自動保存できません', true))
+  saving = writeRecord(record).then(() => { lastJson = json; showState('Autosaved ' + clock(record.savedAt)); })
+    .catch(() => showState('Autosave unavailable', true))
     .finally(() => { saving = null; });
   await saving;
 }
@@ -47606,7 +47606,10 @@ function askRestore(record) {
   $('captionRestoreTime').textContent = new Date(record.savedAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
   $('captionRestoreCount').textContent = String(record.segments || 0);
   return new Promise(resolve => {
-    dialog.addEventListener('cancel', event => event.preventDefault(), { once: false });   // a choice is required: Esc must not leave the record in limbo
+    // A choice is required: Esc must not leave the record in limbo. Chrome ignores preventDefault on `cancel` without user activation, so the key is stopped too.
+    dialog.addEventListener('cancel', event => event.preventDefault());
+    const noEsc = event => { if (event.key === 'Escape' && dialog.open) event.preventDefault(); };   // focus may be on the page behind the modal
+    document.addEventListener('keydown', noEsc, true); dialog.addEventListener('close', () => document.removeEventListener('keydown', noEsc, true), { once: true });
     dialog.addEventListener('close', () => resolve(dialog.returnValue === 'restore'), { once: true });
     if (dialog.showModal) { if (!dialog.open) dialog.showModal(); } else dialog.setAttribute('open', '');
   });
@@ -47616,7 +47619,7 @@ async function offerRestore(record) {
   if (restore) {
     try {
       await W.openProject({ name: (record.name || 'project') + '.json', text: async () => record.json });
-      lastJson = record.json; showState('自動保存 ' + clock(record.savedAt));
+      lastJson = record.json; showState('Autosaved ' + clock(record.savedAt));
     } catch (error) { status(J.recoveryForError ? J.recoveryForError(error).display : error.message, true); }
   } else { try { await clearRecord(); } catch (error) { /* nothing to clear */ } }
   ready = true;
@@ -47634,7 +47637,7 @@ function whenCaptionsVisible() {
 
 async function start() {
   let record = null;
-  try { record = await readRecord(); } catch (error) { showState('自動保存できません', true); return; }
+  try { record = await readRecord(); } catch (error) { showState('Autosave unavailable', true); return; }
   if (record && typeof record.json === 'string') { await whenCaptionsVisible(); await offerRestore(record); }
   else ready = true;
 }
