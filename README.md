@@ -2,7 +2,7 @@
 
 **Azuria Sub** turns a local video and an optional timed transcript into an edited, captioned MP4, entirely in your browser. It is built for short-form video (Shorts, Reels, Stories, square and portrait posts): import a clip, get your words on screen, style them, sync them by hand or by ear, and export a finished 30 fps H.264 file.
 
-> Azuria Sub is derived from [**JIZURA**](https://github.com/Reisengard/JIZURA) by hakoniwa (MIT License). See [Origin and licensing](#origin-and-licensing).
+> Azuria Sub is derived from [**JIZURA**](https://github.com/852wa/JIZURA) by hakoniwa (MIT License). See [Origin and licensing](#origin-and-licensing).
 
 Nothing is uploaded. The video, transcript, project and rendered output stay on your machine. (Browser extensions, operating-system file providers and downloaded fonts keep their own privacy behaviour.)
 
@@ -89,7 +89,7 @@ Automatic transcription, translation, speaker detection, face tracking, speed ch
 
 ## Lyric Motion (inherited)
 
-Azuria Sub still contains JIZURA's **Lyric Motion** engine (lyrics → animated lyric videos, After Effects panels). It is kept working and guarded by regression tests, but it is no longer the focus: the app opens in Video Captions. The inherited guides remain for reference: [English](README.en.md) · [Bahasa Indonesia](README.id.md) · [Tiếng Việt](README.vi.md) · [한국어](README.ko.md). The Japanese guide is no longer in this file; it lives in the git history (before the Azuria Sub rewrite) and in the original [JIZURA repository](https://github.com/Reisengard/JIZURA).
+Azuria Sub still contains JIZURA's **Lyric Motion** engine (lyrics → animated lyric videos, After Effects panels). It is kept working and guarded by regression tests, but it is no longer the focus: the app opens in Video Captions. The inherited guides remain for reference: [English](README.en.md) · [Bahasa Indonesia](README.id.md) · [Tiếng Việt](README.vi.md) · [한국어](README.ko.md). The Japanese guide is no longer in this file; it lives in the git history (before the Azuria Sub rewrite) and in the original [JIZURA repository](https://github.com/852wa/JIZURA).
 
 ## Languages
 
@@ -122,7 +122,7 @@ Engineering rules in short: one plan step at a time with tests green; existing p
 
 ## Origin and licensing
 
-**Azuria Sub is a derivative work of [JIZURA](https://github.com/Reisengard/JIZURA)**, Copyright (c) 2026 hakoniwa, released under the MIT License. The original git history was carried over unchanged, so authorship is preserved, and the JIZURA repository is configured as the `upstream` remote.
+**Azuria Sub is a derivative work of [JIZURA](https://github.com/852wa/JIZURA)**, Copyright (c) 2026 hakoniwa, released under the MIT License. The original git history was carried over unchanged, so authorship is preserved, and the JIZURA repository is configured as the `upstream` remote.
 
 - **Software licence:** [MIT](LICENSE). You may use, modify and redistribute it, commercially or not, provided the copyright notice and licence text stay in all copies or substantial portions. The notice in `LICENSE` is the original author's and must not be removed.
 - **Origin notice:** [NOTICE.md](NOTICE.md). References to JIZURA in the code, docs and history are intentional and record where this project comes from; code identifiers, storage keys and some file names still say `jizura` for compatibility.

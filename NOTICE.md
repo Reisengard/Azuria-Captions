@@ -1,6 +1,6 @@
 # Notice
 
-Azuria Captions is derived from **JIZURA** (https://github.com/Reisengard/JIZURA),
+Azuria Captions is derived from **JIZURA** (https://github.com/852wa/JIZURA),
 Copyright (c) 2026 hakoniwa, released under the MIT License.
 
 - The full license text is in `LICENSE`. It, and the copyright notice in it, must

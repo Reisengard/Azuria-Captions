@@ -5,7 +5,7 @@ This document is the implementation contract for adding Video Captions without c
 ## Baseline
 
 - Baseline commit: `8da975fb362d966b065217618aedafd5a35a39e0`
-- Upstream: `https://github.com/Reisengard/JIZURA.git`
+- Upstream: `https://github.com/852wa/JIZURA.git`
 - Application version at baseline: `0.9.0`
 - Browser baseline: latest desktop Chrome/Chromium
 - License and attribution: MIT; retain `LICENSE` and `THIRD_PARTY_NOTICES.md`

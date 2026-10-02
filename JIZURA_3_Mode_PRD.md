@@ -2,7 +2,7 @@
 
 > **Scope revision (2026-09-28):** Live Captions / OBS (§4.3, §9.3, §9.4, §10, Live Control UI in §11, Phase 4, the Live alpha release criteria, `liveSafe`) are **removed from scope**. `docs/architecture/subtitle-mvp-delta-plan.md` (decision D7) overrides this file.
 
-**Repository:** [Reisengard/JIZURA](https://github.com/Reisengard/JIZURA)  
+**Repository:** [852wa/JIZURA](https://github.com/852wa/JIZURA)  
 **Status:** Development-ready product and technical specification  
 **Product modes:** Video Captions, Lyric Motion, Live Captions  
 **Primary platform:** desktop Chromium browsers first; an optional local companion for Live Captions  
