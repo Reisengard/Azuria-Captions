@@ -21,12 +21,21 @@ function streamTarget(M, writable) {
   return new M.StreamTarget(stream, { chunked: true, chunkSize: 8 * 1024 * 1024 });
 }
 
-async function checkCaptionExportSupport(info, env = globalThis) {
-  const config = { codec: 'avc1.420033', width: info.outputWidth || WIDTH, height: info.outputHeight || HEIGHT, bitrate: 8_000_000, framerate: FPS, latencyMode: 'quality' };
+// Bits per pixel per frame for each choice in the Export dialog. 1080×1920 @30 fps: standard ≈ 12, high ≈ 21, max ≈ 34 Mbps (the old fixed 8 Mbps showed blocking on fine text and motion).
+const QUALITY_BPP = Object.freeze({ standard: 0.2, high: 0.35, max: 0.55 });
+const DEFAULT_QUALITY = 'high';
+const captionExportBitrate = (width, height, quality = DEFAULT_QUALITY) => Math.round(Math.min(width * height * FPS * (QUALITY_BPP[quality] || QUALITY_BPP[DEFAULT_QUALITY]), 40e6));
+// H.264 High first (better quality at the same size), then Main, then the old Baseline profile for encoders that refuse the rest.
+const AVC_PROFILES = ['avc1.640033', 'avc1.4d0033', 'avc1.420033'];
+
+async function checkCaptionExportSupport(info, env = globalThis, quality = DEFAULT_QUALITY) {
+  const base = { width: info.outputWidth || WIDTH, height: info.outputHeight || HEIGHT, framerate: FPS, latencyMode: 'quality' };
+  base.bitrate = captionExportBitrate(base.width, base.height, quality);
   if (!env.VideoEncoder || typeof env.VideoEncoder.isConfigSupported !== 'function') return { supported: false, reason: 'Video encoding is unavailable. Use the latest Chrome or Edge.' };
-  try { const result = await env.VideoEncoder.isConfigSupported(config); return { supported: !!result.supported, config: result.config || config,
-    reason: result.supported ? null : `H.264 encoding at ${config.width}×${config.height} is unavailable. Try Chrome or Edge, or update graphics drivers.` }; }
-  catch (error) { return { supported: false, reason: `H.264 capability check failed: ${error.message || error}` }; }
+  try {
+    for (const codec of AVC_PROFILES) { const config = { ...base, codec }, result = await env.VideoEncoder.isConfigSupported(config); if (result.supported) return { supported: true, config: result.config || config, reason: null }; }
+    return { supported: false, reason: `H.264 encoding at ${base.width}×${base.height} is unavailable. Try Chrome or Edge, or update graphics drivers.` };
+  } catch (error) { return { supported: false, reason: `H.264 capability check failed: ${error.message || error}` }; }
 }
 
 class CaptionVideoExporter {
@@ -46,13 +55,13 @@ class CaptionVideoExporter {
       if (J.validateVideoEdits && project.settings && project.settings.videoEdit) J.validateVideoEdits(project.settings.videoEdit, info.duration);
       const duration = clips.reduce((sum, clip) => sum + clip.end - clip.start, 0);
       const edited = clips.length !== 1 || clips[0].start !== 0 || clips[0].end !== info.duration;
-      const capability = await checkCaptionExportSupport({ ...info, outputWidth: width, outputHeight: height }, this.env); if (!capability.supported) fail('MEDIA_ENCODER_UNSUPPORTED', capability.reason);
+      const capability = await checkCaptionExportSupport({ ...info, outputWidth: width, outputHeight: height }, this.env, options.quality); if (!capability.supported) fail('MEDIA_ENCODER_UNSUPPORTED', capability.reason);
       if (!options.writable && (duration > MAX_BLOB_SECONDS || Number(file.size) > MAX_BLOB_SOURCE_BYTES)) fail('MEDIA_FILE_SAVE_REQUIRED', 'This video is too long for an in-memory export. Use a browser that supports choosing a save location.');
       const canvas = options.canvas || (this.env.OffscreenCanvas ? new this.env.OffscreenCanvas(width, height) : this.env.document.createElement('canvas'));
       canvas.width = width; canvas.height = height; const ctx = canvas.getContext('2d'); if (!ctx) fail('MEDIA_EXPORT_CANVAS_UNAVAILABLE', 'A 2D export canvas is unavailable.');
       target = options.writable ? streamTarget(M, options.writable) : (bufferTarget = new M.BufferTarget());
       this.output = new M.Output({ format: new M.Mp4OutputFormat({ fastStart: false }), target });
-      const videoSource = new M.CanvasSource(canvas, { codec: 'avc', quality: new M.Quality({ bitrate: capability.config.bitrate || 8_000_000 }),
+      const videoSource = new M.CanvasSource(canvas, { codec: 'avc', quality: new M.Quality({ bitrate: capability.config.bitrate || captionExportBitrate(width, height, options.quality) }),
         fullCodecString: capability.config.codec, keyFrameInterval: 2, hardwareAcceleration: 'no-preference' });
       this.output.addVideoTrack(videoSource, { frameRate: FPS, maximumPacketCount: Math.ceil(duration * FPS) });
       let audioSource = null;
@@ -88,5 +97,7 @@ J.CAPTION_EXPORT_DEFAULTS = Object.freeze({ width: WIDTH, height: HEIGHT, fps: F
 J.CaptionExportError = CaptionExportError;
 J.captionExportFrameTimes = timestamps;
 J.checkCaptionExportSupport = checkCaptionExportSupport;
+J.captionExportBitrate = captionExportBitrate;
+J.CAPTION_EXPORT_QUALITIES = Object.freeze(Object.keys(QUALITY_BPP));
 J.CaptionVideoExporter = CaptionVideoExporter;
 })();

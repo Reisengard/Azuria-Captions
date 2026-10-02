@@ -614,6 +614,14 @@
     <h2 id="captionExportTitle">書き出し</h2>
     <p>字幕付きの MP4 を書き出します。ブラウザ内だけで処理され、動画はどこにも送信されません。</p>
     <dl class="caption-meta"><dt>形式</dt><dd id="captionExportFormat">—</dd><dt>長さ</dt><dd id="captionExportDuration">—</dd><dt>字幕</dt><dd id="captionExportCaptions">—</dd></dl>
+    <label class="caption-export-quality">画質
+      <select id="captionExportQuality" aria-describedby="captionExportQualityHint">
+        <option value="standard">標準 — 軽いファイル・SNS向け</option>
+        <option value="high" selected>高画質 — おすすめ</option>
+        <option value="max">最高画質 — 大きいファイル・時間がかかります</option>
+      </select>
+    </label>
+    <p id="captionExportQualityHint" class="terms-sub">高画質は元の動画の細部や小さな文字がきれいに残ります。画質を上げるほどファイルが大きく、書き出しに時間がかかります。</p>
     <progress id="captionExportProgress" class="caption-export-progress" max="1" value="0" hidden aria-label="書き出しの進み具合"></progress>
     <p id="captionExportState" class="caption-export-state" role="status"></p>
     <div class="terms-foot"><button value="close" class="ghost">閉じる</button><button id="captionExportPanel" type="button" class="primary" disabled>書き出しを開始</button></div>

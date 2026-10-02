@@ -951,3 +951,6 @@ html[data-product-mode=video-captions] label.file:hover { border-color: var(--am
 .caption-export-progress[hidden] { display: none; }
 .caption-export-state { min-height: 1.4em; color: var(--muted); }
 .caption-export-state.error { color: var(--danger, #e8806d); }
+
+.caption-export-quality { display: grid; gap: 4px; margin: 12px 0 4px; color: var(--muted); font-size: 11px; }
+.caption-export-quality select { width: 100%; padding: 6px 8px; }

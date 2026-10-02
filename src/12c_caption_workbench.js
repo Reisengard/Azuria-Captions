@@ -27,6 +27,7 @@ function renderActions() {
   $('captionUndo').disabled = !ui.store.canUndo(); $('captionRedo').disabled = !ui.store.canRedo();
   $('captionVariation').disabled = !hasTranscript; $('captionSave').disabled = !(hasTranscript || sourceVideo() || ui.store.project.settings.videoEdit);
   $('captionExport').disabled = $('captionExportPanel').disabled = ui.exportAbort ? false : !sourceVideo();
+  $('captionExportQuality').disabled = !!ui.exportAbort;
   $('captionExportPanel').textContent = ui.exportAbort ? 'キャンセル' : '書き出しを開始';
   const out = J.videoOutputSize ? J.videoOutputSize(ui.store.project) : null;
   $('captionExportFormat').textContent = out ? `${out.width} × ${out.height}` : '—';
@@ -80,7 +81,7 @@ async function exportCaptions() {
   } catch (error) { if (error && error.name === 'AbortError') return; throw error; }
   ui.exportAbort = new AbortController(); ui.exporter = new J.CaptionVideoExporter(); exportState('書き出しを準備しています…', 0); $('captionExport').textContent = '書き出し中…'; $('captionExport').disabled = $('captionExportPanel').disabled = false; renderActions();
   try {
-    const result = await ui.exporter.export(current.file, clone(ui.store.project), { writable, signal: ui.exportAbort.signal,
+    const result = await ui.exporter.export(current.file, clone(ui.store.project), { writable, quality: $('captionExportQuality').value, signal: ui.exportAbort.signal,
       onProgress: event => { const labels = { checking: '書き出し環境を確認中', video: '字幕付き映像を書き出し中', audio: '元の音声を保持中', finalizing: 'MP4を仕上げています' };
         const line = `${labels[event.phase] || '書き出し中'}… ${Math.round(event.progress * 100)}%`; status(line); exportState(line, event.progress); } });
     if (result.blob) await J.saveFile(`jizura-${ui.store.project.id}.mp4`, result.blob);
@@ -162,6 +163,8 @@ function bind() {
     } catch (error) { status(J.recoveryForError ? J.recoveryForError(error).display : error.message, true); }
   });
   $('captionExport').addEventListener('click', openExportDialog);
+  try { const saved = localStorage.getItem('jizura.exportQuality'); if (saved && $('captionExportQuality').querySelector(`option[value="${saved}"]`)) $('captionExportQuality').value = saved; } catch (_) { /* storage blocked */ }
+  $('captionExportQuality').addEventListener('change', event => { try { localStorage.setItem('jizura.exportQuality', event.target.value); } catch (_) { /* storage blocked */ } });
   $('captionExportPanel').addEventListener('click', () => exportCaptions().catch(error => { status(error.message, true); exportState(error.message, null, true); }));
   $('captionNew').addEventListener('click', () => { if (ui.preview) ui.preview.disconnect(); if (ui.media) ui.media.close(); ui.media = null; ui.preview = null; ui.selectedId = null; W.clearWaveform(); setProject(emptyProject()); $('captionProjectName').value = '無題の字幕プロジェクト'; $('captionRelinkNotice').hidden = true; $('captionPreviewEmpty').hidden = false; $('captionMediaName').textContent = '動画未選択'; $('captionPlay').disabled = true; $('captionScrub').disabled = true; status('新しいプロジェクトを作成しました。'); });
   $('captionHelp').addEventListener('click', () => { const dialog = $('captionHelpDlg'); if (dialog.showModal) { if (!dialog.open) dialog.showModal(); } else dialog.setAttribute('open', ''); });
