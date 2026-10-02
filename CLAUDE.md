@@ -27,5 +27,5 @@ Browser app (single-file HTML per language) with two working modes: **Lyric Moti
 - Store commands must be undoable and restore IDs, timing, locks and overrides exactly. Keep generated vs manual separation; manual and locked values survive re-planning.
 - Never silently move text: overflow / safe-area problems produce warnings.
 - Video edits (trim, panels, formats, notes) are kept; caption times are source-video times.
-- Ask before committing or pushing; commit per step, not mixed with unrelated changes.
+- Commit and push without asking first; commit per step, not mixed with unrelated changes.
 - Unrelated scratch files (e.g. `audio_transcript.json`) are intentionally untracked.
