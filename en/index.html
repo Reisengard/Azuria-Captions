@@ -180,6 +180,13 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .caption-timeline[data-word-labels=true] .caption-word-mark span { display: block; }
 .caption-timeline[data-word-labels=true] .caption-block-text { line-height: 14px; }
 .caption-boundary-handle { position: absolute; z-index: 3; top: -3px; right: -5px; width: 9px; height: 32px; padding: 0; border: 0; border-radius: 2px; background: var(--amber); cursor: ew-resize; }
+.caption-loop-region { position: absolute; z-index: 3; top: 0; bottom: 0; left: 0; box-sizing: border-box; border-inline: 1px solid var(--cyan); background: rgba(22,244,212,.07); pointer-events: none; }
+.caption-loop-region::before { content: ''; position: absolute; inset: 0 0 auto; height: 22px; background: rgba(22,244,212,.22); }
+.caption-loop-region.is-looping { background: rgba(22,244,212,.14); }
+.caption-loop-region[hidden] { display: none; }
+.caption-transport button[aria-pressed=true] { border-color: var(--cyan); color: var(--cyan); }
+.caption-keys { display: grid; grid-template-columns: auto 1fr auto 1fr; gap: 4px 12px; margin: 10px 0 0; font-size: 12px; }
+.caption-keys kbd { font: 11px var(--mono); color: var(--muted); }
 .caption-playhead { position: absolute; z-index: 4; top: 0; bottom: 0; left: 0; width: 1px; background: var(--rose); pointer-events: none; will-change: transform; }
 .caption-inspector .field, .caption-left .field { display: grid; gap: 5px; margin-bottom: 12px; color: var(--muted); font-size: 11px; }
 .caption-inspector .field select, .caption-left .field select { width: 100%; }
@@ -1155,7 +1162,9 @@ button.small.primary { padding: 4px 12px; }
       <footer class="caption-timeline-strip" aria-label="Playback and timeline">
         <div class="caption-strip-head">
           <div class="caption-transport">
-            <button id="captionPlay" type="button" class="play" disabled aria-label="Play">▶</button>
+            <button id="captionPlay" type="button" class="play" disabled aria-label="Play" title="Play / pause (Space)">▶</button>
+            <button id="captionLoop" type="button" class="small" aria-pressed="false" title="Loop the selected caption or the marked range (L). Alt+drag on the ruler to mark a range">Loop</button>
+            <button id="captionSpeed" type="button" class="small" title="Playback speed">1×</button>
             <span id="captionTime" class="tc">00:00.00</span><span class="tc muted">/</span><span id="captionDuration" class="tc muted">00:00.00</span>
             <input id="captionScrub" class="sr-only" type="range" min="0" max="1000" value="0" disabled aria-label="Video position">
           </div>
@@ -1172,6 +1181,7 @@ button.small.primary { padding: 4px 12px; }
               <canvas id="captionRuler" class="caption-ruler" aria-label="時間目盛り（クリックまたはドラッグで移動）"></canvas>
               <div id="captionVideoTrack" class="caption-video-track" title="Striped parts are trimmed away and not exported"></div>
               <div id="captionSegmentTrack" class="caption-segment-track"></div>
+              <div id="captionLoopRegion" class="caption-loop-region" hidden aria-hidden="true"></div>
               <div id="captionPlayhead" class="caption-playhead" aria-hidden="true"></div>
             </div>
           </div>
@@ -1482,6 +1492,14 @@ button.small.primary { padding: 4px 12px; }
       <li><strong>Adjust on the timeline.</strong> Drag caption boundaries, or split captions onto separate tracks to overlap them.</li>
       <li><strong>Export.</strong> The captioned MP4 is made inside this browser.</li>
     </ol>
+    <h3 id="captionKeysTitle">Playback and timeline keys</h3>
+    <div class="caption-keys" aria-labelledby="captionKeysTitle">
+      <kbd>Space</kbd><span>Play / pause</span><kbd>L</kbd><span>Loop on / off</span>
+      <kbd>← / →</kbd><span>Back / forward one frame</span><kbd>Shift+← / →</kbd><span>Back / forward 1 s</span>
+      <kbd>↑ / ↓</kbd><span>Previous / next caption</span><kbd>Home / End</kbd><span>Start / end</span>
+      <kbd>+ / − / 0</kbd><span>Zoom in / out / fit</span><kbd>Esc</kbd><span>Stop loop / deselect</span>
+    </div>
+    <p class="terms-sub">Alt+drag on the ruler (or drag its upper half) to mark a range to loop.</p>
     <p class="terms-sub">Simple: effects are chosen for you. Advanced: choose the effect techniques yourself.</p>
     <div class="terms-foot"><span></span><button value="close" class="primary" autofocus>Close</button></div>
   </form>
@@ -44041,6 +44059,7 @@ function emit(name, detail) { for (const item of (listeners[name] || []).slice()
 /* Selection is state of its own: the playhead never changes it (it only marks the captions on screen in `currentIds`).
    `ui.selectedId`, `ui.trackId` and `ui.wordId` read and write this object. */
 const ui = { store: null, media: null, preview: null, moveTokens: new Set(), variation: 0, lookScope: 'project', errors: {}, timeline: { fit: true, pps: 0, scrollLeft: 0, follow: true }, boundaryDrag: null,
+  transport: { speed: 1, loopOn: false, marked: null, region: null },
   exporter: null, exportAbort: null, currentIds: new Set(), selection: { segmentIds: new Set(), trackId: null, wordId: null } };
 Object.defineProperties(ui, {
   selectedId: { enumerable: true, get() { const ids = ui.selection.segmentIds; return ids.size ? ids.values().next().value : null; },
@@ -44195,7 +44214,55 @@ function followScroll(scrollLeft, viewportWidth, playheadX, duration, pps) {
   return clampScroll(playheadX - viewportWidth * .1, duration, pps, viewportWidth);
 }
 
-J.captionTimeline = { MAX_PPS, TICK_MIN_PX, blockRect, clampPps, clampScroll, contentWidth, fitPps, followScroll, formatTick, overlapsRange, rulerTicks, tickStep, timeToX, visibleRange, wordLabelsVisible, wordTicksVisible, xToTime, zoomAround };
+/* ---- Transport maths (T2): loop region, speed, stepping, caption neighbours, keyboard map ---- */
+const SPEEDS = [1, .75, .5], FRAME = 1 / 30, LOOP_LEAD = .3, MIN_LOOP = .1;
+const nextSpeed = speed => SPEEDS[(Math.max(0, SPEEDS.findIndex(item => Math.abs(item - speed) < 1e-9)) + 1) % SPEEDS.length];
+/* A dragged range on the ruler; too short to be a loop = null. */
+function markRegion(a, b, duration) {
+  const start = clamp(Math.min(a, b), 0, duration), end = clamp(Math.max(a, b), 0, duration);
+  return end - start >= MIN_LOOP ? { start: +start.toFixed(6), end: +end.toFixed(6) } : null;
+}
+/* What `L` loops: the marked region if there is one, else the selected caption with a lead-in/out. */
+function loopRegion(marked, segment, duration, lead = LOOP_LEAD) {
+  if (marked && marked.end - marked.start >= MIN_LOOP) return { start: marked.start, end: marked.end };
+  if (!segment) return null;
+  return { start: +clamp(segment.start - lead, 0, duration).toFixed(6), end: +clamp(segment.end + lead, 0, duration).toFixed(6) };
+}
+/* Called every frame while playing: where to jump to when the playhead has passed the loop end (else null). */
+const loopSeek = (time, region) => region && time >= region.end ? region.start : null;
+/* Move the playhead by `count` frames or `seconds`; stays inside [0, duration]. */
+function stepTime(time, direction, { seconds, frame = FRAME } = {}, duration) {
+  const index = time / frame, next = seconds ? time + direction * seconds : (direction > 0 ? Math.floor(index + 1e-6) + 1 : Math.ceil(index - 1e-6) - 1) * frame;
+  return clamp(+next.toFixed(6), 0, Math.max(0, duration));
+}
+/* The caption that starts after (direction 1) or before (-1) `time`, over every track. */
+function adjacentSegment(segments, time, direction) {
+  const sorted = segments.slice().sort((a, b) => a.start - b.start || a.end - b.end), eps = .001;
+  return direction > 0 ? sorted.find(segment => segment.start > time + eps) || null : sorted.reverse().find(segment => segment.start < time - eps) || null;
+}
+/* Keyboard map of the transport; the handler decides when keys are ignored (typing, dialogs). */
+function keyAction(event) {
+  if (event.ctrlKey || event.metaKey || event.altKey) return null;
+  const shift = !!event.shiftKey;
+  switch (event.code) {
+    case 'Space': return 'play';
+    case 'ArrowLeft': return shift ? 'back-1s' : 'back-frame';
+    case 'ArrowRight': return shift ? 'forward-1s' : 'forward-frame';
+    case 'ArrowUp': return 'prev-caption';
+    case 'ArrowDown': return 'next-caption';
+    case 'Home': return 'start';
+    case 'End': return 'end';
+    case 'KeyL': return 'loop';
+    case 'Escape': return 'escape';
+    default: break;
+  }
+  if (event.key === '+' || event.key === '=') return 'zoom-in';
+  if (event.key === '-' || event.key === '_') return 'zoom-out';
+  if (event.key === '0') return 'zoom-fit';
+  return null;
+}
+
+J.captionTimeline = { FRAME, LOOP_LEAD, SPEEDS, adjacentSegment, keyAction, loopRegion, loopSeek, markRegion, nextSpeed, stepTime, MAX_PPS, TICK_MIN_PX, blockRect, clampPps, clampScroll, contentWidth, fitPps, followScroll, formatTick, overlapsRange, rulerTicks, tickStep, timeToX, visibleRange, wordLabelsVisible, wordTicksVisible, xToTime, zoomAround };
 })();
 
 /* ============================================================
@@ -44312,7 +44379,7 @@ function renderTimeline() {
   kept.forEach((clip, i) => { const from = i ? kept[i - 1].end : 0; if (clip.start - from > .001) cuts.push([from, clip.start]); });
   if (kept.length && duration - kept[kept.length - 1].end > .001) cuts.push([kept[kept.length - 1].end, duration]);
   $('captionVideoTrack').replaceChildren(...cuts.map(([from, to]) => { const cut = document.createElement('span'); cut.className = 'caption-video-cut'; cut.style.left = `${from * pps}px`; cut.style.width = `${(to - from) * pps}px`; cut.title = `${fmt(from)}–${fmt(to)}`; return cut; }));
-  drawRuler(); placePlayhead(sourceVideo() ? sourceVideo().currentTime : 0);
+  drawRuler(); placeLoop(); placePlayhead(sourceVideo() ? sourceVideo().currentTime : 0);
 }
 /* Scrolling only changes which blocks are near the viewport: word ticks are (re)built for those. */
 function updateWords() {
@@ -44340,6 +44407,13 @@ function renderList() {
 }
 function renderSegments() { renderList(); renderTimeline(); }
 
+/* The marked / looping range: a band over the rows, brighter while looping. */
+function placeLoop() {
+  const band = $('captionLoopRegion'), region = ui.transport.marked || (ui.transport.loopOn ? ui.transport.region : null);
+  band.hidden = !region; if (!region) return;
+  band.style.left = `${TL.timeToX(region.start, ui.timeline.pps)}px`; band.style.width = `${Math.max(2, (region.end - region.start) * ui.timeline.pps)}px`;
+  band.classList.toggle('is-looping', ui.transport.loopOn);
+}
 function placePlayhead(time) { $('captionPlayhead').style.transform = `translateX(${TL.timeToX(time, ui.timeline.pps)}px)`; }
 function updatePlayhead(time) {
   const video = sourceVideo(), duration = video ? Number(video.duration) || 0 : Number(ui.store.project.media.duration) || 0;
@@ -44416,9 +44490,20 @@ function init() {
   });
   // Empty space in the rows or the video row moves the playhead; the ruler scrubs while dragging.
   scroll.addEventListener('click', event => { if (event.target.closest('[data-segment-id],.caption-boundary-handle,#captionRuler')) return; seekTimeline(timelineTimeAt(event.clientX)); });
-  ruler.addEventListener('pointerdown', event => { scrubbing = true; event.preventDefault(); ruler.setPointerCapture && ruler.setPointerCapture(event.pointerId); seekTimeline(timelineTimeAt(event.clientX)); });
-  ruler.addEventListener('pointermove', event => { if (scrubbing) seekTimeline(timelineTimeAt(event.clientX)); });
-  for (const name of ['pointerup', 'pointercancel']) ruler.addEventListener(name, () => { scrubbing = false; });
+  // Alt+drag, or a drag in the upper half of the ruler, marks the loop region; a plain click there still moves the playhead.
+  let marking = null;
+  ruler.addEventListener('pointerdown', event => {
+    event.preventDefault(); ruler.setPointerCapture && ruler.setPointerCapture(event.pointerId);
+    const upper = event.clientY - ruler.getBoundingClientRect().top < ruler.getBoundingClientRect().height / 2;
+    if (event.altKey || upper) { marking = { from: timelineTimeAt(event.clientX), x: event.clientX, moved: false }; return; }
+    scrubbing = true; seekTimeline(timelineTimeAt(event.clientX));
+  });
+  ruler.addEventListener('pointermove', event => {
+    if (marking) { if (!marking.moved && Math.abs(event.clientX - marking.x) < 4) return; marking.moved = true; W.setMarked(TL.markRegion(marking.from, timelineTimeAt(event.clientX), mediaDuration())); return; }
+    if (scrubbing) seekTimeline(timelineTimeAt(event.clientX));
+  });
+  ruler.addEventListener('pointerup', event => { if (marking && !marking.moved) { if (ui.transport.marked) W.setMarked(null); seekTimeline(timelineTimeAt(event.clientX)); } marking = null; scrubbing = false; });
+  ruler.addEventListener('pointercancel', () => { marking = null; scrubbing = false; });
   $('captionSegmentTrack').addEventListener('pointerdown', event => { const handle = event.target.closest('[data-boundary-segment]'); if (handle) startBoundaryDrag(event, handle.dataset.boundarySegment); });
   window.addEventListener('pointermove', moveBoundary); window.addEventListener('pointerup', finishBoundary);
   scroll.addEventListener('wheel', event => {
@@ -44437,18 +44522,20 @@ function init() {
   for (const id of ['captionSegmentList', 'captionSegmentTrack']) $(id).addEventListener('dblclick', event => { const target = event.target.closest('[data-segment-id]'); if (target) selectSegment(target.dataset.segmentId, true); });
   on('project', renderSegments); on('selection', markSelection);
 }
-Object.assign(W, { finishBoundary, fitTimeline, markNow, markSelection, moveBoundary, renderSegments, renderTimeline, revealTime, seekTimeline, startBoundaryDrag, timelineFollow, timelineTimeAt, updatePlayhead, zoomTimeline });
+Object.assign(W, { finishBoundary, fitTimeline, markNow, markSelection, moveBoundary, placeLoop, renderSegments, renderTimeline, revealTime, seekTimeline, startBoundaryDrag, timelineFollow, timelineTimeAt, updatePlayhead, zoomTimeline });
 W.inits.push(init);
 })();
 
 /* ============================================================
-   JIZURA — Video Captions workbench: transport: play / pause, scrub, skipping cut sections
+   JIZURA — Video Captions workbench: transport: play / pause, scrub, speed, loop, frame step, keyboard, skipping cut sections
+   (T2: loop and speed are view state, not saved in the project)
    ============================================================ */
 (() => {
 'use strict';
 if (typeof document === 'undefined' || typeof document.getElementById !== 'function') return;
-const W = J.captionWb;
-const { ui, $, status, sourceVideo } = W;
+const W = J.captionWb, TL = J.captionTimeline;
+const { ui, $, status, sourceVideo, fmt } = W;
+const tr = ui.transport;
 
 function togglePlay() {
   const video = sourceVideo(); if (!video) return;
@@ -44464,25 +44551,117 @@ function scrubTo(value) {
   video.currentTime = video.duration * Number(value) / 1000; if (ui.preview) ui.preview.renderNow();
 }
 
+const duration = () => Number(ui.store.project.media.duration) || 0;
+function seekBy(direction, seconds) {
+  const video = sourceVideo(); if (!video) return;
+  video.pause(); W.seekTimeline(TL.stepTime(video.currentTime, direction, { seconds }, duration()));
+}
+function seekEdge(end) {
+  const clips = J.videoClips(ui.store.project); if (!sourceVideo() || !clips.length) return;
+  W.seekTimeline(end ? clips[clips.length - 1].end : clips[0].start);
+}
+function gotoCaption(direction) {
+  const video = sourceVideo(), segment = video && TL.adjacentSegment(ui.store.project.segments, video.currentTime, direction); if (!segment) return;
+  W.selectSegment(segment.id, true); W.revealTime(segment.start);
+}
+
+/* ---- speed ---- */
+function setSpeed(speed) {
+  tr.speed = speed; const video = sourceVideo(); if (video) video.playbackRate = speed;
+  $('captionSpeed').textContent = `${speed}×`;
+}
+
+/* ---- loop: `L` loops the marked region, else the selected caption (± a short lead) ---- */
+function renderLoop() {
+  $('captionLoop').setAttribute('aria-pressed', String(tr.loopOn));
+  W.placeLoop && W.placeLoop();
+}
+function setLoop(on) {
+  const video = sourceVideo(); if (!video) return;
+  if (!on) { tr.loopOn = false; tr.region = null; renderLoop(); return; }
+  const region = TL.loopRegion(tr.marked, W.selectedSegment(), duration());
+  if (!region) { status('ループする字幕を選ぶか、ルーラーを Alt+ドラッグして範囲を指定してください。', true); return; }
+  tr.region = region; tr.loopOn = true;
+  if (video.currentTime < region.start || video.currentTime >= region.end) W.seekTimeline(region.start);
+  renderLoop(); status(`ループ ${fmt(region.start)}–${fmt(region.end)}`);
+}
+function setMarked(region) {
+  tr.marked = region;
+  if (region) { tr.region = region; tr.loopOn = true; } else if (tr.loopOn) { tr.loopOn = false; tr.region = null; }
+  renderLoop();
+}
+
 function attachVideo(video) {
+  video.playbackRate = tr.speed;
   video.addEventListener('play', () => { $('captionPlay').textContent = '❚❚'; W.timelineFollow(true); });
   video.addEventListener('pause', () => { $('captionPlay').textContent = '▶'; });
 }
 
-/* While playing, jump over the trimmed-away parts of the source video. */
+/* Per frame while playing: wrap at the loop end, and jump over the trimmed-away parts of the source video. */
 function skipCuts(frame, video) {
+  if (video.paused || video.seeking) return;
+  const wrap = tr.loopOn ? TL.loopSeek(frame.mediaTime, tr.region) : null;
+  if (wrap !== null) { video.currentTime = wrap; return; }
   const clips = J.videoClips(ui.store.project);
-  if (!video.paused && !video.seeking && !clips.some(clip => frame.mediaTime >= clip.start && frame.mediaTime < clip.end)) {
+  if (!clips.some(clip => frame.mediaTime >= clip.start && frame.mediaTime < clip.end)) {
     const next = clips.find(clip => clip.start > frame.mediaTime);
     if (next) video.currentTime = next.start; else video.pause();
+  }
+}
+
+/* ---- keyboard ---- */
+const TYPING = /^(INPUT|TEXTAREA|SELECT)$/;
+function ignoresKey(event) {
+  const target = event.target || {}, tag = target.tagName || '';
+  if (TYPING.test(tag) && target.type !== 'checkbox') return true;       // fields and sliders keep their keys
+  if (target.isContentEditable) return true;
+  return !!document.querySelector && !!document.querySelector('dialog[open]');
+}
+function onKey(event) {
+  if (!ui.store || event.defaultPrevented || event.isComposing) return;
+  const root = document.getElementById('app'); if (root && root.dataset.productMode && root.dataset.productMode !== 'video-captions') return;
+  const action = TL.keyAction(event); if (!action || ignoresKey(event)) return;
+  const target = event.target || {};
+  // Native widgets that use the same keys keep them: buttons take Space, sliders take the arrows.
+  if (action === 'play' && target.tagName === 'BUTTON') return;
+  if (/^(back|forward)-/.test(action) || action === 'prev-caption' || action === 'next-caption') { if (target.closest && target.closest('[data-boundary-segment]')) return; }
+  if (!sourceVideo() && action !== 'escape') return;
+  const handled = run(action); if (!handled) return;
+  event.preventDefault(); event.stopImmediatePropagation();
+}
+function run(action) {
+  switch (action) {
+    case 'play': togglePlay(); return true;
+    case 'back-frame': seekBy(-1); return true;
+    case 'forward-frame': seekBy(1); return true;
+    case 'back-1s': seekBy(-1, 1); return true;
+    case 'forward-1s': seekBy(1, 1); return true;
+    case 'prev-caption': gotoCaption(-1); return true;
+    case 'next-caption': gotoCaption(1); return true;
+    case 'start': seekEdge(false); return true;
+    case 'end': seekEdge(true); return true;
+    case 'loop': setLoop(!tr.loopOn); return true;
+    case 'zoom-in': ui.timeline.follow = false; W.zoomTimeline(2); return true;
+    case 'zoom-out': ui.timeline.follow = false; W.zoomTimeline(.5); return true;
+    case 'zoom-fit': W.fitTimeline(); return true;
+    case 'escape':
+      if (tr.loopOn) { setLoop(false); return true; }
+      if (ui.selection.segmentIds.size) { W.clearSelection(); return true; }
+      return false;
+    default: return false;
   }
 }
 
 function init() {
   $('captionPlay').addEventListener('click', togglePlay);
   $('captionScrub').addEventListener('input', event => scrubTo(event.target.value));
+  $('captionSpeed').addEventListener('click', () => setSpeed(TL.nextSpeed(tr.speed)));
+  $('captionLoop').addEventListener('click', () => setLoop(!tr.loopOn));
+  // Capture phase: the Lyric Motion shortcuts live on the same document and must not also fire.
+  document.addEventListener('keydown', onKey, true);
+  W.on('project', () => { if (tr.marked && tr.marked.end > duration()) setMarked(null); });
 }
-Object.assign(W, { attachVideo, scrubTo, skipCuts, togglePlay });
+Object.assign(W, { attachVideo, scrubTo, setLoop, setMarked, setSpeed, skipCuts, togglePlay, transportKey: run });
 W.inits.push(init);
 })();
 
