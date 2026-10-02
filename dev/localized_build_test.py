@@ -16,7 +16,7 @@ for relative in (Path('index.html'), Path('en/index.html')):
     assert 'id="productVideoCaptions"' in html, f'{relative} omitted the Video Captions mode button'
     assert 'id="productLyricMotion"' in html, f'{relative} omitted the Lyric Motion mode button'
     assert 'id="captionStyle"' in html, f'{relative} omitted the caption style selector'
-    assert 'id="captionRolesPanel"' in html, f'{relative} omitted the text roles panel'
+    assert 'id="captionRoleSample"' in html, f'{relative} omitted the text roles panel'
     assert 'window.JIZURA_BUNDLED_FONTS' in html, f'{relative} omitted the bundled font list'
     assert '<option value="creator">Creator</option>' in html, f'{relative} omitted the Creator style option'
 

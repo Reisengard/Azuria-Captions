@@ -26,7 +26,8 @@ assert.match(css, /\.caption-rail \{ grid-column: 1;[\s\S]*\.caption-drawer \{ g
 assert.match(css, /\.caption-workbench\[data-drawer=""\] \{ --caption-drawer-w: 0px; \}/, 'a closed drawer must give its width to the preview');
 assert.ok(body.indexOf('id="captionVideoEditor"') > body.indexOf('id="captionStylePane_video"') && body.indexOf('id="captionVideoEditor"') < body.indexOf('id="captionStylePane_export"'), 'video editor is not in the Video pane');
 for (const name of ['captions', 'text', 'effects', 'tracks', 'box', 'video', 'export']) assert.match(body, new RegExp(`id="captionRail_${name}"[^>]*data-drawer="${name}"`), `the rail has no ${name} item`);
-assert.ok(['roles'].every(name => body.indexOf(`id="captionLeftPane_${name}"`) > body.indexOf('id="captionDrawer"') && body.indexOf(`id="captionLeftPane_${name}"`) < body.indexOf('class="caption-stage"')), 'Text roles is not a pane of the drawer');
+assert.doesNotMatch(body, /id="captionLeftPane_roles"/, 'Style and Word styles are one Text pane (U2)');
+assert.ok(body.indexOf('id="captionStylePane_style"') > body.indexOf('id="captionDrawer"') && body.indexOf('id="captionStylePane_style"') < body.indexOf('class="caption-stage"'), 'the Text pane is not in the drawer');
 /* slim top bar: undo / redo, mode, menu, export; everything else lives in the ⋯ menu */
 const bar = body.slice(body.indexOf('<header class="bar caption-bar">'), body.indexOf('</header>'));
 const menu = bar.slice(bar.indexOf('id="captionMenu"'));
@@ -37,7 +38,10 @@ assert.ok(body.slice(body.indexOf('id="captionStylePane_effects"')).indexOf('id=
 assert.match(css, /html\[data-product-mode=video-captions\] \{[^}]*#b39d68[^}]*\}/i, 'the captions product must use the Azuria Sub gold');
 for (const color of ['#121827', '#414652', '#364c6b', '#b39d68']) assert.ok(css.toLowerCase().includes(color), `palette colour ${color} is missing`);
 /* Word styles (roles): a track picker, a compositor-drawn sample, a reset per value; the spoken word's effect lives in Effects only */
-const rolesPane = body.slice(body.indexOf('id="captionLeftPane_roles"'), body.indexOf('id="captionEditHolder"'));
+const rolesPane = body.slice(body.indexOf('id="captionStylePane_style"'), body.indexOf('id="captionStylePane_effects"'));
+assert.ok(rolesPane.indexOf('id="captionRoleSample"') < rolesPane.indexOf('<details'), 'the one sample is at the top of the Text pane');
+assert.equal((rolesPane.match(/<canvas/g) || []).length, 1, 'the Text pane has exactly one sample');
+assert.ok((rolesPane.match(/<details class="caption-fold/g) || []).length >= 6, 'the Text pane sections fold');
 for (const id of ['captionRoleTrack', 'captionRoleSample', 'captionRoleEmphasisAmount', 'captionRoleEmphasisHint', 'captionRoleActiveOverride', 'captionRoleActiveOverrideClear', 'captionRoleActiveOpen', 'captionRolesReset']) {
   assert.match(rolesPane, new RegExp(`id="${id}"`), `Word styles is missing #${id}`);
 }

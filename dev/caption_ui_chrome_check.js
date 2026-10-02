@@ -483,7 +483,7 @@ const IN_PAGE = `(() => {
     let shell = await t('shell'); const drawerWidth = (await t('rect', '#captionDrawer')).width;
     step('shell: the Captions drawer is open by default, alone', shell.open && shell.drawer === 'captions' && shell.panes === 'captionLeftPane_transcript' && drawerWidth > 300, JSON.stringify(shell));
     await clickSel('#captionRail_text'); shell = await t('shell');
-    step('shell: the Text rail item opens the Style and Word styles panes together', shell.drawer === 'text' && shell.panes === 'captionLeftPane_roles,captionStylePane_style' && shell.pref === '{"drawer":"text"}', JSON.stringify(shell));
+    step('shell: the Text rail item opens one merged Text pane', shell.drawer === 'text' && shell.panes === 'captionStylePane_style' && shell.pref === '{"drawer":"text"}', JSON.stringify(shell));
     await clickSel('#captionRail_effects'); shell = await t('shell');
     step('shell: another rail item replaces the drawer content', shell.drawer === 'effects' && shell.panes === 'captionStylePane_effects', JSON.stringify(shell));
     const frameOpen = shell.frame; await clickSel('#captionRail_effects'); shell = await t('shell');

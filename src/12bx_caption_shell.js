@@ -10,7 +10,7 @@ const { ui, $ } = W;
 /* Each rail item opens one drawer; a drawer shows one or more of the existing panes (their ids and markup are unchanged). */
 const DRAWERS = {
   captions: { title: '字幕', panes: ['captionLeftPane_transcript'] },
-  text: { title: '文字', panes: ['captionStylePane_style', 'captionLeftPane_roles'] },
+  text: { title: '文字', panes: ['captionStylePane_style'] },
   effects: { title: 'エフェクト', panes: ['captionStylePane_effects'] },
   tracks: { title: 'トラック', panes: ['captionStylePane_tracks'] },
   box: { title: '位置ボックス', panes: ['captionStylePane_box'] },

@@ -884,8 +884,13 @@ html[data-product-mode=video-captions] label.file:hover { border-color: var(--am
 .caption-drawer-body { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; padding: 14px; overflow: auto; }
 .caption-drawer-body > .caption-panel, .caption-drawer-body > .caption-style-pane { flex: none; padding: 0; overflow: visible; background: none; border: 0; }
 .caption-drawer-body > [hidden] { display: none; }
-#captionStylePane_style { order: 1; }
-#captionLeftPane_roles { order: 2; margin-top: 8px; padding-top: 14px; border-top: 1px solid var(--line); }
+/* Text drawer: one sample on top, then folded sections */
+.caption-fold { margin: 0 0 6px; padding: 0 0 6px; border-bottom: 1px solid var(--line); }
+.caption-fold > summary { padding: 6px 0; color: var(--muted); font: 600 10px var(--mono); letter-spacing: .08em; text-transform: uppercase; cursor: pointer; }
+.caption-fold[open] > summary { color: var(--text); }
+.caption-fold.caption-role { margin-top: 0; padding: 0 0 6px; border-radius: 0; }
+#captionStylePane_style > .caption-role-sample { position: sticky; top: -14px; z-index: 1; }
+#captionRolesReset { margin-top: 10px; }
 .caption-transcript > .caption-panel-head h2 { display: none; }
 .caption-look-global { margin: 0 0 12px; }
 .caption-stage { grid-column: 3; grid-row: 1; display: flex; min-width: 0; min-height: 0; flex-direction: column; gap: 6px; padding: 12px 14px 8px; overflow: hidden; background: radial-gradient(circle at 50% 30%, #17203a 0, var(--ink) 70%); }
