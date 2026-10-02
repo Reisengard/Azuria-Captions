@@ -3,7 +3,8 @@
 The product is named **Azuria Sub** (renamed 2026-10-02; code identifiers, storage keys and file names still say `jizura`). Colour identity: `#121827` `#414652` `#364C6B` `#B39D68`, applied as tokens in `app/style.css` (scoped to the captions product). Browser app (single-file HTML per language) with two working modes: **Lyric Motion** (must not regress) and **Video Captions** (subtitles for one short-form video).
 
 ## Source of truth
-- `docs/architecture/captions-editor-rework-plan.md` — **the plan for the current rework** (timeline, caption editing/sync, interface; steps E0…U6). **Read this first** and update step status when a step finishes. It replaces delta-plan items UI-3/4/5.
+- `docs/architecture/mcp-assistant-plan.md` — **the plan for the MCP video assistant** (local companion, chat clients drive the editor; slices S00…S17). Proposal, nothing implemented yet. Read it before any MCP/companion work and update slice status when a slice finishes.
+- `docs/architecture/captions-editor-rework-plan.md` — the editor rework (timeline, caption editing/sync, interface; steps E0…U6), **all steps done**. Its decisions still describe the editor. It replaces delta-plan items UI-3/4/5.
 - `docs/architecture/subtitle-mvp-delta-plan.md` — decisions, audit findings, filename mapping, step plan with status. Earlier decisions, audit findings, filename mapping and step status; its rules still apply.
 - `docs/archive/JIZURA_HANDOFF_SUBTITLE_MVP_REVISION.md` — original scope revision; the delta plan overrides it where they differ.
 - `docs/architecture/decisions/` — ADRs.
