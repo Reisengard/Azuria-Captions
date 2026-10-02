@@ -720,11 +720,6 @@ button.small.primary { padding: 4px 12px; }
 .caption-block-editor label { display: grid; gap: 4px; color: var(--muted); font-size: 10px; }
 .caption-block-editor textarea { width: 100%; box-sizing: border-box; }
 /* Caption tab: header with previous / next, sections, word chips, folded rare actions */
-.caption-nav { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px; margin: 0 0 10px; padding: 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--raised); }
-.caption-nav button { width: 32px; height: 32px; padding: 0; }
-.caption-nav-info { display: grid; min-width: 0; text-align: center; }
-.caption-nav-info strong { font: 600 12px var(--mono); }
-.caption-nav-info span { overflow: hidden; color: var(--muted); font: 10px var(--mono); text-overflow: ellipsis; white-space: nowrap; }
 .caption-section { margin: 0 0 12px; padding: 0 0 12px; border-bottom: 1px solid var(--line); }
 .caption-section h3, .caption-more > summary { margin: 0 0 8px; color: var(--muted); font: 600 10px var(--mono); letter-spacing: .08em; text-transform: uppercase; }
 .caption-more > summary { margin: 0; padding: 2px 0; cursor: pointer; }
@@ -853,6 +848,13 @@ button.small.primary { padding: 4px 12px; }
 .caption-video-cut { position: absolute; top: 0; bottom: 0; background: repeating-linear-gradient(135deg, #111114 0 4px, #1c1c21 4px 8px); }
 @media (max-width: 700px) { .video-edit-canvases { grid-template-columns: 1fr; } .vs-shapes { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .caption-look-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.caption-edit-popover { width: min(340px, calc(100vw - 8px)); max-width: none; max-height: min(70vh, 560px); overflow: auto; }
+.caption-edit-meta { margin: 0 0 8px; color: var(--muted); font: 10px var(--mono); }
+.caption-edit-meta strong { font-weight: 600; }
+.caption-edit-text { display: grid; gap: 4px; }
+.caption-edit-text input { width: 100%; }
+.caption-subsection { margin: 10px 0 0; padding-top: 8px; border-top: 1px solid var(--line); }
+.caption-subsection > h3 { margin: 0 0 8px; color: var(--muted); font: 600 10px var(--mono); letter-spacing: .08em; text-transform: uppercase; }
 .caption-popover { position: fixed; z-index: 60; display: grid; gap: 6px; max-width: 320px; padding: 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); box-shadow: 0 6px 20px rgba(0,0,0,.5); }
 .caption-toolbar { position: absolute; z-index: 4; display: flex; gap: 2px; padding: 3px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); box-shadow: 0 4px 16px rgba(0,0,0,.5); max-width: calc(100% - 8px); flex-wrap: wrap; box-sizing: border-box; }
 .caption-toolbar[hidden], .caption-tool[hidden] { display: none; }

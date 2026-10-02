@@ -162,7 +162,7 @@ assert.match(view, /type: 'batch'[^}]*label: 'move captions'/); assert.match(vie
 assert.match(view, /swallowClick/, 'the click after a drag must not collapse the selection');
 assert.match(view, /ui\.gesture && cancelGesture\(\)/, 'Esc cancels a create / marquee drag'); assert.match(view, /cancelGesture\(\); \}\);/, 'pointercancel too');
 assert.match(transport, /case 'new': return W\.newCaptionAtPlayhead/); assert.match(transport, /case 'split': return W\.splitAtPlayhead/); assert.match(transport, /case 'delete': return W\.deleteSelected/);
-assert.match(edit, /captionBlockText'\)\.addEventListener\('keydown'/, 'Enter commits a freshly typed block');
+assert.match(edit, /captionEditText'\)\.addEventListener\('keydown'/, 'Enter commits a freshly typed block');
 assert.match(css, /\.caption-marquee/); assert.match(css, /is-marquee-hit/);
 for (const text of ['再生ヘッドで分割', '前の字幕と結合', '次の字幕と結合', '新しい字幕']) assert.ok(english.includes(`'${text}'`), `${text} has an English entry`);
 

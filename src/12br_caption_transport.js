@@ -86,7 +86,7 @@ const TYPING = /^(INPUT|TEXTAREA|SELECT)$/;
 function ignoresKey(event) {
   const target = event.target || {}, tag = target.tagName || '';
   if (TYPING.test(tag) && target.type !== 'checkbox') return true;       // fields and sliders keep their keys
-  if (target.isContentEditable || (target.closest && target.closest('[role=menu]'))) return true;   // open menus keep their own keys
+  if (target.isContentEditable || (target.closest && target.closest('[role=menu], .caption-popover'))) return true;   // open menus and popovers keep their own keys
   return !!document.querySelector && !!document.querySelector('dialog[open]');
 }
 function onKey(event) {
@@ -95,15 +95,16 @@ function onKey(event) {
   const action = TL.keyAction(event); if (!action || ignoresKey(event)) return;
   const target = event.target || {};
   // Native widgets that use the same keys keep them: buttons take Space, sliders take the arrows.
-  if (action === 'play' && target.tagName === 'BUTTON') return;
+  if ((action === 'play' || action === 'edit') && target.tagName === 'BUTTON') return;
   if (/^(back|forward)-/.test(action) || action === 'prev-caption' || action === 'next-caption') { if (target.closest && target.closest('[data-boundary-segment]')) return; }
-  if (!sourceVideo() && action !== 'escape' && action !== 'new' && action !== 'delete' && !/^(nudge|track)-/.test(action)) return;
+  if (!sourceVideo() && action !== 'escape' && action !== 'edit' && action !== 'new' && action !== 'delete' && !/^(nudge|track)-/.test(action)) return;
   const handled = run(action); if (!handled) return;
   event.preventDefault(); event.stopImmediatePropagation();
 }
 function run(action) {
   switch (action) {
     case 'play': togglePlay(); return true;
+    case 'edit': if (!W.editText || ui.selection.segmentIds.size !== 1) return false; W.editText(); return true;
     case 'back-frame': seekBy(-1); return true;
     case 'forward-frame': seekBy(1); return true;
     case 'back-1s': seekBy(-1, 1); return true;

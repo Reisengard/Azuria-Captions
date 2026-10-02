@@ -24,9 +24,9 @@ assert.ok(columns.every(index => index > 0) && columns.every((index, i) => i ===
 const css = fs.readFileSync(path.join(root, 'app', 'style.css'), 'utf8');
 assert.match(css, /\.caption-left \{ grid-column: 1;[\s\S]*\.caption-inspector \{ grid-column: 2;[\s\S]*\.caption-stage \{ grid-column: 3;/, 'desktop order must be transcript | style | video');
 assert.ok(body.indexOf('id="captionVideoEditor"') > body.indexOf('id="captionStylePane_video"') && body.indexOf('id="captionVideoEditor"') < body.indexOf('id="captionStylePane_export"'), 'video editor is not in the Video settings tab of the Style panel');
-assert.ok(['roles', 'caption'].every(name => body.indexOf(`id="captionLeftPane_${name}"`) > 0 && body.indexOf(`id="captionLeftPane_${name}"`) < body.indexOf('class="caption-stage"')), 'Text roles and Selected caption are not tabs of the transcript column');
+assert.ok(['roles'].every(name => body.indexOf(`id="captionLeftPane_${name}"`) > 0 && body.indexOf(`id="captionLeftPane_${name}"`) < body.indexOf('class="caption-stage"')), 'Text roles is not a tab of the transcript column');
 /* Word styles (roles): a track picker, a compositor-drawn sample, a reset per value; the spoken word's effect lives in Effects only */
-const rolesPane = body.slice(body.indexOf('id="captionLeftPane_roles"'), body.indexOf('id="captionLeftPane_caption"'));
+const rolesPane = body.slice(body.indexOf('id="captionLeftPane_roles"'), body.indexOf('id="captionEditHolder"'));
 for (const id of ['captionRoleTrack', 'captionRoleSample', 'captionRoleEmphasisAmount', 'captionRoleEmphasisHint', 'captionRoleActiveOverride', 'captionRoleActiveOverrideClear', 'captionRoleActiveOpen', 'captionRolesReset']) {
   assert.match(rolesPane, new RegExp(`id="${id}"`), `Word styles is missing #${id}`);
 }

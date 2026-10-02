@@ -466,10 +466,7 @@ function nudgeSegment(direction) {
    Drag on an empty part of a track row = a new text block for that range; Shift / Ctrl + drag, or a drag that starts in the VIDEO row or between
    the rows, = marquee. Double-click an empty part = a 2 s block there. `N` = a block at the playhead. Shift / Ctrl + click toggles a caption. */
 const NEW_TEXT = '新しい字幕';
-function focusBlockText() {
-  if (W.selectLeftTab) W.selectLeftTab('caption');
-  const box = $('captionBlockText'); if (box && !box.closest('[hidden]')) { box.focus(); box.select(); }
-}
+function focusBlockText() { if (W.editText) W.editText(); }   // the new block's text is selected in the edit popover, ready to type over
 function createBlock(range) {
   const id = ui.store.nextSegmentId();
   if (!runCommand({ type: 'create-text-block', text: NEW_TEXT, start: range.start, end: range.end, trackId: range.trackId }, id, id)) return false;
@@ -685,7 +682,11 @@ function init() {
   $('captionTimelineIn').addEventListener('click', () => { ui.timeline.follow = false; zoomTimeline(2); });
   $('captionTimelineOut').addEventListener('click', () => { ui.timeline.follow = false; zoomTimeline(.5); });
   $('captionTimelineFit').addEventListener('click', fitTimeline);
-  for (const id of ['captionSegmentList', 'captionSegmentTrack']) $(id).addEventListener('dblclick', event => { const target = event.target.closest('[data-segment-id]'); if (target) selectSegment(target.dataset.segmentId, true); });
+  for (const id of ['captionSegmentList', 'captionSegmentTrack']) $(id).addEventListener('dblclick', event => {
+    const target = event.target.closest('[data-segment-id]'); if (!target) return;
+    selectSegment(target.dataset.segmentId, true);
+    if (id === 'captionSegmentTrack') W.editText(target);   // the list only seeks; a timeline block opens its text for editing
+  });
   on('project', renderSegments); on('selection', markSelection);
 }
 Object.assign(W, { loadWaveform, clearWaveform, toggleStrip, deleteSelected, duplicateSelected, newCaptionAtPlayhead, splitAtPlayhead, moveSelectedTrack, openTrackMenu, renameInline, cancelSegmentDrag, dragging, nudgeSegment, finishBoundary, fitTimeline, markNow, markSelection, moveBoundary, placeLoop, renderSegments, renderTimeline, revealTime, seekTimeline, startBoundaryDrag, timelineFollow, timelineTimeAt, updatePlayhead, zoomTimeline });

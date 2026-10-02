@@ -8,16 +8,17 @@ const W = J.captionWb;
 const { ui, $, fmt, status, selectedSegment, segmentTrackId, activeTrack, trackName, segmentText, tokenMap, sourceVideo, runCommand, lookLabel, PRESET_LABELS, accessibilityWarnings, selectSegment, on, emit } = W;
 const P = J.captionPopover;
 const BLOCK_ANIMATION_CONTROLS = { enter: 'captionBlockEnter', hold: 'captionBlockHold', exit: 'captionBlockExit' };
-/* ---- Caption tab: the selected caption ----
-   Header with previous / next, warnings first, then the words as chips (press one to fix its text or emphasis,
-   ✂ between two words splits there), timing with nudges and "at playhead", and the rarer actions folded away. */
+/* ---- The edit popover: the selected caption ----
+   One text field for the whole caption (Enter commits, Esc cancels), the words as chips (press one to fix its text or emphasis,
+   ✂ between two words splits there), and the rarer things folded under "Details": timing with nudges, track, look and motion, locks.
+   The markup lives in #captionEditHolder (hidden) and is moved into the popover while it is open, so every control keeps its id. */
 const tokenEmphasisState = token => { const manual = token && token.manualEmphasis; return manual && typeof manual.enabled === 'boolean' ? (manual.enabled ? 'on' : 'off') : 'auto'; };
 const EMPHASIS_VALUES = { auto: null, on: { enabled: true, reason: 'editor' }, off: { enabled: false, reason: 'editor' } };
 
 function renderInspector() {
-  const segment = selectedSegment(), empty = $('captionInspectorEmpty'), panel = $('captionSegmentInspector');
-  empty.hidden = !!segment; panel.hidden = !segment;
-  if (!segment) return;
+  const segment = selectedSegment(), panel = $('captionSegmentInspector');
+  panel.hidden = !segment;
+  if (!segment) { closeEditor(false); return; }
   const project = ui.store.project, plan = project.plans[segment.id], resolved = J.captionResolvedPlan(plan), tracks = project.tracks || [];
   const tokens = tokenMap(), segmentTokens = segment.tokenIds.map(id => tokens.get(id)).filter(Boolean);
   const isBlock = J.isCaptionTextBlock(project, segment), locked = !!(segment.locks && segment.locks.visualPlan), cutLocked = !!(segment.locks && segment.locks.segmentation);
@@ -28,7 +29,6 @@ function renderInspector() {
   if (isBlock) tags.push('テキストブロック');
   if (locked) tags.push('固定中');
   $('captionNavPosition').textContent = `${at + 1} / ${order.length}`; $('captionNavMeta').textContent = tags.join(' · ');
-  $('captionPrev').disabled = at <= 0; $('captionNext').disabled = at < 0 || at >= order.length - 1;
   const frame = project.media || {}, zone = frame.width > 0 && frame.height > 0 ? J.captionPlanZone(resolved, frame) : null;
   if (zone) Object.assign(document.querySelector('.caption-safe-zone').style, {
     left: `${zone.x / frame.width * 100}%`, top: `${zone.y / frame.height * 100}%`, width: `${zone.width / frame.width * 100}%`, height: `${zone.height / frame.height * 100}%`, right: 'auto', bottom: 'auto',
@@ -37,6 +37,8 @@ function renderInspector() {
   const warningBox = $('captionAccessibility'); warningBox.replaceChildren();
   for (const warning of accessibilityWarnings(segment)) { const item = document.createElement('div'); item.className = 'caption-warning'; item.textContent = warning; warningBox.appendChild(item); }
   // Text
+  const field = $('captionEditText'); if (document.activeElement !== field) field.value = segmentText(segment);
+  field.disabled = !!(segment.locks && segment.locks.tokenText);
   renderBlockEditor(segment, plan);
   renderWordChips(segment, segmentTokens, resolved, isBlock, cutLocked);
   renderWordEditor(segment, segmentTokens, resolved, isBlock);
@@ -73,6 +75,7 @@ function renderInspector() {
   const qualities = new Set(segmentTokens.map(token => token.timingQuality));
   $('captionSelectedQuality').textContent = qualities.has('estimated') ? '推定（SRT/VTT・手入力）' : qualities.has('segment') ? '字幕単位' : '単語単位';
   $('captionSelectedLayout').textContent = lookLabel('layout', resolved.layout) || '—';
+  if (editor && editor.isConnected) P.place(editor, editorAnchor);   // the popover grows and shrinks with the word editor and the details
 }
 
 function renderWordChips(segment, segmentTokens, resolved, isBlock, cutLocked) {
@@ -88,7 +91,7 @@ function renderWordChips(segment, segmentTokens, resolved, isBlock, cutLocked) {
     chip.setAttribute('aria-pressed', String(ui.wordId === token.id)); chip.title = `${fmt(token.start)}–${fmt(token.end)}${emphasized.has(token.id) ? ' · 強調' : ''}`;
     list.appendChild(chip);
   });
-  $('captionWordHint').textContent = isBlock ? '文字は上の欄でまとめて書き換えます。単語を押すと強調を変えられます。'
+  $('captionWordHint').textContent = isBlock ? '単語を押すと強調を変えられます。'
     : cutLocked ? '単語を押すと修正・強調できます。この字幕は固定中のため分割できません。' : '単語を押すと修正・強調できます。✂ で字幕を分けます。';
 }
 
@@ -106,11 +109,10 @@ function renderWordEditor(segment, segmentTokens, resolved, isBlock) {
   meta.classList.toggle('danger-text', !!ui.errors[token.id]); if (ui.errors[token.id]) meta.textContent = ui.errors[token.id];
 }
 
-/* Text blocks (typed captions): whole-text edit and delete in the text section; preset animations in "Look and motion". */
+/* Text blocks (typed captions): preset animations in "Look and motion". */
 function renderBlockEditor(segment, plan) {
-  const project = ui.store.project, isBlock = J.isCaptionTextBlock(project, segment), editor = $('captionBlockEditor');
-  editor.hidden = !isBlock; $('captionBlockAnimation').hidden = !isBlock; if (!isBlock) return;
-  const text = $('captionBlockText'); if (document.activeElement !== text) text.value = segmentText(segment);
+  const project = ui.store.project, isBlock = J.isCaptionTextBlock(project, segment);
+  $('captionBlockAnimation').hidden = !isBlock; if (!isBlock) return;
   const locked = !!(segment.locks && segment.locks.visualPlan), chosen = J.captionTextBlockAnimation(plan), options = J.captionTextBlockAnimationOptions(project, segmentTrackId(segment));
   for (const [key, id] of Object.entries(BLOCK_ANIMATION_CONTROLS)) {
     const select = $(id), ids = options[key].slice(); if (chosen[key] && !ids.includes(chosen[key])) ids.push(chosen[key]);
@@ -142,11 +144,6 @@ function mergeWith(direction) {
   if (runCommand({ type: 'merge-segments', segmentId: first.id, nextSegmentId: second.id, boundarySource: 'manual' }, segment.id, first.id)) toastUndo('字幕を結合しました');
 }
 
-function stepCaption(direction) {
-  const order = ui.store.project.segments, at = order.indexOf(selectedSegment()), target = at < 0 ? null : order[at + direction];
-  if (target) selectSegment(target.id, true);
-}
-
 function nudgeTiming(key, step) {
   const input = $(key === 'start' ? 'captionSelectedStart' : 'captionSelectedEnd');
   input.value = Math.max(0, Number(input.value) + step).toFixed(2); applyTiming();
@@ -162,15 +159,12 @@ function openSegmentLook() {
   ui.lookScope = 'segment'; ui.lookSignature = null; W.selectStyleTab('effects'); W.renderLookPanel();
 }
 
-function applyBlockText() {
+/* Enter in the text field: one command for the whole caption (speech keeps its word timing where the words match), then the popover closes. */
+function commitText() {
   const segment = selectedSegment(); if (!segment) return;
-  if (runCommand({ type: 'edit-text-block', segmentId: segment.id, text: $('captionBlockText').value }, segment.id)) status('テキストブロックを更新しました。');
-}
-
-function deleteBlock() {
-  const segment = selectedSegment(); if (!segment || !J.isCaptionTextBlock(ui.store.project, segment)) return;
-  if (!window.confirm(`テキストブロック「${segmentText(segment)}」を削除します。「元に戻す」で復元できます。続けますか？`)) return;
-  if (runCommand({ type: 'delete-text-block', segmentId: segment.id }, segment.id)) status('テキストブロックを削除しました。');
+  const text = $('captionEditText').value.trim();
+  if (text === segmentText(segment)) { closeEditor(true); return; }
+  if (runCommand({ type: 'edit-segment-text', segmentId: segment.id, text }, segment.id)) { closeEditor(true); status('字幕の文字を更新しました。'); }
 }
 
 function setBlockAnimation(key, value) {
@@ -212,11 +206,21 @@ function buildToolbar() {
   toolbar.addEventListener('click', event => { const button = event.target.closest('[data-tool]'); if (button && !button.disabled) runTool(button.dataset.tool, button); });
   $('captionPreviewFrame').appendChild(toolbar);
 }
-function editText() {
-  const segment = selectedSegment(); if (!segment) return;
-  W.selectLeftTab('caption');
-  if (J.isCaptionTextBlock(ui.store.project, segment)) { const field = $('captionBlockText'); field.focus(); field.select(); }
-  else { const chip = document.querySelector('#captionTokenList [data-word-id]'); if (chip) chip.focus(); }
+/* ---- The edit popover ---- */
+let editor = null, editorAnchor = null;
+const timelineBlock = id => document.querySelector(`#captionSegmentTrack [data-segment-id="${id}"]`);
+function closeEditor(restore) { if (editor && editor.isConnected) P.close(!!restore); }
+/* Opens under `anchor`: the toolbar when it is showing, else the caption's block on the timeline, else the preview. */
+function editText(anchor, options) {
+  const segment = selectedSegment(); if (!segment || ui.selection.segmentIds.size !== 1) return;
+  const opts = options || {}, host = $('captionEditHolder'), panel = $('captionSegmentInspector');
+  editorAnchor = anchor || (toolbar && !toolbar.hidden ? toolbar : timelineBlock(segment.id) || $('captionPreviewFrame'));
+  panel.hidden = false; renderInspector();
+  const field = $('captionEditText'), chip = document.querySelector('#captionTokenList [data-word-id]');
+  editor = P.open(editorAnchor, panel, { role: 'dialog', className: 'caption-popover caption-edit-popover', label: '字幕の編集',
+    restoreFocus: opts.restoreFocus || (editorAnchor && editorAnchor.isConnected ? editorAnchor : null), focus: opts.words && chip ? chip : field,
+    onClose: () => { host.appendChild(panel); editor = null; } });
+  if (!opts.words || !chip) field.select();
 }
 function showWarnings(anchor) {
   const segment = selectedSegment(); if (!segment) return;
@@ -239,7 +243,7 @@ function moreMenu(anchor) {
   P.menu(anchor, items, { restoreFocus: anchor });
 }
 function runTool(key, button) {
-  if (key === 'text') editText(); else if (key === 'split') W.splitAtPlayhead(); else if (key === 'start') timingAtPlayhead('start'); else if (key === 'end') timingAtPlayhead('end');
+  if (key === 'text') editText(button, { restoreFocus: button }); else if (key === 'split') W.splitAtPlayhead(); else if (key === 'start') timingAtPlayhead('start'); else if (key === 'end') timingAtPlayhead('end');
   else if (key === 'look') openSegmentLook(); else if (key === 'more') moreMenu(button); else if (key === 'warn') showWarnings(button);
 }
 /* Under the box (above it when there is no room), centred on it, kept inside the preview frame. */
@@ -264,6 +268,7 @@ function init() {
   const toasts = document.createElement('div'); toasts.id = 'captionToasts'; toasts.className = 'caption-toasts'; toasts.setAttribute('aria-hidden', 'false'); $('captionPreviewFrame').appendChild(toasts);
   window.addEventListener('resize', paintToolbar);
   on('project', () => { P.dismissToast(); paintToolbar(); }, 1); on('selection', paintToolbar);
+  $('captionBoxEditor').addEventListener('dblclick', event => { if (!event.target.closest('[data-box-handle]')) editText(); });
   $('captionManualAdd').addEventListener('click', () => {
     const startText = $('captionManualStart').value, endText = $('captionManualEnd').value;
     const id = ui.store.nextSegmentId();
@@ -280,17 +285,15 @@ function init() {
   $('captionDisableAnimation').addEventListener('change', event => { const segment = selectedSegment(); if (!segment) return;
     runCommand({ type: 'set-segment-animation-disabled', segmentId: segment.id, disabled: event.target.checked }, segment.id); });
   $('captionEditLook').addEventListener('click', openSegmentLook);
-  $('captionBlockText').addEventListener('keydown', event => {   // a freshly created block is typed over right away: Enter commits, Esc leaves the field
+  $('captionEditText').addEventListener('keydown', event => {   // a freshly created block is typed over right away: Enter commits, Esc (the popover) cancels
     if (event.isComposing) return;
-    if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); applyBlockText(); } else if (event.key === 'Escape') event.target.blur();
+    if (event.key === 'Enter') { event.preventDefault(); if (!event.shiftKey) commitText(); }
   });
-  $('captionBlockApply').addEventListener('click', applyBlockText); $('captionBlockDelete').addEventListener('click', deleteBlock);
   for (const [key, id] of Object.entries(BLOCK_ANIMATION_CONTROLS)) $(id).addEventListener('change', event => setBlockAnimation(key, event.target.value));
   $('captionSelectedStart').addEventListener('change', applyTiming); $('captionSelectedEnd').addEventListener('change', applyTiming);
   document.querySelectorAll('[data-nudge]').forEach(button => button.addEventListener('click', event => { event.preventDefault(); nudgeTiming(button.dataset.nudge, Number(button.dataset.step)); }));
   $('captionStartAtPlayhead').addEventListener('click', () => timingAtPlayhead('start')); $('captionEndAtPlayhead').addEventListener('click', () => timingAtPlayhead('end'));
   $('captionMergePrev').addEventListener('click', () => mergeWith(-1)); $('captionMerge').addEventListener('click', () => mergeWith(1));
-  $('captionPrev').addEventListener('click', () => stepCaption(-1)); $('captionNext').addEventListener('click', () => stepCaption(1));
   $('captionTokenList').addEventListener('click', event => {
     const cut = event.target.closest('[data-split-before]'), chip = event.target.closest('[data-word-id]');
     if (cut) splitBefore(cut.dataset.splitBefore); else if (chip) selectWord(chip.dataset.wordId);
@@ -305,8 +308,10 @@ function init() {
     if (ui.moveTokens.has(chip.dataset.moveWord)) ui.moveTokens.delete(chip.dataset.moveWord); else ui.moveTokens.add(chip.dataset.moveWord);
     renderInspector();
   });
-  on('project', () => { renderInspector(); renderManualTrack(); }); on('selection', renderInspector); on('error', renderInspector);
+  on('project', () => { renderInspector(); renderManualTrack(); });
+  on('selection', () => { if (editor && ui.selection.segmentIds.size !== 1) closeEditor(false); renderInspector(); });   // a split keeps it open on the new caption
+  on('error', renderInspector);
 }
-Object.assign(W, { BLOCK_ANIMATION_CONTROLS, paintToolbar, toastUndo, EMPHASIS_VALUES, applyBlockText, applyTiming, deleteBlock, mergeWith, nudgeTiming, openSegmentLook, renderBlockEditor, renderInspector, renderManualTrack, renderWordChips, renderWordEditor, selectWord, setBlockAnimation, splitBefore, stepCaption, timingAtPlayhead, tokenEmphasisState });
+Object.assign(W, { BLOCK_ANIMATION_CONTROLS, paintToolbar, toastUndo, EMPHASIS_VALUES, applyTiming, closeEditor, commitText, editText, mergeWith, nudgeTiming, openSegmentLook, renderBlockEditor, renderInspector, renderManualTrack, renderWordChips, renderWordEditor, selectWord, setBlockAnimation, splitBefore, timingAtPlayhead, tokenEmphasisState });
 W.inits.push(init);
 })();

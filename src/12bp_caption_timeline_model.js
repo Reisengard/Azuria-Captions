@@ -90,6 +90,7 @@ function keyAction(event) {
   const shift = !!event.shiftKey;
   switch (event.code) {
     case 'Space': return 'play';
+    case 'Enter': case 'NumpadEnter': return 'edit';
     case 'ArrowLeft': return shift ? 'back-1s' : 'back-frame';
     case 'ArrowRight': return shift ? 'forward-1s' : 'forward-frame';
     case 'ArrowUp': return 'prev-caption';

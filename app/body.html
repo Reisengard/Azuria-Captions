@@ -44,7 +44,6 @@
       <div class="caption-left-tabs" role="tablist" aria-label="左パネルのタブ">
         <button id="captionLeftTab_transcript" type="button" role="tab" data-left-tab="transcript" aria-selected="true" aria-controls="captionLeftPane_transcript">文字起こし</button>
         <button id="captionLeftTab_roles" type="button" role="tab" data-left-tab="roles" aria-selected="false" aria-controls="captionLeftPane_roles">文字スタイル</button>
-        <button id="captionLeftTab_caption" type="button" role="tab" data-left-tab="caption" aria-selected="false" aria-controls="captionLeftPane_caption">字幕の編集</button>
       </div>
       <aside id="captionLeftPane_transcript" class="caption-panel caption-transcript caption-left-pane" aria-label="文字起こしと字幕セグメント">
         <div class="caption-panel-head"><h2>文字起こし</h2><span id="captionTimingBadge" class="caption-badge">未読込</span></div>
@@ -94,7 +93,7 @@
             <div id="captionRoleActiveOverride" class="caption-warning caption-role-override" hidden><span id="captionRoleActiveOverrideText"></span><button id="captionRoleActiveOverrideClear" type="button" class="small">固定を外す</button></div>
           </fieldset>
           <fieldset class="caption-role" data-caption-role="emphasis"><legend>強調する単語</legend>
-            <p class="caption-role-note">数字や「!」のある単語が自動で選ばれます。単語ごとの指定は「字幕の編集」タブで変えられます。</p>
+            <p class="caption-role-note">数字や「!」のある単語が自動で選ばれます。単語ごとの指定は字幕の編集（✎ 文字）で変えられます。</p>
             <label class="caption-role-row"><span>色</span><input id="captionRoleEmphasisColor" type="color" value="#ffde59"><output data-role-value="captionRoleEmphasisColor"></output><button type="button" class="ghost small" data-role-clear="captionRoleEmphasisColor" title="元に戻す" aria-label="色を戻す">↺</button></label>
             <label class="caption-role-row"><span>2つ目のフォント</span><select id="captionRoleEmphasisFont"></select><button type="button" class="ghost small" data-role-clear="captionRoleEmphasisFont" title="使わない" aria-label="2つ目のフォントを使わない">↺</button></label>
             <label class="caption-role-row"><span>大きさ</span><input id="captionRoleEmphasisScale" type="range" min="0.9" max="1.15" step="0.01"><output data-role-value="captionRoleEmphasisScale"></output><button type="button" class="ghost small" data-role-clear="captionRoleEmphasisScale" title="元に戻す" aria-label="大きさを戻す">↺</button></label>
@@ -105,24 +104,15 @@
           <div id="captionRolesWarnings" class="caption-box-warnings" role="status"></div>
         </section>
         </div>
-        <div id="captionLeftPane_caption" class="caption-panel caption-left-pane" role="tabpanel" aria-labelledby="captionLeftTab_caption" hidden>
-        <div class="caption-panel-head segment-head"><h2>字幕の編集</h2></div>
-        <div id="captionInspectorEmpty" class="caption-empty">字幕を選択すると、ここで文字やタイミングを直せます。</div>
-        <div id="captionSegmentInspector" hidden>
-          <nav class="caption-nav" aria-label="字幕の移動">
-            <button id="captionPrev" type="button" class="ghost" aria-label="前の字幕">◀</button>
-            <div class="caption-nav-info"><strong id="captionNavPosition">—</strong><span id="captionNavMeta"></span></div>
-            <button id="captionNext" type="button" class="ghost" aria-label="次の字幕">▶</button>
-          </nav>
+      <div id="captionEditHolder" hidden>
+        <div id="captionSegmentInspector" class="caption-edit" hidden>
           <div id="captionEditError" class="caption-validation" role="alert" hidden></div>
           <div id="captionAccessibility" class="caption-accessibility" aria-live="polite"></div>
+          <div class="caption-edit-meta"><strong id="captionNavPosition">—</strong> <span id="captionNavMeta"></span></div>
 
           <section class="caption-section" aria-labelledby="captionTextHeading">
             <h3 id="captionTextHeading">文字</h3>
-            <div id="captionBlockEditor" class="caption-block-editor" hidden>
-              <label>ブロックのテキスト<textarea id="captionBlockText" rows="2"></textarea></label>
-              <div class="caption-button-row"><button id="captionBlockApply" type="button" class="small">テキストを更新</button><button id="captionBlockDelete" type="button" class="small danger">ブロックを削除</button></div>
-            </div>
+            <label class="caption-edit-text">字幕の文字<input id="captionEditText" type="text" autocomplete="off" spellcheck="false"></label>
             <p id="captionWordHint" class="caption-section-hint">単語を押すと修正・強調できます。✂ で字幕を分けます。</p>
             <div id="captionTokenList" class="caption-word-chips" role="group" aria-label="字幕の単語"></div>
             <div id="captionWordEditor" class="caption-word-editor" hidden>
@@ -135,7 +125,8 @@
             </div>
           </section>
 
-          <section class="caption-section" aria-labelledby="captionTimingHeading">
+          <details id="captionDetails" class="caption-section caption-more">
+            <summary>詳細</summary>
             <h3 id="captionTimingHeading">タイミング</h3>
             <div class="caption-time-fields">
               <label>開始（秒）<span class="caption-time-input"><button type="button" class="small" data-nudge="start" data-step="-0.1" aria-label="開始を0.1秒早く">−</button><input id="captionSelectedStart" type="number" min="0" step="0.01"><button type="button" class="small" data-nudge="start" data-step="0.1" aria-label="開始を0.1秒遅く">＋</button></span></label>
@@ -143,10 +134,8 @@
             </div>
             <div class="caption-button-row"><button id="captionStartAtPlayhead" type="button" class="small">開始を再生位置に</button><button id="captionEndAtPlayhead" type="button" class="small">終了を再生位置に</button></div>
             <div class="caption-button-row"><button id="captionMergePrev" type="button" class="small">⇤ 前の字幕と結合</button><button id="captionMerge" type="button" class="small">次の字幕と結合 ⇥</button></div>
-          </section>
-
-          <details id="captionMoveSection" class="caption-section caption-more">
-            <summary>トラック</summary>
+            <dl class="caption-meta"><dt>タイミングの精度</dt><dd id="captionSelectedQuality">—</dd><dt>レイアウト</dt><dd id="captionSelectedLayout">—</dd></dl>
+          <div id="captionMoveSection" class="caption-subsection"><h3>トラック</h3>
             <label class="field">移動先のトラック<select id="captionMoveTrack"></select></label>
             <button id="captionMoveSegment" type="button" class="small">この字幕をまるごと移動</button>
             <div id="captionMoveWords" class="caption-move-words">
@@ -154,10 +143,8 @@
               <div id="captionMoveWordPicker" class="caption-word-chips is-picker" role="group" aria-label="移動する単語"></div>
               <button id="captionMoveTokens" type="button" class="small">選んだ単語を移動</button>
             </div>
-          </details>
-
-          <details id="captionLookSection" class="caption-section caption-more">
-            <summary>見た目と動き</summary>
+          </div>
+          <div id="captionLookSection" class="caption-subsection"><h3>見た目と動き</h3>
             <p id="captionLookSummary" class="caption-section-hint"></p>
             <div class="caption-button-row"><button id="captionEditLook" type="button" class="small">この字幕のエフェクトを変える</button><button id="captionReroll" type="button" class="small">ランダムに決める</button></div>
             <div id="captionBlockAnimation" class="caption-block-animation" hidden>
@@ -167,15 +154,10 @@
             </div>
             <label class="caption-switch"><input id="captionDisableAnimation" type="checkbox"> <span>動かさない<small>この字幕だけアニメーションなしで表示します。</small></span></label>
             <label class="caption-switch"><input id="captionLock" type="checkbox"> <span>この字幕を固定する<small>スタイルの変更やランダムでも、区切りと見た目が変わらなくなります。</small></span></label>
-          </details>
-
-          <details class="caption-section caption-more">
-            <summary>詳細</summary>
-            <dl class="caption-meta"><dt>タイミング</dt><dd id="captionSelectedQuality">—</dd><dt>レイアウト</dt><dd id="captionSelectedLayout">—</dd></dl>
+          </div>
           </details>
         </div>
-        </div>
-
+      </div>
       </div>
 
       <main class="caption-stage" aria-label="動画字幕プレビュー">

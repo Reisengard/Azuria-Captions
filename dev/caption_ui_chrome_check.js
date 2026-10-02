@@ -119,6 +119,8 @@ const IN_PAGE = `(() => {
     toolbar() { const tb = document.getElementById('captionToolbar'); if (!tb || tb.hidden) return null; const r = tb.getBoundingClientRect(), f = document.getElementById('captionPreviewFrame').getBoundingClientRect(); return { r: [r.left, r.top, r.right, r.bottom].map(Math.round), f: [f.left, f.top, f.right, f.bottom].map(Math.round), inside: r.left >= f.left && r.right <= f.right && r.top >= f.top && r.bottom <= f.bottom, buttons: [...tb.querySelectorAll('[data-tool]')].filter(b => !b.hidden).map(b => b.dataset.tool).join(',') }; },
     toast() { const el = document.querySelector('.caption-toast'); return el && { text: el.textContent, action: !!el.querySelector('button') }; },
     toolRect(key) { const b = document.querySelector('[data-tool=' + key + ']'); const r = b.getBoundingClientRect(); return { x: (r.left + r.right) / 2, y: (r.top + r.bottom) / 2 }; },
+    edit() { const pop = document.querySelector('.caption-edit-popover'), f = document.getElementById('captionEditText'); return { open: !!pop && !pop.hidden, focus: document.activeElement && document.activeElement.id, value: f.value, details: document.getElementById('captionDetails').open, chips: document.querySelectorAll('#captionTokenList [data-word-id]').length, cuts: document.querySelectorAll('#captionTokenList [data-split-before]').length, wordEditor: !document.getElementById('captionWordEditor').hidden, inViewport: !!pop && pop.getBoundingClientRect().bottom <= innerHeight && pop.getBoundingClientRect().right <= innerWidth }; },
+    textOf(id) { const s = ui.store.project.segments.find(item => item.id === id); const map = new Map(ui.store.project.transcript.tokens.map(token => [token.id, token])); return s.tokenIds.map(tid => map.get(tid).text).join(' '); },
     warnBadge(id) { const b = document.querySelector('[data-segment-id="' + id + '"] .caption-warn-badge'); return !!b && !b.hidden; },
   };
   return true;
@@ -278,7 +280,7 @@ const IN_PAGE = `(() => {
     for (const count of [1, 2]) { await mouse('mousePressed', timeX, rowY, { clickCount: count }); await mouse('mouseReleased', timeX, rowY, { clickCount: count }); }
     await sleep(120); let made = await t('newer', ids0);
     step('create: double-click on an empty row makes a block', made.length === 1 && made[0].trackId === trackTwo && Math.abs(made[0].start - 8) <= tolerance && Math.abs(made[0].end - made[0].start - 2) < 1e-6, JSON.stringify(made));
-    step('create: it is selected and its text field has focus', JSON.parse(await t('sel')).join() === made[0].id && (await t('focusId')) === 'captionBlockText', await t('focusId'));
+    step('create: it is selected and its text field has focus', JSON.parse(await t('sel')).join() === made[0].id && (await t('focusId')) === 'captionEditText' && (await t('edit')).open, await t('focusId'));
     await t('undo2'); step('create: undo removes it', (await t('count')) === ids0.length); await t('blur');
     // drag on an empty part of a row: a block for exactly that range, with a ghost while dragging
     rowY = await t('rowY', trackNew); const from = await t('timeX', 2), to = await t('timeX', 5);
@@ -366,6 +368,35 @@ const IN_PAGE = `(() => {
     await key('Escape', 'Escape', { vk: 27 }); await sleep(80);
     step('toolbar: Esc closes the menu and returns focus to ⋯', (await t('menuItems')).length === 0 && (await t('activeTool')) === 'more', await t('activeTool'));
     await t('blur');
+
+    // C2: text editing in place (popover from the toolbar, a double-click on the preview or timeline, Enter), word chips, details fold
+    await t('select', 'blockA'); await t('emitSelection'); await sleep(100);
+    const oldText = await t('textOf', 'blockA'), textBtn = await t('toolRect', 'text'); await mouse('mousePressed', textBtn.x, textBtn.y); await mouse('mouseReleased', textBtn.x, textBtn.y); await sleep(120);
+    let ed = await t('edit'); step('edit: ✎ Text opens a popover with the text field focused and filled', ed.open && ed.focus === 'captionEditText' && ed.value === oldText && ed.inViewport && !ed.details, JSON.stringify(ed));
+    await client.send('Input.insertText', { text: 'Edited in place' }); await key('Enter', 'Enter', { vk: 13, text: '\r' }); await sleep(120);
+    step('edit: Enter commits the whole text and closes the popover', (await t('textOf', 'blockA')) === 'Edited in place' && !(await t('edit')).open, await t('textOf', 'blockA'));
+    await t('undo2'); await sleep(60); step('edit: undo restores the text in one step', (await t('textOf', 'blockA')) === oldText);
+    await t('select', 'blockA'); await t('emitSelection'); await sleep(80); await mouse('mousePressed', textBtn.x, textBtn.y); await mouse('mouseReleased', textBtn.x, textBtn.y); await sleep(100);
+    await client.send('Input.insertText', { text: 'Dropped' }); await key('Escape', 'Escape', { vk: 27 }); await sleep(100);
+    step('edit: Esc cancels (text unchanged) and returns focus to ✎', (await t('textOf', 'blockA')) === oldText && !(await t('edit')).open && (await t('activeTool')) === 'text', `${await t('textOf', 'blockA')} ${await t('activeTool')}`);
+    await t('blur'); await key('Enter', 'Enter', { vk: 13, text: '\r' }); await sleep(120);
+    step('edit: Enter on a selected caption opens the editor', (await t('edit')).open && (await t('edit')).focus === 'captionEditText');
+    await key('Escape', 'Escape', { vk: 27 }); await sleep(80);
+    const blockBox = await t('rect', '#captionSegmentTrack [data-segment-id="blockA"]'), bx = (blockBox.left + blockBox.right) / 2, by = (blockBox.top + blockBox.bottom) / 2;
+    for (const count of [1, 2]) { await mouse('mousePressed', bx, by, { clickCount: count }); await mouse('mouseReleased', bx, by, { clickCount: count }); } await sleep(150);
+    step('edit: double-click on a timeline block opens it in place', (await t('edit')).open && (await t('sel')) === JSON.stringify(['blockA']), JSON.stringify(await t('edit')));
+    await key('Escape', 'Escape', { vk: 27 }); await sleep(80);
+    const boxRect = await t('rect', '#captionBoxEditor'), px = (boxRect.left + boxRect.right) / 2, py = (boxRect.top + boxRect.bottom) / 2;
+    for (const count of [1, 2]) { await mouse('mousePressed', px, py, { clickCount: count }); await mouse('mouseReleased', px, py, { clickCount: count }); } await sleep(150);
+    step('edit: double-click on the caption in the preview opens it', (await t('edit')).open, JSON.stringify(await t('edit')));
+    await key('Escape', 'Escape', { vk: 27 }); await sleep(80);
+    await t('select', first.id); await t('emitSelection'); await sleep(100); await key('Enter', 'Enter', { vk: 13, text: '\r' }); await sleep(120);
+    ed = await t('edit'); step('edit: a spoken caption shows its words as chips with ✂ between them', ed.open && ed.chips > 1 && ed.cuts === ed.chips - 1, JSON.stringify(ed));
+    const chip = await t('rect', '#captionTokenList [data-word-id]'); await mouse('mousePressed', (chip.left + chip.right) / 2, (chip.top + chip.bottom) / 2); await mouse('mouseReleased', (chip.left + chip.right) / 2, (chip.top + chip.bottom) / 2); await sleep(100);
+    step('edit: pressing a chip opens the word editor (text, emphasis)', (await t('edit')).wordEditor && (await t('edit')).open);
+    const summary = await t('rect', '#captionDetails > summary'); await mouse('mousePressed', summary.left + 10, (summary.top + summary.bottom) / 2); await mouse('mouseReleased', summary.left + 10, (summary.top + summary.bottom) / 2); await sleep(100);
+    step('edit: Details folds timing, track, look and locks (opens on demand, stays on screen)', (await t('edit')).details && (await t('edit')).inViewport && (await t('rect', '#captionSelectedStart')).width > 0, JSON.stringify(await t('edit')));
+    await key('Escape', 'Escape', { vk: 27 }); await sleep(80); await key('Escape', 'Escape', { vk: 27 }); await sleep(80); await t('blur');
 
     // T6: waveform behind the VIDEO row, resizable and collapsible strip
     let wave = { drawn: '0', painted: 0 }; for (let i = 0; i < 40 && wave.drawn !== '1'; i++) { await sleep(100); wave = await t('waveDrawn'); }

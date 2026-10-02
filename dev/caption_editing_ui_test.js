@@ -8,18 +8,22 @@ const body = fs.readFileSync(path.join(root, 'app', 'body.html'), 'utf8');
 const source = require('./caption_ui_source').workbenchSource(root);
 
 for (const id of ['captionTokenList', 'captionSelectedStart', 'captionSelectedEnd', 'captionSelectedQuality', 'captionMerge', 'captionMergePrev', 'captionEditError',
-  'captionPrev', 'captionNext', 'captionWordEditor', 'captionWordText', 'captionStartAtPlayhead', 'captionEndAtPlayhead', 'captionMoveWordPicker', 'captionEditLook']) {
+  'captionEditText', 'captionDetails', 'captionWordEditor', 'captionWordText', 'captionStartAtPlayhead', 'captionEndAtPlayhead', 'captionMoveWordPicker', 'captionEditLook']) {
   assert.match(body, new RegExp(`id="${id}"`), `G5.3 editor is missing #${id}`);
 }
-/* Caption tab: warnings come before the words; words are chips (split between them, emphasis auto / on / off); rare actions are folded */
-const captionPane = body.slice(body.indexOf('id="captionLeftPane_caption"'), body.indexOf('class="caption-stage"'));
+/* Edit popover (C2): warnings come before the words; words are chips (split between them, emphasis auto / on / off); rare actions are folded under Details */
+assert.ok(!body.includes('captionLeftPane_caption'), 'the left Caption tab is gone');
+const captionPane = body.slice(body.indexOf('id="captionEditHolder"'), body.indexOf('class="caption-stage"'));
 assert.ok(captionPane.indexOf('id="captionAccessibility"') < captionPane.indexOf('id="captionTokenList"'), 'warnings must come before the words');
 for (const state of ['auto', 'on', 'off']) assert.match(captionPane, new RegExp(`data-emphasis="${state}"`), `emphasis has no "${state}" choice`);
 assert.match(source, /EMPHASIS_VALUES = \{ auto: null, on: \{ enabled: true[^}]*\}, off: \{ enabled: false/, 'emphasis choices must map to cleared / manual on / manual off');
 assert.match(source, /dataset\.splitBefore = token\.id/, 'words are not split from the chips');
 assert.match(source, /J\.captionEmphasizedTokenIds\(/, 'chips do not show which words are emphasised');
-assert.match(captionPane, /<details id="captionMoveSection"/, 'moving to another track is not folded away');
-assert.match(captionPane, /<details id="captionLookSection"/, 'look and motion are not folded away');
+assert.match(captionPane, /<details id="captionDetails"[^]*id="captionMoveSection"/, 'moving to another track is not folded away');
+assert.match(captionPane, /<details id="captionDetails"[^]*id="captionLookSection"/, 'look and motion are not folded away');
+assert.match(captionPane, /id="captionEditText"/, 'one text field edits the whole caption');
+assert.match(source, /type: 'edit-segment-text'/, 'the text field issues edit-segment-text (speech and blocks)');
+assert.match(source, /function editText\([^]*?P\.open\(/, 'the text editor is a popover');
 assert.match(captionPane, /id="captionLock" type="checkbox"/, 'keeping a caption as is must read as an on/off setting');
 for (const command of ['edit-token-text', 'set-manual-emphasis', 'split-segment', 'merge-segments', 'trim-segment']) {
   assert.match(source, new RegExp(`type: '${command}'`), `G5.3 UI does not issue ${command}`);
