@@ -17,35 +17,48 @@
   </nav>
 
   <section id="videoCaptionsWorkspace" class="product-surface caption-surface" role="tabpanel" aria-labelledby="productVideoCaptions" hidden>
-    <header class="bar caption-bar">
-      <div class="brand"><span class="mark" aria-hidden="true">字面</span><span class="word">JIZURA</span><span class="tag">video captions</span><span class="ver">v@VERSION@</span></div>
+<header class="bar caption-bar">
+      <div class="brand"><span class="word">Azuria<b>Sub</b></span><span class="ver">v@VERSION@</span></div>
       <div class="proj"><strong id="captionProjectName" class="caption-project-name">無題の字幕プロジェクト</strong></div>
+      <div class="acts caption-history" role="group" aria-label="元に戻す・やり直す">
+        <button id="captionUndo" type="button" disabled>元に戻す</button>
+        <button id="captionRedo" type="button" disabled>やり直す</button>
+      </div>
       <div class="modes" role="group" aria-label="表示モード">
         <button id="captionModeEasy" type="button" aria-pressed="true" title="安全な演出の中から選べます">かんたん</button>
         <button id="captionModePro" type="button" aria-pressed="false" title="演出の技法を自分で選べます">詳細</button>
-        <button id="captionHelp" type="button" class="ghost tour-btn" title="字幕編集の流れを見る" aria-label="使い方">？</button>
       </div>
-      @LANG_NAV@
-      <div class="acts caption-actions" role="toolbar" aria-label="字幕プロジェクト操作">
-        <button id="captionNew" type="button">新規</button>
-        <label class="file caption-open-project">開く<input id="captionProjectFile" type="file" accept=".json,application/json"></label>
-        <button id="captionUndo" type="button" disabled>元に戻す</button>
-        <button id="captionRedo" type="button" disabled>やり直す</button>
-        <button id="captionVariation" type="button" class="ghost small" disabled>全体をランダムに決める</button>
-        <button id="captionSave" type="button" disabled>保存</button>
-        <button id="captionStyleSave" type="button" class="ghost small" title="文字スタイル・エフェクト・スタイルの設定をすべてファイルに保存します">スタイルを保存</button>
-        <label class="file caption-open-project" title="保存したスタイルを、いまの字幕に適用します">スタイルを読込<input id="captionStyleFile" type="file" accept=".json,application/json"></label>
-        <button id="captionExport" type="button" class="primary" disabled title="字幕付き MP4 を書き出す">書き出し</button>
-        <button id="captionTerms" type="button" class="ghost terms-open" title="出力物の権利とライセンス">利用について</button>
+      <div class="caption-menu-wrap">
+        <button id="captionMenuButton" type="button" class="ghost caption-menu-button" aria-haspopup="true" aria-expanded="false" aria-controls="captionMenu" aria-label="メニュー" title="メニュー">⋯</button>
+        <div id="captionMenu" class="caption-main-menu" hidden aria-label="メニュー">
+          <button id="captionNew" type="button">新規</button>
+          <label class="file caption-open-project">開く<input id="captionProjectFile" type="file" accept=".json,application/json"></label>
+          <button id="captionSave" type="button" disabled>保存</button>
+          <hr>
+          <button id="captionStyleSave" type="button" title="文字スタイル・エフェクト・スタイルの設定をすべてファイルに保存します">スタイルを保存</button>
+          <label class="file caption-open-project" title="保存したスタイルを、いまの字幕に適用します">スタイルを読込<input id="captionStyleFile" type="file" accept=".json,application/json"></label>
+          <hr>
+          <button id="captionHelp" type="button" title="字幕編集の流れを見る">使い方</button>
+          <button id="captionTerms" type="button" class="terms-open" title="出力物の権利とライセンス">利用について</button>
+          <div class="caption-menu-lang"><span>言語</span>@LANG_NAV@</div>
+        </div>
       </div>
+      <button id="captionExport" type="button" class="primary" disabled title="字幕付き MP4 を書き出す">書き出し</button>
     </header>
-    <div class="caption-workbench">
-      <div class="caption-left" data-left-tab="transcript">
-      <div class="caption-left-tabs" role="tablist" aria-label="左パネルのタブ">
-        <button id="captionLeftTab_transcript" type="button" role="tab" data-left-tab="transcript" aria-selected="true" aria-controls="captionLeftPane_transcript">文字起こし</button>
-        <button id="captionLeftTab_roles" type="button" role="tab" data-left-tab="roles" aria-selected="false" aria-controls="captionLeftPane_roles">文字スタイル</button>
-      </div>
-      <aside id="captionLeftPane_transcript" class="caption-panel caption-transcript caption-left-pane" aria-label="文字起こしと字幕セグメント">
+<div class="caption-workbench" data-drawer="captions">
+      <nav id="captionRail" class="caption-rail" aria-label="パネル">
+        <button id="captionRail_captions" type="button" data-drawer="captions" aria-controls="captionDrawer" aria-expanded="true"><span class="caption-rail-icon" aria-hidden="true">▤</span><span class="caption-rail-label">字幕</span></button>
+        <button id="captionRail_text" type="button" data-drawer="text" aria-controls="captionDrawer" aria-expanded="false"><span class="caption-rail-icon" aria-hidden="true">Aa</span><span class="caption-rail-label">文字</span></button>
+        <button id="captionRail_effects" type="button" data-drawer="effects" aria-controls="captionDrawer" aria-expanded="false"><span class="caption-rail-icon" aria-hidden="true">✦</span><span class="caption-rail-label">エフェクト</span></button>
+        <button id="captionRail_tracks" type="button" data-drawer="tracks" aria-controls="captionDrawer" aria-expanded="false"><span class="caption-rail-icon" aria-hidden="true">☰</span><span class="caption-rail-label">トラック</span></button>
+        <button id="captionRail_box" type="button" data-drawer="box" aria-controls="captionDrawer" aria-expanded="false"><span class="caption-rail-icon" aria-hidden="true">▢</span><span class="caption-rail-label">位置</span></button>
+        <button id="captionRail_video" type="button" data-drawer="video" aria-controls="captionDrawer" aria-expanded="false"><span class="caption-rail-icon" aria-hidden="true">▶</span><span class="caption-rail-label">動画</span></button>
+        <button id="captionRail_export" type="button" data-drawer="export" aria-controls="captionDrawer" aria-expanded="false"><span class="caption-rail-icon" aria-hidden="true">⇪</span><span class="caption-rail-label">出力</span></button>
+      </nav>
+      <section id="captionDrawer" class="caption-drawer" aria-labelledby="captionDrawerTitle">
+        <div class="caption-drawer-head"><h2 id="captionDrawerTitle">字幕</h2><button id="captionDrawerClose" type="button" class="ghost small" aria-label="パネルを閉じる" title="パネルを閉じる">✕</button></div>
+        <div class="caption-drawer-body">
+      <div id="captionLeftPane_transcript" class="caption-panel caption-transcript caption-left-pane" role="group" aria-label="文字起こしと字幕セグメント">
         <div class="caption-panel-head"><h2>文字起こし</h2><span id="captionTimingBadge" class="caption-badge">未読込</span></div>
         <div id="captionDropZone" class="caption-import-zone">
           <strong>まず動画を読み込む</strong>
@@ -71,7 +84,7 @@
         <ol id="captionSegmentList" class="caption-segment-list" aria-label="字幕セグメント"></ol>
         <div id="captionTranscriptEmpty" class="caption-empty">① 動画を選ぶ → ② 字幕を追加（単語タイムスタンプ JSON・SRT・VTT を読み込む／台本を貼り付ける／タイムラインで入力）</div>
       </aside>
-        <div id="captionLeftPane_roles" class="caption-panel caption-left-pane" role="tabpanel" aria-labelledby="captionLeftTab_roles" hidden>
+        <div id="captionLeftPane_roles" class="caption-panel caption-left-pane" hidden>
         <section id="captionRolesPanel" class="caption-box-panel caption-roles-panel" aria-label="文字スタイル">
           <div class="caption-panel-head segment-head"><h2>文字スタイル</h2></div>
           <label id="captionRoleTrackField" class="field" hidden>編集するトラック<select id="captionRoleTrack"></select></label>
@@ -155,29 +168,9 @@
           </details>
         </div>
       </div>
-      </div>
 
-      <main class="caption-stage" aria-label="動画字幕プレビュー">
-        <div id="captionPreviewFrame" class="caption-preview-frame">
-          <canvas id="captionPreview" width="1080" height="1920" aria-label="動画と字幕のプレビュー"></canvas>
-          <div class="caption-safe-zone" aria-hidden="true"></div>
-          <div id="captionBoxEditor" class="caption-box-editor" role="group" tabindex="0" hidden aria-label="字幕の位置ボックス（矢印キーで移動、Shift で大きく移動）"><span class="caption-box-handle" data-box-handle="width" aria-hidden="true"></span></div>
-          <div id="captionBoxGhosts" class="caption-box-ghosts" aria-hidden="true" hidden></div>
-          <div id="captionBoxSnapX" class="caption-snap-line vertical" hidden></div><div id="captionBoxSnapY" class="caption-snap-line horizontal" hidden></div>
-          <div id="captionPreviewEmpty" class="caption-preview-empty">動画を選択してプレビューを開始</div>
-        </div>
-      </main>
 
-      <aside class="caption-panel caption-inspector" aria-label="字幕スタイルとセグメント設定" data-style-tab="style">
-        <div class="caption-style-tabs" role="tablist" aria-label="スタイルのタブ">
-          <button id="captionStyleTab_style" type="button" role="tab" data-style-tab="style" aria-selected="true" aria-controls="captionStylePane_style">スタイル</button>
-          <button id="captionStyleTab_effects" type="button" role="tab" data-style-tab="effects" aria-selected="false" aria-controls="captionStylePane_effects">エフェクト</button>
-          <button id="captionStyleTab_tracks" type="button" role="tab" data-style-tab="tracks" aria-selected="false" aria-controls="captionStylePane_tracks">字幕トラック</button>
-          <button id="captionStyleTab_box" type="button" role="tab" data-style-tab="box" aria-selected="false" aria-controls="captionStylePane_box">位置ボックス</button>
-          <button id="captionStyleTab_video" type="button" role="tab" data-style-tab="video" aria-selected="false" aria-controls="captionStylePane_video">動画設定</button>
-          <button id="captionStyleTab_export" type="button" role="tab" data-style-tab="export" aria-selected="false" aria-controls="captionStylePane_export">書き出し</button>
-        </div>
-                <div id="captionStylePane_style" class="caption-style-pane" role="tabpanel" aria-labelledby="captionStyleTab_style">
+      <div id="captionStylePane_style" class="caption-style-pane">
           <section class="caption-style-group"><h3>スタイルの種類</h3>
             <label class="field">スタイルファミリー<select id="captionStyle"><option value="creator">Creator</option><option value="punchy">Punchy</option></select></label>
             <p id="captionProfileNote" class="caption-profile-note">読みやすさを優先した標準スタイルです。</p>
@@ -198,7 +191,8 @@
             <label class="caption-reduced-motion"><input id="captionReducedMotion" type="checkbox"> プレビューの動きを減らす</label>
           </section>
         </div>
-<div id="captionStylePane_effects" class="caption-style-pane" role="tabpanel" aria-labelledby="captionStyleTab_effects" hidden>
+<div id="captionStylePane_effects" class="caption-style-pane" hidden>
+        <div class="caption-look-actions caption-look-global"><button id="captionVariation" type="button" class="small" disabled>全体をランダムに決める</button></div>
         <div id="captionTechniqueHost" hidden></div>
         <section id="captionLookPanel" class="caption-box-panel caption-look-panel" aria-label="エフェクト">
           <div class="caption-panel-head segment-head"><h2>エフェクト</h2></div>
@@ -241,7 +235,7 @@
           <p class="caption-profile-note">MV text effects are adapted to the caption area. Short or crowded captions may use a simpler effect.</p>
         </section>
         </div>
-        <div id="captionStylePane_tracks" class="caption-style-pane" role="tabpanel" aria-labelledby="captionStyleTab_tracks" hidden>
+        <div id="captionStylePane_tracks" class="caption-style-pane" hidden>
         <section id="captionTracksPanel" class="caption-box-panel caption-tracks-panel" aria-label="字幕トラック">
           <div class="caption-panel-head segment-head"><h2>字幕トラック</h2></div>
           <p class="caption-profile-note">字幕を最大3つのトラックに分けると、別々の位置と見た目で同時に表示できます。単語は手動でトラックへ移せます。</p>
@@ -262,7 +256,7 @@
           <div id="captionTrackWarnings" class="caption-box-warnings" role="status"></div>
         </section>
         </div>
-        <div id="captionStylePane_box" class="caption-style-pane" role="tabpanel" aria-labelledby="captionStyleTab_box" hidden>
+        <div id="captionStylePane_box" class="caption-style-pane" hidden>
         <section id="captionBoxPanel" class="caption-box-panel" aria-label="字幕の位置ボックス">
           <div class="caption-panel-head segment-head"><h2>字幕の位置ボックス</h2></div>
           <label class="field">対象<select id="captionBoxScope"><option value="track">トラック全体</option><option id="captionBoxScopeSegment" value="segment">選択中の字幕のみ</option></select></label>
@@ -276,16 +270,30 @@
           <div id="captionBoxWarnings" class="caption-box-warnings" role="status"></div>
         </section>
         </div>
-        <div id="captionStylePane_video" class="caption-style-pane" role="tabpanel" aria-labelledby="captionStyleTab_video" hidden>
+        <div id="captionStylePane_video" class="caption-style-pane" hidden>
           <div id="captionVideoEditor" class="video-edit-tools"></div>
         </div>
-        <div id="captionStylePane_export" class="caption-style-pane" role="tabpanel" aria-labelledby="captionStyleTab_export" hidden>
+        <div id="captionStylePane_export" class="caption-style-pane" hidden>
           <p class="caption-profile-note">字幕付きの MP4 を書き出します。ブラウザ内だけで処理され、動画はどこにも送信されません。</p>
           <dl class="caption-meta"><dt>形式</dt><dd id="captionExportFormat">—</dd><dt>長さ</dt><dd id="captionExportDuration">—</dd><dt>字幕</dt><dd id="captionExportCaptions">—</dd></dl>
           <button id="captionExportPanel" type="button" class="primary" disabled>書き出し</button>
         </div>
-<div id="captionStatus" class="caption-status" role="status" aria-live="polite">準備完了</div>
-      </aside>
+        </div>
+      </section>
+
+      <main class="caption-stage" aria-label="動画字幕プレビュー">
+        <div id="captionStageView" class="caption-stage-view">
+        <div id="captionPreviewFrame" class="caption-preview-frame">
+          <canvas id="captionPreview" width="1080" height="1920" aria-label="動画と字幕のプレビュー"></canvas>
+          <div class="caption-safe-zone" aria-hidden="true"></div>
+          <div id="captionBoxEditor" class="caption-box-editor" role="group" tabindex="0" hidden aria-label="字幕の位置ボックス（矢印キーで移動、Shift で大きく移動）"><span class="caption-box-handle" data-box-handle="width" aria-hidden="true"></span></div>
+          <div id="captionBoxGhosts" class="caption-box-ghosts" aria-hidden="true" hidden></div>
+          <div id="captionBoxSnapX" class="caption-snap-line vertical" hidden></div><div id="captionBoxSnapY" class="caption-snap-line horizontal" hidden></div>
+          <div id="captionPreviewEmpty" class="caption-preview-empty">動画を選択してプレビューを開始</div>
+        </div>
+        </div>
+        <div id="captionStatus" class="caption-status" role="status" aria-live="polite">準備完了</div>
+      </main>
 
       <footer id="captionStrip" class="caption-timeline-strip" aria-label="再生とタイムライン">
         <div id="captionStripGrip" class="caption-strip-grip" role="separator" aria-orientation="horizontal" tabindex="0" aria-label="タイムラインの高さ" title="ドラッグで高さを変更、ダブルクリックで折りたたみ / 展開"></div>

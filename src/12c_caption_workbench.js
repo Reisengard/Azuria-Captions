@@ -40,38 +40,22 @@ function beforeProject() {
   if (ui.videoEditor) ui.videoEditor.refresh();
   if (J.preloadVideoOverlays) J.preloadVideoOverlays(ui.store.project, () => { if (ui.preview) ui.preview.renderNow(); });   // no-op once decoded
   if (ui.preview && J.videoOutputSize) { const size = J.videoOutputSize(ui.store.project); ui.preview.designWidth = size.width; ui.preview.designHeight = size.height; }
-  fitVideoColumn();
+  fitPreviewFrame();
 }
 function afterProject() {
   renderActions(); W.updatePlayhead(sourceVideo() && sourceVideo().currentTime || 0); if (ui.preview) ui.preview.renderNow();
 }
 
-/* The video column is as wide as the output frame is at the stage's height (9:16 narrow, 16:9 wide); the settings column keeps the rest.
-   Only the ideal width is set here; the stylesheet clamps it so the other columns keep their minimum. */
-function fitVideoColumn() {
-  const bench = document.querySelector && document.querySelector('.caption-workbench'), stage = document.querySelector && document.querySelector('.caption-stage');
-  if (!bench || !stage || !bench.style || !(stage.clientHeight > 0)) return;
-  const out = J.videoOutputSize ? J.videoOutputSize(ui.store.project) : { width: 1080, height: 1920 }, pad = 30;   // stage padding (2 x 14) + frame border (2 x 1)
-  bench.style.setProperty('--caption-video-w', `${Math.max(240, Math.round((stage.clientHeight - pad) * out.width / out.height + pad))}px`);
+/* The preview frame is the largest rectangle of the output aspect that fits the stage; the drawer and the timeline strip take their own space first. */
+function fitPreviewFrame() {
+  const view = $('captionStageView'), frame = $('captionPreviewFrame');
+  if (!view || !frame || !frame.style || !(view.clientWidth > 0 && view.clientHeight > 0)) return;
+  const out = J.videoOutputSize ? J.videoOutputSize(ui.store.project) : { width: 1080, height: 1920 }, ratio = out.width / out.height;
+  let width = view.clientWidth, height = width / ratio;
+  if (height > view.clientHeight) { height = view.clientHeight; width = height * ratio; }
+  frame.style.width = `${Math.max(1, Math.floor(width))}px`; frame.style.height = `${Math.max(1, Math.floor(height))}px`;
 }
-function onWorkbenchResize() { fitVideoColumn(); if (ui.preview) ui.preview.renderNow(); W.paintBoxEditor(); W.paintToolbar(); }
-function selectStyleTab(tab) {
-  const panel = document.querySelector('.caption-inspector'); if (!panel) return;
-  const known = [...panel.querySelectorAll('.caption-style-tabs [data-style-tab]')].map(button => button.dataset.styleTab);
-  const name = known.includes(tab) ? tab : 'style';
-  ui.styleTab = name; panel.dataset.styleTab = name;
-  for (const button of panel.querySelectorAll('.caption-style-tabs [data-style-tab]')) button.setAttribute('aria-selected', String(button.dataset.styleTab === name));
-  for (const pane of panel.querySelectorAll('.caption-style-pane')) pane.hidden = pane.id !== `captionStylePane_${name}`;
-  if (name === 'effects' && J.refreshCaptionEffectPreviews) J.refreshCaptionEffectPreviews();
-}
-function selectLeftTab(tab) {
-  const panel = document.querySelector('.caption-left'); if (!panel) return;
-  const known = [...panel.querySelectorAll('.caption-left-tabs [data-left-tab]')].map(button => button.dataset.leftTab);
-  const name = known.includes(tab) ? tab : 'transcript';
-  ui.leftTab = name; panel.dataset.leftTab = name;
-  for (const button of panel.querySelectorAll('.caption-left-tabs [data-left-tab]')) button.setAttribute('aria-selected', String(button.dataset.leftTab === name));
-  for (const pane of panel.querySelectorAll('.caption-left-pane')) pane.hidden = pane.id !== `captionLeftPane_${name}`;
-}
+function onWorkbenchResize() { fitPreviewFrame(); if (ui.preview) ui.preview.renderNow(); W.paintBoxEditor(); W.paintToolbar(); }
 function drawCaptions(ctx, time, info) {
   return J.drawCaptionOverlay(ctx, ui.store.project, time, Object.assign({}, info, { reducedMotion: !!ui.store.project.settings.reducedMotionPreview }));
 }
@@ -166,11 +150,9 @@ function bind() {
   $('captionNew').addEventListener('click', () => { if (ui.preview) ui.preview.disconnect(); if (ui.media) ui.media.close(); ui.media = null; ui.preview = null; ui.selectedId = null; W.clearWaveform(); setProject(emptyProject()); $('captionProjectName').textContent = '無題の字幕プロジェクト'; $('captionRelinkNotice').hidden = true; $('captionPreviewEmpty').hidden = false; $('captionMediaName').textContent = '動画未選択'; $('captionPlay').disabled = true; $('captionScrub').disabled = true; status('新しいプロジェクトを作成しました。'); });
   $('captionHelp').addEventListener('click', () => { const dialog = $('captionHelpDlg'); if (dialog.showModal) { if (!dialog.open) dialog.showModal(); } else dialog.setAttribute('open', ''); });
   window.addEventListener('resize', onWorkbenchResize);
-  if (typeof ResizeObserver === 'function') { const observer = new ResizeObserver(onWorkbenchResize); observer.observe(document.querySelector('.caption-stage')); }   // strip height changes with the track count
-  document.querySelectorAll('.caption-style-tabs [data-style-tab]').forEach(button => button.addEventListener('click', () => selectStyleTab(button.dataset.styleTab)));
-  document.querySelectorAll('.caption-left-tabs [data-left-tab]').forEach(button => button.addEventListener('click', () => selectLeftTab(button.dataset.leftTab)));
+  if (typeof ResizeObserver === 'function') { const observer = new ResizeObserver(onWorkbenchResize); observer.observe($('captionStageView')); }   // strip height changes with the track count
   $('app').addEventListener('jizura:product-mode', event => {
-    if (event.detail.mode === 'video-captions') fitVideoColumn();
+    if (event.detail.mode === 'video-captions') fitPreviewFrame();
     if (!sourceVideo()) return;
     if (event.detail.mode !== 'video-captions') sourceVideo().pause();
     else if (ui.preview) ui.preview.renderNow();
@@ -186,7 +168,7 @@ J.CaptionStore.prototype.setTechnique = function (command) {
   }
 };
 
-Object.assign(W, { afterProject, beforeProject, drawCaptions, emptyProject, exportCaptions, fitVideoColumn, importTranscript, importVideo, onWorkbenchResize, openProject, projectId, renderActions, selectLeftTab, selectStyleTab, setProject });
+Object.assign(W, { afterProject, beforeProject, drawCaptions, emptyProject, exportCaptions, fitPreviewFrame, importTranscript, importVideo, onWorkbenchResize, openProject, projectId, renderActions, setProject });
 on('project', beforeProject, -10); on('project', afterProject, 10);
 
 /* The single-file build places scripts after the complete body. Initializing

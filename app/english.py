@@ -3,6 +3,22 @@
 import re
 
 BODY = {
+    # Shell (U1): top bar, rail, drawer
+    'aria-label="元に戻す・やり直す"': 'aria-label="Undo and redo"',
+    'aria-label="メニュー" title="メニュー">⋯': 'aria-label="Menu" title="Menu">⋯',
+    '<div id="captionMenu" class="caption-main-menu" hidden aria-label="メニュー">': '<div id="captionMenu" class="caption-main-menu" hidden aria-label="Menu">',
+    '<nav id="captionRail" class="caption-rail" aria-label="パネル">': '<nav id="captionRail" class="caption-rail" aria-label="Panels">',
+    '<span class="caption-rail-label">字幕</span>': '<span class="caption-rail-label">Captions</span>',
+    '<span class="caption-rail-label">文字</span>': '<span class="caption-rail-label">Text</span>',
+    '<span class="caption-rail-label">エフェクト</span>': '<span class="caption-rail-label">Effects</span>',
+    '<span class="caption-rail-label">トラック</span>': '<span class="caption-rail-label">Tracks</span>',
+    '<span class="caption-rail-label">位置</span>': '<span class="caption-rail-label">Box</span>',
+    '<span class="caption-rail-label">動画</span>': '<span class="caption-rail-label">Video</span>',
+    '<span class="caption-rail-label">出力</span>': '<span class="caption-rail-label">Export</span>',
+    '<h2 id="captionDrawerTitle">字幕</h2>': '<h2 id="captionDrawerTitle">Captions</h2>',
+    'aria-label="パネルを閉じる" title="パネルを閉じる"': 'aria-label="Close panel" title="Close panel"',
+    'title="字幕編集の流れを見る">使い方</button>': 'title="How caption editing works">How to use</button>',
+    '<div class="caption-menu-lang"><span>言語</span>': '<div class="caption-menu-lang"><span>Language</span>',
     'title="縞模様の部分はトリムで削除され、書き出されません"': 'title="Striped parts are trimmed away and not exported"',
     # Caption tab
     '単語を押すと修正・強調できます。✂ で字幕を分けます。</p>': 'Press a word to fix or highlight it. ✂ splits the caption there.</p>',
@@ -522,6 +538,9 @@ UI = {
 }
 
 CAPTION_UI = {
+    # Shell (U1): drawer titles
+    "captions: { title: '字幕'": "captions: { title: 'Captions'", "text: { title: '文字'": "text: { title: 'Text'", "effects: { title: 'エフェクト'": "effects: { title: 'Effects'",
+    "tracks: { title: 'トラック'": "tracks: { title: 'Tracks'", "box: { title: '位置ボックス'": "box: { title: 'Placement box'", "video: { title: '動画'": "video: { title: 'Video'", "export: { title: '書き出し'": "export: { title: 'Export'",
     'スタイルを保存しました。': 'Style saved.', 'スタイルを読み込みました。元に戻すで戻せます。': 'Style loaded. Undo brings the old one back.',
     # Caption tab
     ": '選んだ単語を移動';": ": 'Move picked words';",
@@ -991,7 +1010,7 @@ def localize_body(source):
 def localize_js(source, filename):
     if filename.endswith('12_ui.js'):
         return replace_copy(source, UI)
-    if filename.endswith('12c_caption_workbench.js') or re.search(r'12b[o-w]_caption_', filename):
+    if filename.endswith('12c_caption_workbench.js') or re.search(r'12b[o-x]_caption_', filename):
         return replace_copy(source, CAPTION_UI)
     if filename.endswith('12a_video_edit_ui.js'):
         return replace_copy(source, VIDEO_UI)

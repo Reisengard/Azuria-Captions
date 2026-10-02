@@ -99,6 +99,7 @@ const IN_PAGE = `(() => {
     unlockTiming(id) { ui.store.execute({ type: 'set-field-lock', segmentId: id, field: 'timing', locked: false }); J.captionWb.emit('project'); ui.store.undoStack.length = 0; return true; },
     lockBadge(id) { const b = document.querySelector('[data-segment-id="' + id + '"] .caption-lock-badge'); return !!b && !b.hidden; },
     status() { return $('captionStatus').textContent; },
+    shell() { const bench = document.querySelector('.caption-workbench'), d = $('captionDrawer'); return { drawer: bench.dataset.drawer, open: !d.hidden, title: $('captionDrawerTitle').textContent, panes: [...document.querySelectorAll('.caption-left-pane, .caption-style-pane')].filter(p => !p.hidden).map(p => p.id).sort().join(','), pref: localStorage.getItem('jizura.captionShell'), menu: !$('captionMenu').hidden, expanded: document.getElementById('captionMenuButton').getAttribute('aria-expanded'), frame: (() => { const f = $('captionPreviewFrame').getBoundingClientRect(), v = $('captionStageView').getBoundingClientRect(); return { w: f.width, h: f.height, vw: v.width, vh: v.height }; })() }; },
     order() { return ui.store.project.tracks.map(item => item.id).join(','); },
     names() { return ui.store.project.tracks.map(item => item.name).join(','); },
     menuItems() { return [...document.querySelectorAll('.caption-menu [role=menuitem]')].map(b => b.textContent + (b.disabled ? '(off)' : '')); },
@@ -476,6 +477,26 @@ const IN_PAGE = `(() => {
     step('strip: double-click collapses it to the transport line', (await t('rect', '#captionTimeline')).height === 0 && (await t('rect', '#captionStrip')).height < stripH, JSON.stringify(await t('rect', '#captionTimeline')));
     const g3 = await t('rect', '#captionStripGrip'); await mouse('mousePressed', gx, (g3.top + g3.bottom) / 2, { clickCount: 2 }); await mouse('mouseReleased', gx, (g3.top + g3.bottom) / 2, { clickCount: 2 }); await sleep(150);
     step('strip: double-click expands it again, keeping its height', (await t('rect', '#captionTimeline')).height > 50 && Math.abs((await t('rect', '#captionStrip')).height - grown) < 2);
+
+    // U1: shell — icon rail, one drawer at a time, ⋯ menu, preview takes the freed width
+    const clickSel = async selector => { const r = await t('rect', selector); const x = (r.left + r.right) / 2, y = (r.top + r.bottom) / 2; await mouse('mousePressed', x, y, { clickCount: 1 }); await mouse('mouseReleased', x, y, { clickCount: 1 }); await sleep(120); };
+    let shell = await t('shell'); const drawerWidth = (await t('rect', '#captionDrawer')).width;
+    step('shell: the Captions drawer is open by default, alone', shell.open && shell.drawer === 'captions' && shell.panes === 'captionLeftPane_transcript' && drawerWidth > 300, JSON.stringify(shell));
+    await clickSel('#captionRail_text'); shell = await t('shell');
+    step('shell: the Text rail item opens the Style and Word styles panes together', shell.drawer === 'text' && shell.panes === 'captionLeftPane_roles,captionStylePane_style' && shell.pref === '{"drawer":"text"}', JSON.stringify(shell));
+    await clickSel('#captionRail_effects'); shell = await t('shell');
+    step('shell: another rail item replaces the drawer content', shell.drawer === 'effects' && shell.panes === 'captionStylePane_effects', JSON.stringify(shell));
+    const frameOpen = shell.frame; await clickSel('#captionRail_effects'); shell = await t('shell');
+    step('shell: a second click closes the drawer and the preview grows', !shell.open && shell.pref === '{"drawer":""}' && (await t('rect', '#captionDrawer')).width === 0 && shell.frame.vw > frameOpen.vw + 250, JSON.stringify({ before: frameOpen, after: shell.frame }));
+    await clickSel('#captionRail_video'); shell = await t('shell');
+    step('shell: the Video rail item shows the video settings', shell.drawer === 'video' && shell.panes === 'captionStylePane_video');
+    await clickSel('#captionMenuButton'); shell = await t('shell');
+    step('shell: the ⋯ button opens the menu', shell.menu && shell.expanded === 'true');
+    await key('Escape', 'Escape', { vk: 27 }); shell = await t('shell');
+    step('shell: Esc closes the menu and keeps the drawer', !shell.menu && shell.expanded === 'false' && shell.drawer === 'video');
+    await clickSel('#captionMenuButton'); await clickSel('#captionDrawerTitle'); shell = await t('shell');
+    step('shell: a click outside closes the menu', !shell.menu);
+    await clickSel('#captionRail_captions');
 
     const problems = log.filter(line => !/favicon|Failed to load resource/.test(line));
     step('no page errors', problems.length === 0, problems.join(' | '));

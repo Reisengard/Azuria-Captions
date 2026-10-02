@@ -86,7 +86,7 @@ const TYPING = /^(INPUT|TEXTAREA|SELECT)$/;
 function ignoresKey(event) {
   const target = event.target || {}, tag = target.tagName || '';
   if (TYPING.test(tag) && target.type !== 'checkbox') return true;       // fields and sliders keep their keys
-  if (target.isContentEditable || (target.closest && target.closest('[role=menu], .caption-popover'))) return true;   // open menus and popovers keep their own keys
+  if (target.isContentEditable || (target.closest && target.closest('[role=menu], .caption-popover, .caption-main-menu'))) return true;   // open menus and popovers keep their own keys
   return !!document.querySelector && !!document.querySelector('dialog[open]');
 }
 function onKey(event) {

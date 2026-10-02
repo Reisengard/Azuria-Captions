@@ -26,6 +26,7 @@ function apply(mode, options) {
   if (!root) return DEFAULT_MODE;
   current = validMode(mode);
   root.dataset.productMode = current;
+  if (document.documentElement) document.documentElement.dataset.productMode = current;   // the Azuria Sub palette is scoped to this attribute (dialogs sit outside #app)
 
   for (const candidate of ALL_MODES) {
     const button = root.querySelector(`[data-product-mode="${candidate}"]`);

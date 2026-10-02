@@ -18,13 +18,24 @@ assert.match(source, /J\.planCaptions/, 'workbench does not create frozen visual
 assert.match(fs.readFileSync(path.join(root, 'src', '11c_caption_compositor.js'), 'utf8'), /J\.captionTokenStatesAt/, 'compositor does not follow active-word timing');
 assert.match(body, /id="captionExport"[^>]*disabled/, 'unfinished export must not appear functional');
 assert.match(source, /\/\* The single-file build[\s\S]*\r?\nbind\(\);[\s\S]*\r?\nJ\.captionWorkbench = ui;/, 'caption workbench waits too late to bind in the single-file build');
-/* UI shell: transcript | style (wide) | video | video settings, timeline strip along the bottom */
-const columns = ['caption-transcript', 'caption-stage', 'caption-inspector', 'caption-timeline-strip'].map(name => body.indexOf(`class="${name}`) >= 0 ? body.indexOf(`class="${name}`) : body.indexOf(`caption-panel ${name}`));
-assert.ok(columns.every(index => index > 0) && columns.every((index, i) => i === 0 || index > columns[i - 1]), 'workbench areas are not in source order transcript / video / style / timeline');
+/* UI shell (U1): slim top bar | icon rail + one drawer | preview stage, timeline strip along the bottom */
+const order = ['class="caption-rail"', 'id="captionDrawer"', 'class="caption-stage"', 'class="caption-timeline-strip"'].map(marker => body.indexOf(marker));
+assert.ok(order.every(index => index > 0) && order.every((index, i) => i === 0 || index > order[i - 1]), 'workbench areas are not in source order rail / drawer / preview / timeline');
 const css = fs.readFileSync(path.join(root, 'app', 'style.css'), 'utf8');
-assert.match(css, /\.caption-left \{ grid-column: 1;[\s\S]*\.caption-inspector \{ grid-column: 2;[\s\S]*\.caption-stage \{ grid-column: 3;/, 'desktop order must be transcript | style | video');
-assert.ok(body.indexOf('id="captionVideoEditor"') > body.indexOf('id="captionStylePane_video"') && body.indexOf('id="captionVideoEditor"') < body.indexOf('id="captionStylePane_export"'), 'video editor is not in the Video settings tab of the Style panel');
-assert.ok(['roles'].every(name => body.indexOf(`id="captionLeftPane_${name}"`) > 0 && body.indexOf(`id="captionLeftPane_${name}"`) < body.indexOf('class="caption-stage"')), 'Text roles is not a tab of the transcript column');
+assert.match(css, /\.caption-rail \{ grid-column: 1;[\s\S]*\.caption-drawer \{ grid-column: 2;[\s\S]*\.caption-stage \{ grid-column: 3;/, 'desktop order must be rail | drawer | preview');
+assert.match(css, /\.caption-workbench\[data-drawer=""\] \{ --caption-drawer-w: 0px; \}/, 'a closed drawer must give its width to the preview');
+assert.ok(body.indexOf('id="captionVideoEditor"') > body.indexOf('id="captionStylePane_video"') && body.indexOf('id="captionVideoEditor"') < body.indexOf('id="captionStylePane_export"'), 'video editor is not in the Video pane');
+for (const name of ['captions', 'text', 'effects', 'tracks', 'box', 'video', 'export']) assert.match(body, new RegExp(`id="captionRail_${name}"[^>]*data-drawer="${name}"`), `the rail has no ${name} item`);
+assert.ok(['roles'].every(name => body.indexOf(`id="captionLeftPane_${name}"`) > body.indexOf('id="captionDrawer"') && body.indexOf(`id="captionLeftPane_${name}"`) < body.indexOf('class="caption-stage"')), 'Text roles is not a pane of the drawer');
+/* slim top bar: undo / redo, mode, menu, export; everything else lives in the ⋯ menu */
+const bar = body.slice(body.indexOf('<header class="bar caption-bar">'), body.indexOf('</header>'));
+const menu = bar.slice(bar.indexOf('id="captionMenu"'));
+for (const id of ['captionUndo', 'captionRedo', 'captionModeEasy', 'captionModePro', 'captionMenuButton', 'captionExport']) assert.match(bar, new RegExp(`id="${id}"`), `top bar lacks #${id}`);
+for (const id of ['captionNew', 'captionProjectFile', 'captionSave', 'captionStyleSave', 'captionStyleFile', 'captionHelp', 'captionTerms']) assert.ok(menu.includes(`id="${id}"`), `#${id} is not in the ⋯ menu`);
+assert.match(bar, /<div class="brand"><span class="word">Azuria<b>Sub<\/b><\/span>/, 'the brand is Azuria Sub');
+assert.ok(body.slice(body.indexOf('id="captionStylePane_effects"')).indexOf('id="captionVariation"') < body.slice(body.indexOf('id="captionStylePane_effects"')).indexOf('id="captionLookPanel"'), 'Randomize everything belongs at the top of the Effects pane');
+assert.match(css, /html\[data-product-mode=video-captions\] \{[^}]*#b39d68[^}]*\}/i, 'the captions product must use the Azuria Sub gold');
+for (const color of ['#121827', '#414652', '#364c6b', '#b39d68']) assert.ok(css.toLowerCase().includes(color), `palette colour ${color} is missing`);
 /* Word styles (roles): a track picker, a compositor-drawn sample, a reset per value; the spoken word's effect lives in Effects only */
 const rolesPane = body.slice(body.indexOf('id="captionLeftPane_roles"'), body.indexOf('id="captionEditHolder"'));
 for (const id of ['captionRoleTrack', 'captionRoleSample', 'captionRoleEmphasisAmount', 'captionRoleEmphasisHint', 'captionRoleActiveOverride', 'captionRoleActiveOverrideClear', 'captionRoleActiveOpen', 'captionRolesReset']) {
@@ -34,8 +45,14 @@ assert.doesNotMatch(body, /id="captionRoleActiveTreatment"/, 'the spoken-word ef
 for (const id of ['captionRoleBaseFont', 'captionRoleBaseColor', 'captionRoleBaseFontSize', 'captionRoleActiveColor', 'captionRoleEmphasisColor', 'captionRoleEmphasisFont', 'captionRoleEmphasisScale', 'captionRoleEmphasisAmount']) {
   assert.match(rolesPane, new RegExp(`data-role-clear="${id}"`), `#${id} has no reset button`);
 }
+const shell = fs.readFileSync(path.join(root, 'src', '12bx_caption_shell.js'), 'utf8');
+assert.match(shell, /const DRAWER_OF_STYLE_TAB = \{ style: 'text', effects: 'effects', tracks: 'tracks', box: 'box', video: 'video', export: 'export' \}/, 'old Style tabs do not route to drawers');
+assert.match(shell, /DRAWER_OF_LEFT_TAB = \{ transcript: 'captions', roles: 'text' \}/, 'old left tabs do not route to drawers');
+assert.match(shell, /localStorage\.setItem\(PREF_KEY/, 'the open drawer is not kept as a view preference');
+assert.doesNotMatch(shell, /store\.|runCommand/, 'the shell must not touch the project');
+assert.match(shell, /selectStyleTab, selectLeftTab/, 'the shell must provide W.selectStyleTab for the Effects shortcuts');
 assert.match(source, /J\.paintCaptionRoleSample\(/, 'the Word styles sample is not drawn by the caption compositor');
 assert.ok(body.indexOf('id="captionTimeline"') > body.indexOf('caption-timeline-strip') && body.indexOf('id="captionPlay"') > body.indexOf('caption-timeline-strip'), 'transport and timeline are not in the bottom strip');
-assert.match(source, /function fitVideoColumn[\s\S]*J\.videoOutputSize[\s\S]*--caption-video-w/, 'video column width does not follow the output format');
+assert.match(source, /function fitPreviewFrame[\s\S]*J\.videoOutputSize[\s\S]*frame\.style\.width/, 'the preview frame does not follow the output format');
 assert.match(source, /const boxFrame = \(\) => \{[\s\S]*J\.videoOutputSize/, 'box editor frame must be the output frame, not the source video');
 console.log('Gate 5.2 caption workbench tests passed.');
