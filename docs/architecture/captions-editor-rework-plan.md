@@ -370,7 +370,9 @@ One step at a time; each leaves the app working and tests green; commit per step
 - [x] **C5 — Tap sync for words** (one caption, looped).
   - "単語を同期 / Sync words" in the caption popover (under the word chips) starts a pass on the selected caption: it loops (caption ± lead) at 0.75×, each Space / Tap marks the next word's start (hold = end on release, reaction offset as in C4), ghosts show the new word times, a loop wrap starts the taps over. Enter commits one `retime-tokens` (one undo; words become `word` timing), Esc discards. Locked timing refuses early; the pass ends if the caption's words change. Pure maths: `TL.wordSyncTimes` (no overlap, inside the caption, minimum 0.02 s); session code shares `12bs_caption_sync.js` with C4.
   - Tests: `caption_tap_sync_test.js` (word maths + wiring), `caption_ui_chrome_check.js` 116 checks.
-- [ ] **C6 — Paste a script** (decision 4) and the first-run empty state.
+- [x] **C6 — Paste a script** (decision 4) and the first-run empty state.
+  - The "type a caption with seconds" form is gone. The transcript tab has **台本を貼り付け** (`#captionScriptText`, `#captionScriptAdd`, track picker): one caption per non-empty line, spread evenly and touching from the playhead (or the start of the range marked on the ruler) to the end of that range / the video, never past the next caption on the track. One `batch` of `create-text-block` = one undo step; the first caption is selected and the toast points at Sync. Refused with a message when the playhead is inside a caption, a line would be under 0.1 s, or there are over 200 lines. Pure maths in `12bp` (`scriptLines`, `scriptSpan`, `scriptRanges`). The details box opens by itself for a loaded video with no captions, and the empty text now shows the two steps (1 choose video → 2 add captions).
+  - Tests: `caption_tap_sync_test.js` (script maths + wiring), `caption_ui_chrome_check.js` 119 checks (paste, touching ranges, one undo).
 
 **Phase D — interface**
 - [ ] **U1 — Shell**: slim top bar + ⋯ menu, icon rail + single drawer, preview-first grid, view preferences. Panels move into drawers unchanged.

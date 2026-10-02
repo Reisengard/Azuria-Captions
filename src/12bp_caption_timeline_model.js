@@ -234,6 +234,25 @@ function createRange(input) {
   start = round6(start); end = round6(end);
   return end - start >= MIN_SEGMENT - EPS ? { start, end, valid: true, code: null, snappedTo } : { start, end, valid: false, code: 'SEGMENT_TIMING_INVALID', snappedTo };
 }
+/* ---- Paste a script (C6): one caption per non-empty line, spread evenly over a stretch of one track ---- */
+const SCRIPT_MAX_LINES = 200;
+function scriptLines(text) { return String(text == null ? '' : text).split(/\r\n|\r|\n/).map(line => line.trim()).filter(Boolean); }
+/* Where the script goes: from `time` (the playhead, or the start of a marked range) to the end of the marked range / the video, never past the next caption on the track.
+   -> { start, end, trackId } or null when `time` is inside a caption. */
+function scriptSpan(layout, trackId, time, region) {
+  const gap = freeGap(layout, trackId, region ? region.start : time); if (!gap) return null;
+  const start = Math.max(gap.start, Math.min(region ? region.start : time, layout.duration)), end = Math.min(region ? region.end : layout.duration, gap.end);
+  return end - start > EPS ? { start: round6(start), end: round6(end), trackId } : null;
+}
+/* Even windows, one per line, touching each other. -> { ok, ranges: [{ text, start, end }] } or { ok: false, code: 'SCRIPT_EMPTY' | 'SCRIPT_TOO_LONG' | 'SCRIPT_NO_ROOM' }. */
+function scriptRanges(lines, span) {
+  if (!lines.length) return { ok: false, code: 'SCRIPT_EMPTY' };
+  if (lines.length > SCRIPT_MAX_LINES) return { ok: false, code: 'SCRIPT_TOO_LONG' };
+  const slot = span ? (span.end - span.start) / lines.length : 0;
+  if (!span || slot < MIN_SEGMENT - EPS) return { ok: false, code: 'SCRIPT_NO_ROOM', slot };
+  return { ok: true, ranges: lines.map((text, index) => ({ text, start: round6(span.start + slot * index), end: round6(index === lines.length - 1 ? span.end : span.start + slot * (index + 1)) })) };
+}
+
 /* Ids whose rectangle meets the marquee box. rects: [{ id, left, top, right, bottom }]. */
 function marqueeHits(rects, box) {
   const left = Math.min(box.left, box.right), right = Math.max(box.left, box.right), top = Math.min(box.top, box.bottom), bottom = Math.max(box.top, box.bottom);
@@ -357,5 +376,5 @@ function wordSyncTimes(tokens, taps, options) {
   return out;
 }
 
-J.captionTimeline = { MIN_WORD, wordSyncTimes, TAP_HOLD, REACTION_MAX, REACTION_DEFAULT, clampReaction, tapSyncScope, tapSyncWindows, WAVE_RATE, WAVE_MAX_SECONDS, waveformAllowed, waveformPeaks, waveformColumns, STRIP_MIN, clampStripHeight, NEW_LENGTH, createRange, freeGap, groupMoveOrder, marqueeHits, newBlockRange, resolveGroupMove, adjacentTrackId, reorderIndex, NUDGE, SNAP_PX, MIN_SEGMENT, nearestSnap, nudge, resolveDrag, snapTargets, trackNeighbors, FRAME, LOOP_LEAD, SPEEDS, adjacentSegment, keyAction, loopRegion, loopSeek, markRegion, nextSpeed, stepTime, MAX_PPS, TICK_MIN_PX, blockRect, clampPps, clampScroll, contentWidth, fitPps, followScroll, formatTick, overlapsRange, rulerTicks, tickStep, timeToX, visibleRange, wordLabelsVisible, wordTicksVisible, xToTime, zoomAround };
+J.captionTimeline = { MIN_WORD, wordSyncTimes, TAP_HOLD, REACTION_MAX, REACTION_DEFAULT, clampReaction, tapSyncScope, tapSyncWindows, WAVE_RATE, WAVE_MAX_SECONDS, waveformAllowed, waveformPeaks, waveformColumns, STRIP_MIN, clampStripHeight, NEW_LENGTH, createRange, freeGap, groupMoveOrder, marqueeHits, newBlockRange, SCRIPT_MAX_LINES, scriptLines, scriptSpan, scriptRanges, resolveGroupMove, adjacentTrackId, reorderIndex, NUDGE, SNAP_PX, MIN_SEGMENT, nearestSnap, nudge, resolveDrag, snapTargets, trackNeighbors, FRAME, LOOP_LEAD, SPEEDS, adjacentSegment, keyAction, loopRegion, loopSeek, markRegion, nextSpeed, stepTime, MAX_PPS, TICK_MIN_PX, blockRect, clampPps, clampScroll, contentWidth, fitPps, followScroll, formatTick, overlapsRange, rulerTicks, tickStep, timeToX, visibleRange, wordLabelsVisible, wordTicksVisible, xToTime, zoomAround };
 })();

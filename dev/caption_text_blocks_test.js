@@ -208,7 +208,7 @@ assert.equal(empty.project.segments.length, 1, 'blocks can be typed before a vid
 
 /* ---- UI wiring (structural) ---- */
 const body = fs.readFileSync(path.join(root, 'app', 'body.html'), 'utf8'), ui = require('./caption_ui_source').workbenchSource(root);
-for (const id of ['captionManualTrack', 'captionEditText', 'captionBlockEnter', 'captionBlockHold', 'captionBlockExit']) assert.match(body, new RegExp(`id="${id}"`), `text block UI is missing #${id}`);
+for (const id of ['captionManualTrack', 'captionScriptText', 'captionScriptAdd', 'captionEditText', 'captionBlockEnter', 'captionBlockHold', 'captionBlockExit']) assert.match(body, new RegExp(`id="${id}"`), `text block UI is missing #${id}`);
 for (const command of ['create-text-block', 'edit-text-block']) assert.match(ui, new RegExp(`type: '${command}'`), `the workbench does not issue ${command}`);
 assert.match(ui, /function applyTiming\(\)[^]*?type: 'trim-segment'/, 'numeric timing goes through trim-segment, which re-spreads a typed block in the store');
 assert.match(ui, /W\.deleteSelected\(\)/, 'deleting goes through the toolbar menu (toast with Undo), not a confirm');

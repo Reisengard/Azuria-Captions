@@ -185,6 +185,33 @@ function renderManualTrack() {
   for (const track of tracks) { const option = document.createElement('option'); option.value = track.id; option.textContent = track.name || track.id; select.appendChild(option); }
   select.value = tracks.some(track => track.id === kept) ? kept : (activeTrack() || tracks[0] || {}).id || '';
   $('captionManualTrackField').hidden = tracks.length < 2;
+  const entry = $('captionScriptEntry'), empty = !ui.store.project.segments.length && !!ui.store.project.media;
+  if (empty !== ui.scriptEmpty) { ui.scriptEmpty = empty; if (empty && sourceVideo()) entry.open = true; }
+  renderScriptCount();
+}
+/* ---- Paste a script (C6): one caption per line, spread evenly from the playhead (or over the range marked on the ruler), then tap-synced ---- */
+const SCRIPT_MESSAGES = { SCRIPT_EMPTY: '台本のテキストを貼り付けてください。', SCRIPT_TOO_LONG: `台本は ${J.captionTimeline.SCRIPT_MAX_LINES} 行までです。`,
+  SCRIPT_NO_ROOM: 'ここには台本を入れる空きがありません。再生位置を動かすか、ルーラーで範囲を指定してください（1行あたり 0.1 秒以上必要です）。' };
+function renderScriptCount() {
+  const count = J.captionTimeline.scriptLines($('captionScriptText').value).length;
+  $('captionScriptCount').textContent = count ? `${count} 行 → ${count} 件の字幕` : '';
+  $('captionScriptAdd').disabled = !count;
+}
+function pasteScript() {
+  const TL = J.captionTimeline, video = sourceVideo(), lines = TL.scriptLines($('captionScriptText').value);
+  if (!video) { status('動画を読み込んでください。', true); return; }
+  const trackId = $('captionManualTrack').value || (activeTrack() || {}).id || J.CAPTION_PRIMARY_TRACK_ID, marked = ui.transport.marked;
+  const plan = TL.scriptRanges(lines, TL.scriptSpan(W.dragLayout(), trackId, video.currentTime, marked));
+  if (!plan.ok) { status(SCRIPT_MESSAGES[plan.code], true); return; }
+  const used = new Set(ui.store.project.segments.map(segment => segment.id)); let counter = 1;
+  const commands = plan.ranges.map(range => {
+    let id; do { id = `segment_${String(counter++).padStart(6, '0')}`; } while (used.has(id)); used.add(id);
+    return { type: 'create-text-block', segmentId: id, text: range.text, start: range.start, end: range.end, trackId };
+  });
+  if (!runCommand({ type: 'batch', commands, label: 'paste script' }, commands[0].segmentId)) return;
+  $('captionScriptText').value = ''; renderScriptCount();
+  selectSegment(commands[0].segmentId, true); if (ui.preview) ui.preview.renderNow();
+  toastUndo(`${commands.length} 件の字幕を追加しました。「同期」で話すタイミングに合わせます。`);
 }
 function applyTiming() {
   const segment = selectedSegment(); if (!segment) return;
@@ -277,17 +304,8 @@ function init() {
   window.addEventListener('resize', paintToolbar);
   on('project', () => { P.dismissToast(); paintToolbar(); }, 1); on('selection', paintToolbar);
   $('captionBoxEditor').addEventListener('dblclick', event => { if (!event.target.closest('[data-box-handle]')) editText(); });
-  $('captionManualAdd').addEventListener('click', () => {
-    const startText = $('captionManualStart').value, endText = $('captionManualEnd').value;
-    const id = ui.store.nextSegmentId();
-    if (runCommand({ type: 'create-text-block', text: $('captionManualText').value, trackId: $('captionManualTrack').value || undefined,
-      start: startText === '' ? NaN : Number(startText), end: endText === '' ? NaN : Number(endText) }, id, id)) {
-      selectSegment(id, true);   // seek there too, or the playhead would select the caption under it again
-      $('captionManualText').value = '';
-      $('captionManualStart').value = endText;
-      $('captionManualEnd').value = Number(endText) + 3;
-    }
-  });
+  $('captionScriptAdd').addEventListener('click', pasteScript);
+  $('captionScriptText').addEventListener('input', renderScriptCount);
   $('captionLock').addEventListener('change', event => { const segment = selectedSegment(); if (!segment) return; runCommand({ type: 'set-segment-locks', segmentId: segment.id, locked: event.target.checked }, segment.id); });
   $('captionReroll').addEventListener('click', () => { const segment = selectedSegment(); if (!segment) return; ui.variation += 1; if (runCommand({ type: 'randomize-caption-look', segmentId: segment.id, variation: ui.variation }, segment.id)) status('選択した字幕をランダムに決めました。'); });
   $('captionDisableAnimation').addEventListener('change', event => { const segment = selectedSegment(); if (!segment) return;

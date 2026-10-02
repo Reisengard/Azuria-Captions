@@ -64,4 +64,19 @@ const sync = src('12bs_caption_sync.js'), transport = src('12br_caption_transpor
 assert.match(sync, /type: 'batch'/); assert.match(sync, /label: 'tap sync'/); assert.match(sync, /tapSyncWindows/); assert.match(sync, /localStorage/);
 assert.match(transport, /W\.syncKey/); assert.match(transport, /!tr\.syncing/);
 assert.match(body, /id="captionSync"/); assert.match(body, /id="captionSyncWords"/); assert.match(sync, /type: 'retime-tokens'/); assert.match(sync, /wordSyncTimes/);
+// C6 paste a script: lines, span, even windows
+assert.deepEqual(TL.scriptLines('  one '+String.fromCharCode(10,10)+' two'+String.fromCharCode(13,10)+'   '+String.fromCharCode(10)+'three'+String.fromCharCode(13)+'four'), ['one', 'two', 'three', 'four']); assert.deepEqual(TL.scriptLines(''), []); assert.deepEqual(TL.scriptLines(null), []);
+const layout = { duration: 20, segments: [{ id: 'a', trackId: 't', start: 12, end: 14 }, { id: 'b', trackId: 't', start: 2, end: 3 }, { id: 'o', trackId: 'u', start: 5, end: 6 }] };
+assert.deepEqual(TL.scriptSpan(layout, 't', 4, null), { start: 4, end: 12, trackId: 't' });          // up to the next caption on that track
+assert.deepEqual(TL.scriptSpan(layout, 'u', 4, null), { start: 4, end: 5, trackId: 'u' });
+assert.deepEqual(TL.scriptSpan(layout, 't', 15, null), { start: 15, end: 20, trackId: 't' });
+assert.deepEqual(TL.scriptSpan(layout, 't', 15, { start: 16, end: 18 }), { start: 16, end: 18, trackId: 't' });   // a marked range wins
+assert.equal(TL.scriptSpan(layout, 't', 2.5, null), null);                                           // inside a caption
+let script = TL.scriptRanges(['a', 'b', 'c', 'd'], { start: 4, end: 12 });
+assert.ok(script.ok); assert.deepEqual(script.ranges.map(item => [item.start, item.end]), [[4, 6], [6, 8], [8, 10], [10, 12]]);
+script = TL.scriptRanges(['a', 'b', 'c'], { start: 0, end: 1 }); assert.ok(script.ok); near(script.ranges[2].end, 1); near(script.ranges[0].start, 0);
+assert.equal(TL.scriptRanges(['a', 'b'], { start: 0, end: .15 }).code, 'SCRIPT_NO_ROOM'); assert.equal(TL.scriptRanges(['a'], null).code, 'SCRIPT_NO_ROOM');
+assert.equal(TL.scriptRanges([], { start: 0, end: 5 }).code, 'SCRIPT_EMPTY'); assert.equal(TL.scriptRanges(new Array(TL.SCRIPT_MAX_LINES + 1).fill('x'), { start: 0, end: 500 }).code, 'SCRIPT_TOO_LONG');
+const edit = src('12bt_caption_edit.js');
+assert.match(edit, /label: 'paste script'/); assert.match(edit, /pasteScript/); assert.match(body, /id="captionScriptAdd"/); assert.match(body, /id="captionScriptText"/);
 console.log('Caption tap sync tests passed.');

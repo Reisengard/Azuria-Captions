@@ -53,18 +53,14 @@
           <label class="file">動画を選択<input id="captionVideoFile" type="file" accept="video/*,.mp4,.webm,.mov,.m4v"></label>
           <label class="file">文字起こしを読込<input id="captionTranscriptFile" type="file" accept=".json,.srt,.vtt,application/json,text/vtt"></label>
         </div>
-        <details class="caption-manual-entry">
-          <summary>字幕を手入力</summary>
-          <label for="captionManualText">字幕テキスト</label>
-          <textarea id="captionManualText" rows="3"></textarea>
-          <div class="caption-manual-times">
-            <label>開始（秒）<input id="captionManualStart" type="number" min="0" step="0.01" value="0"></label>
-            <label>終了（秒）<input id="captionManualEnd" type="number" min="0" step="0.01" value="3"></label>
-          </div>
+        <details id="captionScriptEntry" class="caption-manual-entry">
+          <summary>台本を貼り付け</summary>
+          <label for="captionScriptText">台本（1行 = 1つの字幕）</label>
+          <textarea id="captionScriptText" rows="6"></textarea>
           <label id="captionManualTrackField" class="caption-manual-track">追加先のトラック<select id="captionManualTrack"></select></label>
-          <button id="captionManualAdd" type="button">字幕を追加</button>
-          <p>単語タイミングは指定した範囲内で推定されます。</p>
-          <p>手入力の字幕はテキストブロックになります。自動の区切り直しで分割されず、別のトラックなら話している字幕と同時に表示できます。</p>
+          <div class="caption-script-actions"><button id="captionScriptAdd" type="button" disabled>字幕にする</button><span id="captionScriptCount" class="muted" aria-live="polite"></span></div>
+          <p>再生位置からルーラーで指定した範囲の終わり（なければ動画の終わり）まで、同じ長さで並べます。「同期」で話すタイミングに合わせてください。</p>
+          <p>字幕はテキストブロックになります。自動の区切り直しで分割されず、別のトラックなら話している字幕と同時に表示できます。</p>
         </details>
         <div id="captionMediaName" class="caption-source-name muted">動画未選択</div>
         <div id="captionRelinkNotice" class="caption-relink-notice" hidden>
@@ -73,7 +69,7 @@
           <label class="file">動画を再リンク<input id="captionRelinkFile" type="file" accept="video/*,.mp4,.webm,.mov,.m4v"></label>
         </div>
         <ol id="captionSegmentList" class="caption-segment-list" aria-label="字幕セグメント"></ol>
-        <div id="captionTranscriptEmpty" class="caption-empty">動画と単語タイムスタンプ JSON、SRT、または VTT を読み込むと字幕が表示されます。</div>
+        <div id="captionTranscriptEmpty" class="caption-empty">① 動画を選ぶ → ② 字幕を追加（単語タイムスタンプ JSON・SRT・VTT を読み込む／台本を貼り付ける／タイムラインで入力）</div>
       </aside>
         <div id="captionLeftPane_roles" class="caption-panel caption-left-pane" role="tabpanel" aria-labelledby="captionLeftTab_roles" hidden>
         <section id="captionRolesPanel" class="caption-box-panel caption-roles-panel" aria-label="文字スタイル">
@@ -623,7 +619,7 @@
     <h2 id="captionHelpTitle">字幕編集の流れ</h2>
     <ol class="caption-help-steps">
       <li><strong>動画を読み込む。</strong>動画は「動画設定」で、書き出す縦横比（9:16・4:5・1:1・16:9）、トリム、クロップを選びます。</li>
-      <li><strong>文字起こしを入れる。</strong>単語タイムスタンプ JSON、SRT、VTT を読み込むか、字幕を手入力します。</li>
+      <li><strong>文字起こしを入れる。</strong>単語タイムスタンプ JSON、SRT、VTT を読み込むか、台本を貼り付けて「同期」で合わせます。</li>
       <li><strong>スタイルを選ぶ。</strong>エフェクトは「エフェクト」で自分で選びます（ランダムに決めることもできます）。位置ボックスは動画の上でドラッグして決めます。</li>
       <li><strong>タイムラインで整える。</strong>字幕の境界をドラッグし、トラックを分けて重ねることもできます。</li>
       <li><strong>書き出す。</strong>字幕付き MP4 は、このブラウザの中で作られます。</li>

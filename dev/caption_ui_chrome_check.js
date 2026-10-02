@@ -113,6 +113,8 @@ const IN_PAGE = `(() => {
     syncWordsStart() { return J.captionWb.syncWordsStart(); },
     editText(id, text) { ui.store.execute({ type: 'edit-segment-text', segmentId: id, text }); J.captionWb.emit('project'); return true; },
     loopState() { return { on: ui.transport.loopOn, region: ui.transport.region }; },
+    pasteScript(text, trackId) { $('captionScriptText').value = text; $('captionScriptText').dispatchEvent(new Event('input', { bubbles: true })); if (trackId) $('captionManualTrack').value = trackId; const before = ui.store.project.segments.length; $('captionScriptAdd').click(); return { added: ui.store.project.segments.length - before, label: $('captionScriptCount').textContent, disabled: $('captionScriptAdd').disabled }; },
+    segments() { return ui.store.project.segments.map(s => ({ id: s.id, start: s.start, end: s.end, trackId: s.trackId })); }, duration() { return ui.store.project.media.duration; }, scriptValue() { return $('captionScriptText').value; },
     seek(time) { J.captionWb.seekTimeline(time); return true; },
     playhead() { return ui.media.current.video.currentTime; },
     focusId() { return document.activeElement && document.activeElement.id; },
@@ -451,6 +453,16 @@ const IN_PAGE = `(() => {
       step('word sync: one undo step; speed and loop restored', (await t('depth')) === depth5 + 1 && after.speed === 1 && !(await t('loopState')).on, JSON.stringify({ depth: await t('depth'), after }));
       await t('undo2'); step('word sync: one undo restores the word times', JSON.stringify(await t('tokens', 'blockA')) === JSON.stringify(words0));
       await t('undo2'); await t('blur');
+    }
+
+    // C6: paste a script -> one caption per line, spread from the playhead, one undo step
+    {
+      const depth6 = await t('depth'), count6 = await t('count'); await t('seek', 7);
+      const pasted = await t('pasteScript', 'First line' + String.fromCharCode(10) + String.fromCharCode(10) + 'Second line' + String.fromCharCode(10) + 'Third line', 'track_2');
+      const created = (await t('segments')).filter(item => item.trackId === 'track_2' && item.start >= 7 - 1e-6).sort((x, y) => x.start - y.start);
+      step('script: three lines make three captions from the playhead to the end, touching, on the chosen track', pasted.added === 3 && created.length === 3 && Math.abs(created[0].start - 7) < .01 && Math.abs(created[2].end - (await t('duration'))) < .01 && Math.abs(created[0].end - created[1].start) < 1e-6, JSON.stringify({ pasted, created }));
+      step('script: one undo step, first caption selected, box emptied', (await t('depth')) === depth6 + 1 && (await t('sel')) === JSON.stringify([created[0].id]) && (await t('scriptValue')) === '', await t('sel'));
+      await t('undo2'); step('script: one undo removes all three', (await t('count')) === count6);
     }
 
     // T6: waveform behind the VIDEO row, resizable and collapsible strip
