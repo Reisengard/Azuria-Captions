@@ -6,7 +6,7 @@
 
 ## Prototype
 
-`dev/caption_aesthetic_spike.html` renders the canonical 15-second timed-word fixture at 1080×1920 logical resolution. `dev/caption_aesthetic_spike.js` contains a deliberately small seeded planner and renderer that remain isolated from production code until the project and token contracts land in Gate 1.
+`dev/caption_aesthetic_spike.html` (since removed) rendered the canonical 15-second timed-word fixture at 1080×1920 logical resolution. `dev/caption_aesthetic_spike.js` contains a deliberately small seeded planner and renderer that remain isolated from production code until the project and token contracts land in Gate 1.
 
 The demonstration covers:
 

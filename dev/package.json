@@ -41,7 +41,6 @@
     "test:timeline-create": "node caption_timeline_create_test.js",
     "check:ui-chrome": "node caption_ui_chrome_check.js",
     "check:export-chrome": "node export_chrome_check.js --long",
-    "spike:media-server": "python media_spike_runner.py --serve-only",
     "test:ae": "node ae_test.js"
   },
   "devDependencies": {

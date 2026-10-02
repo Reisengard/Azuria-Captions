@@ -53,7 +53,7 @@ The dependency-free regression command `node dev/lyric_smoke.js` loads the same 
 
 Caption data and media recipes live under `dev/fixtures/`. Run `node dev/fixture_check.js` to validate the canonical word transcript, equivalent SRT/VTT text, deliberate invalid cases, and media manifest. Run `dev/fixtures/media/generate.ps1` on a machine with FFmpeg to materialize the synthetic H.264/AAC clips in the ignored `generated/` directory. The manifest is the source of truth for expected duration, dimensions, frame rate, codecs, audio, transcript, license, and provenance.
 
-The Gate 0 media feasibility result and selected production pipeline are recorded in [ADR 0001](decisions/0001-browser-media-export.md). `dev/media_spike.html` is disposable evidence only; it is not a production media module.
+The Gate 0 media feasibility result and selected production pipeline are recorded in [ADR 0001](decisions/0001-browser-media-export.md). `dev/media_spike.html` was disposable evidence only (since removed); it is not a production media module.
 
 The Gate 0 caption-motion direction and visual QA findings are recorded in [ADR 0002](decisions/0002-caption-aesthetic-spike.md). The aesthetic spike is likewise disposable: production layouts and motions must enter through the shared registry, measurement, planner, and renderer contracts.
 

@@ -29,7 +29,7 @@ Primary references:
 
 ## Spike evidence
 
-The disposable spike is `dev/media_spike.html` plus `dev/media_spike.js`. It uses the generated 15-second portrait fixture and deliberately simple code:
+The disposable spike is `dev/media_spike.html` plus `dev/media_spike.js` (removed after the gate; see git history). It uses the generated 15-second portrait fixture and deliberately simple code:
 
 - source: 1080×1920, H.264/AAC MP4, 30 fps, 15 seconds;
 - source frames: exact-time `HTMLVideoElement` seeks;
