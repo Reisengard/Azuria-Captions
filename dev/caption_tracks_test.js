@@ -298,7 +298,7 @@ assert.deepStrictEqual(loaded.tracks, roundtrip.project.tracks); assert.deepStri
 assert.deepStrictEqual(J.planCaptions(loaded, loaded.media).plans, loaded.plans, 'a reloaded project re-plans to the same plans');
 
 /* ---- workbench wiring (structural: the UI is exercised in a browser) ---- */
-const body = fs.readFileSync(path.join(root, 'app', 'body.html'), 'utf8'), ui = fs.readFileSync(path.join(root, 'src', '12c_caption_workbench.js'), 'utf8');
+const body = fs.readFileSync(path.join(root, 'app', 'body.html'), 'utf8'), ui = require('./caption_ui_source').workbenchSource(root);
 for (const id of ['captionTracksPanel', 'captionTrackList', 'captionTrackAdd', 'captionTrackDelete', 'captionTrackName', 'captionTrackForward', 'captionTrackBack', 'captionTrackReroll',
   'captionTrackPreset', 'captionTrackTreatment', 'captionTrackAccent', 'captionMoveTrack', 'captionMoveSegment', 'captionMoveTokens', 'captionTrackLabels', 'captionBoxGhosts']) assert.match(body, new RegExp(`id="${id}"`), `${id} is missing from the page`);
 for (const command of ['add-track', 'remove-track', 'rename-track', 'reorder-track', 'set-track-style', 'randomize-caption-look', 'set-caption-look', 'set-segment-look', 'move-segment-to-track', 'move-tokens-to-track']) assert.match(ui, new RegExp(`'${command}'`), `${command} is not reachable from the workbench`);

@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const body = fs.readFileSync(path.join(root, 'app', 'body.html'), 'utf8');
-const ui = fs.readFileSync(path.join(root, 'src', '12c_caption_workbench.js'), 'utf8');
+const ui = require('./caption_ui_source').workbenchSource(root);
 const store = fs.readFileSync(path.join(root, 'src', '12b_caption_store.js'), 'utf8');
 
 for (const id of ['captionStyle', 'captionIntensity', 'captionMotion', 'captionDensity', 'captionAlignment', 'captionAccent', 'captionWritingMode', 'captionEmphasisStrength', 'captionVariation', 'captionLock', 'captionReroll', 'captionDisableAnimation']) {
@@ -332,7 +332,7 @@ function domText(node) {
   document.getElementById('captionAlignment').dispatchEvent(new Event('change'));
   for (const key of ['layout', 'decor', 'bg', 'cam', 'fx', 'trans']) assert.equal(J.CAPTION_TECHNIQUE_DRAW[key], false, key);
   for (const key of ['enter', 'hold', 'exit', 'treat']) assert.equal(J.CAPTION_TECHNIQUE_DRAW[key], true, key);
-  const source = fs.readFileSync(path.join(root, 'src', '12c_caption_workbench.js'), 'utf8');
+  const source = require('./caption_ui_source').workbenchSource(root);
   assert.match(source, /layout: false, enter: true, hold: true, exit: true/);
   assert.equal(source.includes('renderTech'), false);
   console.log('Gate 5.4 style, variation, and lock tests passed.');

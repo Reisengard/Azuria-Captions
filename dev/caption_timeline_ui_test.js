@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const body = fs.readFileSync(path.join(root, 'app', 'body.html'), 'utf8');
-const ui = fs.readFileSync(path.join(root, 'src', '12c_caption_workbench.js'), 'utf8');
+const ui = require('./caption_ui_source').workbenchSource(root);
 const store = fs.readFileSync(path.join(root, 'src', '12b_caption_store.js'), 'utf8');
 
 for (const id of ['captionTimeline', 'captionTimelineContent', 'captionSegmentTrack', 'captionWordTrack', 'captionPlayhead', 'captionTimelineIn', 'captionTimelineOut', 'captionTimelineFit']) assert.match(body, new RegExp(`id="${id}"`));

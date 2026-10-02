@@ -1,5 +1,7 @@
 """English copy for the browser edition. The Japanese source stays authoritative."""
 
+import re
+
 BODY = {
     'title="縞模様の部分はトリムで削除され、書き出されません"': 'title="Striped parts are trimmed away and not exported"',
     # Caption tab
@@ -945,7 +947,7 @@ def localize_body(source):
 def localize_js(source, filename):
     if filename.endswith('12_ui.js'):
         return replace_copy(source, UI)
-    if filename.endswith('12c_caption_workbench.js'):
+    if filename.endswith('12c_caption_workbench.js') or re.search(r'12b[o-w]_caption_', filename):
         return replace_copy(source, CAPTION_UI)
     if filename.endswith('12a_video_edit_ui.js'):
         return replace_copy(source, VIDEO_UI)

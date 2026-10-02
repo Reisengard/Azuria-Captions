@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const body = fs.readFileSync(path.join(root, 'app', 'body.html'), 'utf8');
-const source = fs.readFileSync(path.join(root, 'src', '12c_caption_workbench.js'), 'utf8');
+const source = require('./caption_ui_source').workbenchSource(root);
 
 for (const id of ['captionTokenList', 'captionSelectedStart', 'captionSelectedEnd', 'captionSelectedQuality', 'captionMerge', 'captionMergePrev', 'captionEditError',
   'captionPrev', 'captionNext', 'captionWordEditor', 'captionWordText', 'captionStartAtPlayhead', 'captionEndAtPlayhead', 'captionMoveWordPicker', 'captionEditLook']) {

@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const body = fs.readFileSync(path.join(root, 'app', 'body.html'), 'utf8');
-const source = fs.readFileSync(path.join(root, 'src', '12c_caption_workbench.js'), 'utf8');
+const source = require('./caption_ui_source').workbenchSource(root);
 
 for (const id of ['captionSegmentList', 'captionPreview', 'captionSegmentInspector', 'captionTimeline', 'captionUndo', 'captionRedo', 'captionVariation', 'captionSave', 'captionExport']) {
   assert.match(body, new RegExp(`id="${id}"`), `workbench is missing #${id}`);

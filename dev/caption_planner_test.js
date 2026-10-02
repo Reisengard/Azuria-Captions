@@ -102,7 +102,7 @@ for (const plan of generated(riseOn)) assert.equal(plan.entrance, 'captionSoftRi
 
 const popOn = planWith({ editor: 'advanced', look: { enter: 'pop' } }, { enabled: { enter: { pop: true } } });
 for (const plan of generated(popOn)) assert.equal(plan.entrance, 'pop', `advanced pool stored ${plan.entrance} instead of pop`);
-const drawBlock = fs.readFileSync(path.join(root, 'src', '12c_caption_workbench.js'), 'utf8');
+const drawBlock = require('./caption_ui_source').workbenchSource(root);
 const drawStart = drawBlock.indexOf('J.CAPTION_TECHNIQUE_DRAW = {');
 const drawBody = drawBlock.slice(drawStart, drawBlock.indexOf('};', drawStart));
 const drawFlags = { layout: false, enter: true, hold: true, exit: true, decor: false, treat: true, bg: false, cam: false, fx: false, trans: false };

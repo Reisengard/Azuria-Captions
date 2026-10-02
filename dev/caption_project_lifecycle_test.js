@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const body = fs.readFileSync(path.join(root, 'app', 'body.html'), 'utf8');
-const ui = fs.readFileSync(path.join(root, 'src', '12c_caption_workbench.js'), 'utf8');
+const ui = require('./caption_ui_source').workbenchSource(root);
 
 for (const id of ['captionProjectFile', 'captionSave', 'captionRelinkNotice', 'captionRelinkFile']) assert.match(body, new RegExp(`id="${id}"`), `G5.6 is missing #${id}`);
 assert.match(ui, /J\.loadProject\(await file\.text\(\)\)/, 'project open does not use schema validation and migration');
