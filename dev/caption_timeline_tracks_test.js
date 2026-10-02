@@ -22,7 +22,7 @@ assert.equal(TL.reorderIndex([10, 40, 70], -50), 1, 'index 0 is the primary trac
 const src = name => fs.readFileSync(path.join(root, 'src', name), 'utf8');
 const view = src('12bq_caption_timeline_view.js'), transport = src('12br_caption_transport.js'), panel = src('12bw_caption_panels_tracks.js');
 const body = fs.readFileSync(path.join(root, 'app', 'body.html'), 'utf8'), css = fs.readFileSync(path.join(root, 'app', 'style.css'), 'utf8'), english = fs.readFileSync(path.join(root, 'app', 'english.py'), 'utf8');
-assert.match(view, /data-track-grip|dataset\.trackGrip/); assert.match(view, /role', 'menu'/); assert.match(view, /type: 'move-segment'[^}]*trackId: target/);
+assert.match(view, /data-track-grip|dataset\.trackGrip/); assert.match(src('12bn_caption_popover.js'), /role', 'menu'|role: 'menu'/); assert.match(view, /J\.captionPopover\.menu/); assert.match(view, /type: 'move-segment'[^}]*trackId: target/);
 assert.match(view, /W\.reorderTrack\(drag\.to - from, drag\.id\)/); assert.match(view, /W\.renameTrack/); assert.match(view, /captionTrackAddInline/);
 assert.doesNotMatch(view, /store\.execute/, 'the view must go through runCommand');
 assert.match(transport, /track-up/); assert.match(transport, /moveSelectedTrack/);

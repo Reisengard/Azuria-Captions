@@ -54,7 +54,7 @@ function fitVideoColumn() {
   const out = J.videoOutputSize ? J.videoOutputSize(ui.store.project) : { width: 1080, height: 1920 }, pad = 30;   // stage padding (2 x 14) + frame border (2 x 1)
   bench.style.setProperty('--caption-video-w', `${Math.max(240, Math.round((stage.clientHeight - pad) * out.width / out.height + pad))}px`);
 }
-function onWorkbenchResize() { fitVideoColumn(); if (ui.preview) ui.preview.renderNow(); W.paintBoxEditor(); }
+function onWorkbenchResize() { fitVideoColumn(); if (ui.preview) ui.preview.renderNow(); W.paintBoxEditor(); W.paintToolbar(); }
 function selectStyleTab(tab) {
   const panel = document.querySelector('.caption-inspector'); if (!panel) return;
   const known = [...panel.querySelectorAll('.caption-style-tabs [data-style-tab]')].map(button => button.dataset.styleTab);

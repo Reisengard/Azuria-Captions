@@ -139,33 +139,8 @@ function renameInline(trackId) {
   input.addEventListener('blur', () => close(true));
   head.dataset.renaming = '1'; button.hidden = true; head.insertBefore(input, button); input.focus(); input.select();
 }
-/* Small menu anchored under a button: arrows move, Enter runs, Esc / outside click closes and returns focus. */
-let openMenuEl = null;
-function closeMenu(restore) {
-  if (!openMenuEl) return; const { menu, anchor } = openMenuEl; openMenuEl = null; menu.remove();
-  document.removeEventListener('pointerdown', onMenuOutside, true); if (restore && anchor.isConnected) anchor.focus();
-}
-function onMenuOutside(event) { if (openMenuEl && !openMenuEl.menu.contains(event.target)) closeMenu(false); }
-function openMenu(anchor, items) {
-  closeMenu(false);
-  const menu = document.createElement('div'); menu.className = 'caption-menu'; menu.setAttribute('role', 'menu');
-  for (const item of items) {
-    const button = document.createElement('button'); button.type = 'button'; button.className = 'caption-menu-item'; button.setAttribute('role', 'menuitem'); button.textContent = item.label; button.disabled = !!item.disabled;
-    button.addEventListener('click', () => { closeMenu(true); item.run(); }); menu.appendChild(button);
-  }
-  menu.addEventListener('keydown', event => {
-    const list = [...menu.querySelectorAll('button:not(:disabled)')], at = list.indexOf(document.activeElement);
-    if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); closeMenu(true); }
-    else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') { event.preventDefault(); event.stopPropagation(); if (list.length) list[(at + (event.key === 'ArrowDown' ? 1 : -1) + list.length) % list.length].focus(); }
-    else if (event.key === 'Tab') closeMenu(false);
-  });
-  document.body.appendChild(menu); openMenuEl = { menu, anchor };
-  const rect = anchor.getBoundingClientRect(), box = menu.getBoundingClientRect();
-  menu.style.left = `${Math.max(4, Math.min(rect.left, window.innerWidth - box.width - 4))}px`;
-  menu.style.top = `${rect.bottom + box.height + 4 > window.innerHeight ? Math.max(4, rect.top - box.height - 4) : rect.bottom + 4}px`;
-  document.addEventListener('pointerdown', onMenuOutside, true);
-  const first = menu.querySelector('button:not(:disabled)'); if (first) first.focus();
-}
+/* Menus use the shared popover helper (12bn): arrows move, Enter runs, Esc / outside click closes and returns focus. */
+const openMenu = (anchor, items) => J.captionPopover.menu(anchor, items);
 /* A menu at the pointer (right-click): the "anchor" is a point; focus goes back to `restore` when the menu closes. */
 const pointAnchor = (x, y, restore) => ({ isConnected: true, getBoundingClientRect: () => ({ left: x, right: x, top: y, bottom: y }), focus: () => { if (restore && restore.isConnected) restore.focus(); } });
 function openTrackMenu(trackId) {
@@ -211,9 +186,10 @@ function buildBlock(id) {
   const block = document.createElement('div'); block.className = 'caption-timeline-segment'; block.setAttribute('role', 'button'); block.tabIndex = 0; block.dataset.segmentId = id;
   const text = document.createElement('span'), words = document.createElement('span'); text.className = 'caption-block-text'; words.className = 'caption-block-words';
   const lock = document.createElement('span'); lock.className = 'caption-lock-badge'; lock.textContent = '🔒'; lock.hidden = true; lock.setAttribute('aria-hidden', 'true');
-  block.append(words, text, lock);
+  const warn = document.createElement('span'); warn.className = 'caption-warn-badge'; warn.textContent = '⚠'; warn.hidden = true; warn.setAttribute('aria-hidden', 'true');
+  block.append(words, text, lock, warn);
   for (const edge of ['start', 'end']) { const grip = document.createElement('span'); grip.className = `caption-trim-handle is-${edge}`; grip.dataset.trim = edge; block.appendChild(grip); }
-  const entry = { block, text, words, lock, handle: null, sig: '', label: '' }; blocks.set(id, entry); return entry;
+  const entry = { block, text, words, lock, warn, handle: null, sig: '', label: '' }; blocks.set(id, entry); return entry;
 }
 
 /* Words are ticks inside their block, drawn only when zoomed in and the block is near the viewport; rebuilt only when their signature changes. */
@@ -244,6 +220,8 @@ function renderTimeline() {
     if (entry.label !== text) { entry.label = text; entry.text.textContent = text; }
     block.title = `${fmt(segment.start)}–${fmt(segment.end)} ${text}`;
     block.setAttribute('aria-label', `${text}, ${fmt(segment.start)}–${fmt(segment.end)}, ${trackName(segmentTrackId(segment))}`);
+    const warnings = accessibilityWarnings(segment); entry.warn.hidden = !warnings.length; block.classList.toggle('has-warning', warnings.length > 0);
+    if (warnings.length) block.title += `\n⚠ ${warnings.join('\n⚠ ')}`;
     const locked = segmentTimingLocked(segment); entry.lock.hidden = !locked; block.classList.toggle('is-locked', locked);
     block.style.left = `${rect.left}px`; block.style.width = `${rect.width}px`;
     block.classList.toggle('selected', ui.selection.segmentIds.has(segment.id)); block.classList.toggle('is-now', ui.currentIds.has(segment.id));
@@ -574,7 +552,7 @@ function splitAtPlayhead() {
   if (ui.selection.segmentIds.size > 1) { status('分割できるのは1つの字幕だけです。', true); return true; }
   if (!video) return true;
   const id = ui.store.nextSegmentId();
-  if (runCommand({ type: 'split-segment', segmentId: segment.id, time: video.currentTime, newSegmentId: id, boundarySource: 'manual' }, segment.id)) status('再生ヘッドの位置で字幕を2つに分けました。元に戻すで戻せます。');
+  if (runCommand({ type: 'split-segment', segmentId: segment.id, time: video.currentTime, newSegmentId: id, boundarySource: 'manual' }, segment.id)) W.toastUndo('字幕を2つに分けました');
   return true;
 }
 function duplicateSelected() {
@@ -584,13 +562,13 @@ function duplicateSelected() {
   if (!runCommand(command, ids[0])) return true;
   const made = ui.store.project.segments.filter(segment => !before.has(segment.id)).map(segment => segment.id);
   ui.moveTokens.clear(); ui.selection.wordId = null; ui.selection.segmentIds = new Set(made); emit('selection');
-  status(`${made.length}件の字幕を複製しました。元に戻すで戻せます。`); return true;
+  W.toastUndo(`${made.length}件の字幕を複製しました`); return true;
 }
 function deleteSelected() {
   const ids = selectedIds(); if (!ids.length) { status('字幕を選んでください。', true); return true; }
   const commands = ids.map(segmentId => ({ type: 'delete-segment', segmentId })), command = commands.length === 1 ? commands[0] : { type: 'batch', commands, label: 'delete captions' };
   if (!runCommand(command, ids[0])) return true;
-  ui.moveTokens.clear(); W.clearSelection(); status(`${ids.length}件の字幕を削除しました。元に戻すで戻せます。`); return true;
+  ui.moveTokens.clear(); W.clearSelection(); W.toastUndo(`${ids.length}件の字幕を削除しました`); return true;
 }
 function openCaptionMenu(event) {
   const block = event.target.closest('.caption-timeline-segment'); if (!block) return;

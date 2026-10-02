@@ -91,6 +91,8 @@ const IN_PAGE = `(() => {
     readout() { const r = document.querySelector('.caption-drag-readout'); return r && r.textContent; },
     edges(id) { return ui.store.project.segments.filter(s => s.id !== id).flatMap(s => [s.start, s.end]).concat([0, ui.store.project.media.duration]); },
     select(id) { ui.selectedId = id; },
+    emitSelection() { J.captionWb.emit('selection'); return true; },
+    activeTool() { return document.activeElement && document.activeElement.dataset && document.activeElement.dataset.tool; },
     waveDrawn() { const c = document.getElementById('captionWaveform'), ctx = c.getContext('2d'), d = ctx.getImageData(0, 0, c.width, c.height).data; let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i]) n++; return { drawn: c.dataset.drawn, painted: n }; },
     setSnap(on) { if (ui.transport.snap !== on) $('captionSnap').click(); },
     lockTiming(id) { ui.store.execute({ type: 'set-field-lock', segmentId: id, field: 'timing', locked: true }); J.captionWb.emit('project'); ui.store.undoStack.length = 0; },
@@ -114,6 +116,10 @@ const IN_PAGE = `(() => {
     newer(known) { return ui.store.project.segments.filter(item => !known.includes(item.id)).map(item => ({ id: item.id, start: item.start, end: item.end, trackId: item.trackId, text: item.tokenIds.length })); },
     ids() { return ui.store.project.segments.map(item => item.id); },
     marquee() { return !!document.querySelector('.caption-marquee'); },
+    toolbar() { const tb = document.getElementById('captionToolbar'); if (!tb || tb.hidden) return null; const r = tb.getBoundingClientRect(), f = document.getElementById('captionPreviewFrame').getBoundingClientRect(); return { r: [r.left, r.top, r.right, r.bottom].map(Math.round), f: [f.left, f.top, f.right, f.bottom].map(Math.round), inside: r.left >= f.left && r.right <= f.right && r.top >= f.top && r.bottom <= f.bottom, buttons: [...tb.querySelectorAll('[data-tool]')].filter(b => !b.hidden).map(b => b.dataset.tool).join(',') }; },
+    toast() { const el = document.querySelector('.caption-toast'); return el && { text: el.textContent, action: !!el.querySelector('button') }; },
+    toolRect(key) { const b = document.querySelector('[data-tool=' + key + ']'); const r = b.getBoundingClientRect(); return { x: (r.left + r.right) / 2, y: (r.top + r.bottom) / 2 }; },
+    warnBadge(id) { const b = document.querySelector('[data-segment-id="' + id + '"] .caption-warn-badge'); return !!b && !b.hidden; },
   };
   return true;
 })()`;
@@ -339,6 +345,26 @@ const IN_PAGE = `(() => {
     await t('select', 'blockB'); const countBefore = await t('count'); await key('Delete', 'Delete', { vk: 46 }); await sleep(100);
     step('Delete: removes the selected caption', (await t('count')) === countBefore - 1 && (await t('seg', 'blockB')) === undefined, await t('status'));
     await t('undo2'); step('Delete: undo brings it back', (await t('seg', 'blockB')) !== undefined && (await t('count')) === countBefore);
+    await t('blur');
+
+    // C1: floating toolbar, result toasts with Undo, shared menu helper
+    await t('select', 'blockA'); await t('emitSelection'); await sleep(120);
+    let bar = await t('toolbar'); step('toolbar: shown under the selected caption, inside the preview', !!bar && bar.inside && /text,split,start,end,look,more/.test(bar.buttons), JSON.stringify(bar)); await shot('10-toolbar');
+    await key('Escape', 'Escape', { vk: 27 }); await sleep(100); step('toolbar: hidden when nothing is selected', (await t('toolbar')) === null);
+    await t('select', 'blockB'); await t('emitSelection'); await key('Delete', 'Delete', { vk: 46 }); await sleep(100);
+    let toast = await t('toast'); step('toast: deleting shows a message with an Undo button', !!toast && toast.action, JSON.stringify(toast));
+    const undo = await t('rect', '.caption-toast-action'); await mouse('mousePressed', (undo.left + undo.right) / 2, (undo.top + undo.bottom) / 2); await mouse('mouseReleased', (undo.left + undo.right) / 2, (undo.top + undo.bottom) / 2); await sleep(100);
+    step('toast: Undo brings the caption back and closes the toast', (await t('seg', 'blockB')) !== undefined && (await t('toast')) === null);
+    await t('select', 'blockB'); await t('emitSelection'); await sleep(80); await key('Delete', 'Delete', { vk: 46 }); await sleep(80); await t('undo2'); await sleep(80);
+    step('toast: any other project change closes it', (await t('toast')) === null);
+    await t('select', first.id); await t('emitSelection'); await t('seek', gap); await sleep(250);
+    const splitBtn = await t('toolRect', 'split'); await mouse('mousePressed', splitBtn.x, splitBtn.y); await mouse('mouseReleased', splitBtn.x, splitBtn.y); await sleep(120);
+    step('toolbar: Split cuts at the playhead and offers Undo', (await t('count')) === ids0.length + 1 && !!(await t('toast')), `${await t('count')} ${JSON.stringify(await t('toast'))}`);
+    await t('undo2'); await sleep(80); await t('select', 'blockA'); await t('emitSelection'); await sleep(100);
+    const moreBtn = await t('toolRect', 'more'); await mouse('mousePressed', moreBtn.x, moreBtn.y); await mouse('mouseReleased', moreBtn.x, moreBtn.y); await sleep(100);
+    menu = await t('menuItems'); step('toolbar: ⋯ opens a menu (merge, move, lock, delete)', menu.length >= 5 && /^(削除|Delete)$/.test(menu[menu.length - 1].replace('(off)', '')), JSON.stringify(menu));
+    await key('Escape', 'Escape', { vk: 27 }); await sleep(80);
+    step('toolbar: Esc closes the menu and returns focus to ⋯', (await t('menuItems')).length === 0 && (await t('activeTool')) === 'more', await t('activeTool'));
     await t('blur');
 
     // T6: waveform behind the VIDEO row, resizable and collapsible strip

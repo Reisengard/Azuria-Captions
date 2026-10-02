@@ -5,7 +5,8 @@
 'use strict';
 if (typeof document === 'undefined' || typeof document.getElementById !== 'function') return;
 const W = J.captionWb;
-const { ui, $, fmt, status, selectedSegment, segmentTrackId, activeTrack, trackName, segmentText, tokenMap, sourceVideo, runCommand, lookLabel, PRESET_LABELS, accessibilityWarnings, selectSegment, on } = W;
+const { ui, $, fmt, status, selectedSegment, segmentTrackId, activeTrack, trackName, segmentText, tokenMap, sourceVideo, runCommand, lookLabel, PRESET_LABELS, accessibilityWarnings, selectSegment, on, emit } = W;
+const P = J.captionPopover;
 const BLOCK_ANIMATION_CONTROLS = { enter: 'captionBlockEnter', hold: 'captionBlockHold', exit: 'captionBlockExit' };
 /* ---- Caption tab: the selected caption ----
    Header with previous / next, warnings first, then the words as chips (press one to fix its text or emphasis,
@@ -131,14 +132,14 @@ function selectWord(tokenId) {
 function splitBefore(tokenId) {
   const segment = selectedSegment(); if (!segment || !tokenId) return;
   const nextId = ui.store.nextSegmentId();
-  if (runCommand({ type: 'split-segment', segmentId: segment.id, beforeTokenId: tokenId, newSegmentId: nextId, boundarySource: 'manual' }, segment.id, nextId)) { selectSegment(nextId, true); status('字幕を2つに分けました。元に戻すで戻せます。'); }
+  if (runCommand({ type: 'split-segment', segmentId: segment.id, beforeTokenId: tokenId, newSegmentId: nextId, boundarySource: 'manual' }, segment.id, nextId)) { selectSegment(nextId, true); toastUndo('字幕を2つに分けました'); }
 }
 
 function mergeWith(direction) {
   const segment = selectedSegment(); if (!segment) return;
   const other = J.captionTrackNeighbor(ui.store.project, segment, direction); if (!other) return;
   const [first, second] = direction < 0 ? [other, segment] : [segment, other];
-  if (runCommand({ type: 'merge-segments', segmentId: first.id, nextSegmentId: second.id, boundarySource: 'manual' }, segment.id, first.id)) status('字幕を結合しました。');
+  if (runCommand({ type: 'merge-segments', segmentId: first.id, nextSegmentId: second.id, boundarySource: 'manual' }, segment.id, first.id)) toastUndo('字幕を結合しました');
 }
 
 function stepCaption(direction) {
@@ -190,7 +191,79 @@ function applyTiming() {
   runCommand({ type: 'trim-segment', segmentId: segment.id, start, end, words: 'keep' }, segment.id);
 }
 
+/* ---- Result toasts (bottom-centre of the stage). Undo reverts the last command; any later change to the project closes the toast,
+   so Undo can only ever revert what it announced. Called after the command's own 'project' event. ---- */
+function toastUndo(message) {
+  status(message);   // #captionStatus stays the aria-live region
+  P.toast($('captionToasts'), message, { label: '元に戻す', run: () => { if (ui.store.canUndo() && ui.store.undo()) emit('project'); } });
+}
+
+/* ---- Floating toolbar under the selected caption's box in the preview ---- */
+let toolbar = null;
+const tools = {};
+const toolButton = (key, label, title) => { const button = document.createElement('button'); button.type = 'button'; button.className = 'caption-tool'; button.dataset.tool = key; tools[key] = button; button.textContent = label; button.title = title; button.setAttribute('aria-label', title); return button; };
+function buildToolbar() {
+  toolbar = document.createElement('div'); toolbar.id = 'captionToolbar'; toolbar.className = 'caption-toolbar'; toolbar.setAttribute('role', 'toolbar'); toolbar.setAttribute('aria-label', '選択中の字幕の操作'); toolbar.hidden = true;
+  const warn = toolButton('warn', '⚠', '警告を表示'); warn.className = 'caption-tool caption-tool-warn'; warn.setAttribute('aria-haspopup', 'dialog'); warn.hidden = true;
+  const more = toolButton('more', '⋯', 'その他の操作'); more.setAttribute('aria-haspopup', 'menu');
+  toolbar.append(warn, toolButton('text', '✎ 文字', '文字を編集'), toolButton('split', '✂ 分割', '再生ヘッドで分割 (S)'), toolButton('start', '⇤ ここから', '開始を再生ヘッドに合わせる'),
+    toolButton('end', 'ここまで ⇥', '終了を再生ヘッドに合わせる'), toolButton('look', '✦ 見た目', '見た目と動きを編集'), more);
+  toolbar.addEventListener('pointerdown', event => event.stopPropagation());
+  toolbar.addEventListener('click', event => { const button = event.target.closest('[data-tool]'); if (button && !button.disabled) runTool(button.dataset.tool, button); });
+  $('captionPreviewFrame').appendChild(toolbar);
+}
+function editText() {
+  const segment = selectedSegment(); if (!segment) return;
+  W.selectLeftTab('caption');
+  if (J.isCaptionTextBlock(ui.store.project, segment)) { const field = $('captionBlockText'); field.focus(); field.select(); }
+  else { const chip = document.querySelector('#captionTokenList [data-word-id]'); if (chip) chip.focus(); }
+}
+function showWarnings(anchor) {
+  const segment = selectedSegment(); if (!segment) return;
+  const list = accessibilityWarnings(segment).map(text => { const item = document.createElement('div'); item.className = 'caption-warning'; item.textContent = text; return item; });
+  if (list.length) P.open(anchor, list, { role: 'dialog', className: 'caption-popover', label: '字幕の警告', restoreFocus: anchor });
+}
+function moreMenu(anchor) {
+  const segment = selectedSegment(); if (!segment) return;
+  const project = ui.store.project, previous = J.captionTrackNeighbor(project, segment, -1), next = J.captionTrackNeighbor(project, segment, 1), cutFixed = item => !!(item && item.locks && item.locks.segmentation);
+  const locked = !!(segment.locks && segment.locks.visualPlan), still = !!J.captionResolvedPlan(project.plans[segment.id]).animationDisabled;
+  const items = [
+    { label: '前の字幕と結合', disabled: !previous || cutFixed(segment) || cutFixed(previous), run: () => mergeWith(-1) },
+    { label: '次の字幕と結合', disabled: !next || cutFixed(segment) || cutFixed(next), run: () => mergeWith(1) },
+  ];
+  for (const track of (project.tracks || []).filter(item => item.id !== segmentTrackId(segment))) items.push({ label: `トラックへ移動: ${track.name || track.id}`,
+    run: () => { if (runCommand({ type: 'move-segment', segmentId: segment.id, start: segment.start, trackId: track.id }, segment.id)) { toastUndo(`トラックへ移動しました: ${track.name || track.id}`); if (ui.preview) ui.preview.renderNow(); } } });
+  items.push({ label: still ? '動かさない: 解除' : '動かさない', disabled: locked, run: () => runCommand({ type: 'set-segment-animation-disabled', segmentId: segment.id, disabled: !still }, segment.id) },
+    { label: locked ? '固定を解除' : 'このまま固定', run: () => runCommand({ type: 'set-segment-locks', segmentId: segment.id, locked: !locked }, segment.id) },
+    { label: '削除', run: () => W.deleteSelected() });
+  P.menu(anchor, items, { restoreFocus: anchor });
+}
+function runTool(key, button) {
+  if (key === 'text') editText(); else if (key === 'split') W.splitAtPlayhead(); else if (key === 'start') timingAtPlayhead('start'); else if (key === 'end') timingAtPlayhead('end');
+  else if (key === 'look') openSegmentLook(); else if (key === 'more') moreMenu(button); else if (key === 'warn') showWarnings(button);
+}
+/* Under the box (above it when there is no room), centred on it, kept inside the preview frame. */
+function paintToolbar() {
+  if (!toolbar) return;
+  const segment = ui.selection.segmentIds.size === 1 ? selectedSegment() : null, media = ui.store && ui.store.project.media, canvas = $('captionPreview'), frame = $('captionPreviewFrame');
+  if (!segment || !media || !(media.width > 0) || !ui.preview || !canvas.getBoundingClientRect) { toolbar.hidden = true; return; }
+  const box = J.captionEffectiveBox(ui.store.project, segment, ui.store.project.plans[segment.id]); if (!box) { toolbar.hidden = true; return; }
+  const warnings = accessibilityWarnings(segment), warn = tools.warn;
+  warn.hidden = !warnings.length; warn.title = warnings.join('\n'); warn.setAttribute('aria-label', warnings.length ? `警告 ${warnings.length}` : '警告を表示');
+  const hasVideo = !!sourceVideo(); for (const key of ['split', 'start', 'end']) tools[key].disabled = !hasVideo;
+  toolbar.hidden = false; toolbar.style.left = '4px'; toolbar.style.top = '0px';   // measure at the left edge so it wraps only when the frame is really narrow
+  const rect = canvas.getBoundingClientRect(), parent = frame.getBoundingClientRect(), width = toolbar.offsetWidth, height = toolbar.offsetHeight;
+  const boxLeft = rect.left - parent.left + box.x * rect.width, boxTop = rect.top - parent.top + box.y * rect.height, boxWidth = box.width * rect.width, boxHeight = box.height * rect.height;
+  const left = Math.max(4, Math.min(boxLeft + boxWidth / 2 - width / 2, parent.width - width - 4));
+  const below = boxTop + boxHeight + 6, top = below + height > parent.height - 4 ? Math.max(4, boxTop - height - 6) : below;
+  toolbar.style.left = `${left}px`; toolbar.style.top = `${top}px`;
+}
+
 function init() {
+  buildToolbar();
+  const toasts = document.createElement('div'); toasts.id = 'captionToasts'; toasts.className = 'caption-toasts'; toasts.setAttribute('aria-hidden', 'false'); $('captionPreviewFrame').appendChild(toasts);
+  window.addEventListener('resize', paintToolbar);
+  on('project', () => { P.dismissToast(); paintToolbar(); }, 1); on('selection', paintToolbar);
   $('captionManualAdd').addEventListener('click', () => {
     const startText = $('captionManualStart').value, endText = $('captionManualEnd').value;
     const id = ui.store.nextSegmentId();
@@ -234,6 +307,6 @@ function init() {
   });
   on('project', () => { renderInspector(); renderManualTrack(); }); on('selection', renderInspector); on('error', renderInspector);
 }
-Object.assign(W, { BLOCK_ANIMATION_CONTROLS, EMPHASIS_VALUES, applyBlockText, applyTiming, deleteBlock, mergeWith, nudgeTiming, openSegmentLook, renderBlockEditor, renderInspector, renderManualTrack, renderWordChips, renderWordEditor, selectWord, setBlockAnimation, splitBefore, stepCaption, timingAtPlayhead, tokenEmphasisState });
+Object.assign(W, { BLOCK_ANIMATION_CONTROLS, paintToolbar, toastUndo, EMPHASIS_VALUES, applyBlockText, applyTiming, deleteBlock, mergeWith, nudgeTiming, openSegmentLook, renderBlockEditor, renderInspector, renderManualTrack, renderWordChips, renderWordEditor, selectWord, setBlockAnimation, splitBefore, stepCaption, timingAtPlayhead, tokenEmphasisState });
 W.inits.push(init);
 })();
