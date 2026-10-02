@@ -97,6 +97,9 @@ function keyAction(event) {
     case 'Home': return 'start';
     case 'End': return 'end';
     case 'KeyL': return 'loop';
+    case 'KeyN': return shift ? null : 'new';
+    case 'KeyS': return shift ? null : 'split';
+    case 'Delete': case 'Backspace': return 'delete';
     case 'Escape': return 'escape';
     default: break;
   }
@@ -130,7 +133,8 @@ function snapTargets({ duration, playhead, loop, cuts, segments, excludeId, word
   if (Number.isFinite(playhead)) targets.push({ time: playhead, kind: 'playhead' });
   if (loop) targets.push({ time: loop.start, kind: 'loop' }, { time: loop.end, kind: 'loop' });
   for (const time of cuts || []) targets.push({ time, kind: 'cut' });
-  for (const segment of segments || []) if (segment.id !== excludeId) targets.push({ time: segment.start, kind: 'caption' }, { time: segment.end, kind: 'caption' });
+  const skip = [].concat(excludeId === undefined ? [] : excludeId);   // one id, or the ids of a whole group
+  for (const segment of segments || []) if (!skip.includes(segment.id)) targets.push({ time: segment.start, kind: 'caption' }, { time: segment.end, kind: 'caption' });
   for (const time of wordTimes || []) targets.push({ time, kind: 'word' });
   return targets;
 }
@@ -195,11 +199,77 @@ function resolveDrag(input) {
   if (hit) { out.valid = false; out.code = 'TRACK_SEGMENT_OVERLAP'; out.otherSegmentId = hit.id; }
   return out;
 }
+/* ---- Create and multi-select (T5) ---- */
+const NEW_LENGTH = 2;
+/* The empty stretch of a track around `time`: { start, end } between its neighbours (or 0 / the end), or null when `time` is inside a caption. */
+function freeGap(layout, trackId, time, ignoreIds) {
+  const skip = ignoreIds || [], lane = layout.segments.filter(item => item.trackId === trackId && !skip.includes(item.id));
+  let start = 0, end = layout.duration;
+  for (const other of lane) {
+    if (time > other.start + EPS && time < other.end - EPS) return null;
+    if (other.end <= time + EPS) start = Math.max(start, other.end); else if (other.start >= time - EPS) end = Math.min(end, other.start);
+  }
+  return { start: round6(start), end: round6(end) };
+}
+/* A new caption of up to `length` seconds starting at `time`, shortened to the free space; null when there is no room (min 0.1 s). */
+function newBlockRange(layout, trackId, time, length = NEW_LENGTH) {
+  const gap = freeGap(layout, trackId, time); if (!gap) return null;
+  const start = Math.max(gap.start, Math.min(time, layout.duration)), end = Math.min(start + length, gap.end);
+  return end - start >= MIN_SEGMENT - EPS ? { start: round6(start), end: round6(end), trackId } : null;
+}
+/* Dragging on an empty part of a row from time `a` to time `b`: the range stays inside the free gap around `a`. input: { layout, trackId, a, b, pps, snap, targets }.
+   -> { start, end, valid, code, snappedTo }. Too short (< 0.1 s) is invalid with SEGMENT_TIMING_INVALID; starting inside a caption is TRACK_SEGMENT_OVERLAP. */
+function createRange(input) {
+  const { layout, trackId } = input, gap = freeGap(layout, trackId, input.a);
+  if (!gap) return { start: input.a, end: input.b, valid: false, code: 'TRACK_SEGMENT_OVERLAP', snappedTo: null };
+  const targets = input.snap ? input.targets || [] : [];
+  let b = input.b, snappedTo = null; const snap = nearestSnap([b], targets, input.pps);
+  if (snap) { b += snap.delta; snappedTo = snap.target; }
+  let start = Math.min(input.a, b), end = Math.max(input.a, b);
+  if (start < gap.start) { start = gap.start; snappedTo = null; }
+  if (end > gap.end) { end = gap.end; snappedTo = null; }
+  start = round6(start); end = round6(end);
+  return end - start >= MIN_SEGMENT - EPS ? { start, end, valid: true, code: null, snappedTo } : { start, end, valid: false, code: 'SEGMENT_TIMING_INVALID', snappedTo };
+}
+/* Ids whose rectangle meets the marquee box. rects: [{ id, left, top, right, bottom }]. */
+function marqueeHits(rects, box) {
+  const left = Math.min(box.left, box.right), right = Math.max(box.left, box.right), top = Math.min(box.top, box.bottom), bottom = Math.max(box.top, box.bottom);
+  return rects.filter(item => item.left <= right && item.right >= left && item.top <= bottom && item.bottom >= top).map(item => item.id);
+}
+/* Moving several captions together in time (each stays on its own track). input: { layout, ids, delta (pointer movement in s), pps, snap, targets }.
+   The shift is clamped so that no member leaves [0, duration] or runs into a caption that is not part of the group; snapping uses every member's edges.
+   -> { delta, valid, code, snappedTo, moves: [{ id, start, end }], changed }. A locked member makes the whole move invalid. */
+function resolveGroupMove(input) {
+  const { layout } = input, members = layout.segments.filter(item => input.ids.includes(item.id)), out = { delta: 0, valid: true, code: null, snappedTo: null, moves: [], changed: false };
+  if (!members.length) return Object.assign(out, { valid: false, code: 'SEGMENT_NOT_FOUND' });
+  if (members.some(item => item.locked)) return Object.assign(out, { valid: false, code: 'SEGMENT_FIELD_LOCKED' });
+  let low = -Infinity, high = Infinity;
+  for (const item of members) {
+    low = Math.max(low, -item.start); high = Math.min(high, layout.duration - item.end);
+    for (const other of layout.segments) {
+      if (other.trackId !== item.trackId || input.ids.includes(other.id)) continue;
+      if (other.end <= item.start + EPS) low = Math.max(low, other.end - item.start); else if (other.start >= item.end - EPS) high = Math.min(high, other.start - item.end);
+    }
+  }
+  let delta = input.delta; const targets = input.snap ? input.targets || [] : [];
+  const snap = nearestSnap(members.flatMap(item => [item.start + delta, item.end + delta]), targets, input.pps);
+  if (snap) { delta += snap.delta; out.snappedTo = snap.target; }
+  if (high < low - EPS) return Object.assign(out, { valid: false, code: 'TRACK_SEGMENT_OVERLAP' });
+  if (delta < low) { delta = low; out.snappedTo = null; } else if (delta > high) { delta = high; out.snappedTo = null; }
+  out.delta = round6(delta); out.changed = Math.abs(out.delta) > EPS;
+  out.moves = members.map(item => ({ id: item.id, start: round6(item.start + out.delta), end: round6(item.end + out.delta) }));
+  return out;
+}
+/* Order in which a batch of moves is applied so that no member runs over a neighbour that has not moved yet: moving right goes last-first. */
+function groupMoveOrder(moves, delta) {
+  return moves.slice().sort((a, b) => delta > 0 ? b.start - a.start : a.start - b.start);
+}
+
 /* `,` / `.`: move a caption by a fixed step, stopping at its neighbours like a drag does. */
 function nudge(layout, segmentId, direction, step = NUDGE) {
   const segment = layout.segments.find(item => item.id === segmentId); if (!segment) return null;
   return resolveDrag({ layout, segmentId, mode: 'move', time: segment.start + direction * step, grab: 0, trackId: segment.trackId, pps: 1, snap: false });
 }
 
-J.captionTimeline = { adjacentTrackId, reorderIndex, NUDGE, SNAP_PX, MIN_SEGMENT, nearestSnap, nudge, resolveDrag, snapTargets, trackNeighbors, FRAME, LOOP_LEAD, SPEEDS, adjacentSegment, keyAction, loopRegion, loopSeek, markRegion, nextSpeed, stepTime, MAX_PPS, TICK_MIN_PX, blockRect, clampPps, clampScroll, contentWidth, fitPps, followScroll, formatTick, overlapsRange, rulerTicks, tickStep, timeToX, visibleRange, wordLabelsVisible, wordTicksVisible, xToTime, zoomAround };
+J.captionTimeline = { NEW_LENGTH, createRange, freeGap, groupMoveOrder, marqueeHits, newBlockRange, resolveGroupMove, adjacentTrackId, reorderIndex, NUDGE, SNAP_PX, MIN_SEGMENT, nearestSnap, nudge, resolveDrag, snapTargets, trackNeighbors, FRAME, LOOP_LEAD, SPEEDS, adjacentSegment, keyAction, loopRegion, loopSeek, markRegion, nextSpeed, stepTime, MAX_PPS, TICK_MIN_PX, blockRect, clampPps, clampScroll, contentWidth, fitPps, followScroll, formatTick, overlapsRange, rulerTicks, tickStep, timeToX, visibleRange, wordLabelsVisible, wordTicksVisible, xToTime, zoomAround };
 })();

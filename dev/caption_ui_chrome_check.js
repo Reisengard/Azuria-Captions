@@ -93,6 +93,7 @@ const IN_PAGE = `(() => {
     select(id) { ui.selectedId = id; },
     setSnap(on) { if (ui.transport.snap !== on) $('captionSnap').click(); },
     lockTiming(id) { ui.store.execute({ type: 'set-field-lock', segmentId: id, field: 'timing', locked: true }); J.captionWb.emit('project'); ui.store.undoStack.length = 0; },
+    unlockTiming(id) { ui.store.execute({ type: 'set-field-lock', segmentId: id, field: 'timing', locked: false }); J.captionWb.emit('project'); ui.store.undoStack.length = 0; return true; },
     lockBadge(id) { const b = document.querySelector('[data-segment-id="' + id + '"] .caption-lock-badge'); return !!b && !b.hidden; },
     status() { return $('captionStatus').textContent; },
     order() { return ui.store.project.tracks.map(item => item.id).join(','); },
@@ -101,6 +102,17 @@ const IN_PAGE = `(() => {
     addVisible() { return !$('captionTrackAddInline').hidden; },
     removeTrack(id) { ui.store.execute({ type: 'remove-track', trackId: id }); J.captionWb.emit('project'); },
     errors() { return JSON.stringify(ui.errors); },
+    count() { return ui.store.project.segments.length; },
+    sel() { return JSON.stringify([...ui.selection.segmentIds].sort()); },
+    undo2() { const ok = ui.store.undo(); J.captionWb.emit('project'); return ok; },
+    seek(time) { J.captionWb.seekTimeline(time); return true; },
+    playhead() { return ui.media.current.video.currentTime; },
+    focusId() { return document.activeElement && document.activeElement.id; },
+    blur() { if (document.activeElement) document.activeElement.blur(); return true; },
+    timeX(time) { return document.getElementById('captionTimelineContent').getBoundingClientRect().left + time * ui.timeline.pps; },
+    newer(known) { return ui.store.project.segments.filter(item => !known.includes(item.id)).map(item => ({ id: item.id, start: item.start, end: item.end, trackId: item.trackId, text: item.tokenIds.length })); },
+    ids() { return ui.store.project.segments.map(item => item.id); },
+    marquee() { return !!document.querySelector('.caption-marquee'); },
   };
   return true;
 })()`;
@@ -249,6 +261,84 @@ const IN_PAGE = `(() => {
     await t('removeTrack', 'track_3'); step('+ track: shown again after a track is removed', (await t('addVisible')) === true);
     const add = await t('rect', '#captionTrackAddInline'); await mouse('mousePressed', (add.left + add.right) / 2, (add.top + add.bottom) / 2); await mouse('mouseReleased', (add.left + add.right) / 2, (add.top + add.bottom) / 2); await sleep(80);
     step('+ track: the button adds a track', (await t('order')).split(',').length === 3 && (await t('addVisible')) === false, await t('order'));
+
+    // 11. create and multi-select (T5)
+    const tolerance = 1.5 / pps, ids0 = await t('ids'), tracks11 = (await t('order')).split(','), trackTwo = 'track_2', trackNew = tracks11[2];
+    await t('setSnap', false);
+    // double-click on an empty part of a row: a 2 s block there, selected, text field focused for typing
+    let rowY = await t('rowY', trackTwo), at = x => ({ x, y: rowY });
+    let timeX = await t('timeX', 8); await mouse('mouseMoved', timeX, rowY);
+    for (const count of [1, 2]) { await mouse('mousePressed', timeX, rowY, { clickCount: count }); await mouse('mouseReleased', timeX, rowY, { clickCount: count }); }
+    await sleep(120); let made = await t('newer', ids0);
+    step('create: double-click on an empty row makes a block', made.length === 1 && made[0].trackId === trackTwo && Math.abs(made[0].start - 8) <= tolerance && Math.abs(made[0].end - made[0].start - 2) < 1e-6, JSON.stringify(made));
+    step('create: it is selected and its text field has focus', JSON.parse(await t('sel')).join() === made[0].id && (await t('focusId')) === 'captionBlockText', await t('focusId'));
+    await t('undo2'); step('create: undo removes it', (await t('count')) === ids0.length); await t('blur');
+    // drag on an empty part of a row: a block for exactly that range, with a ghost while dragging
+    rowY = await t('rowY', trackNew); const from = await t('timeX', 2), to = await t('timeX', 5);
+    await drag({ x: from, y: rowY }, { x: to, y: rowY }, { release: false });
+    const ghost11 = await t('ghost'); step('create: dragging shows a ghost for the range', !!ghost11 && !ghost11.invalid && (await t('readout')) !== null, JSON.stringify(ghost11)); await shot('07-create-drag');
+    await mouse('mouseReleased', to, rowY); await sleep(120); made = await t('newer', ids0);
+    step('create: releasing makes the block on that row', made.length === 1 && made[0].trackId === trackNew && Math.abs(made[0].start - 2) <= tolerance && Math.abs(made[0].end - 5) <= tolerance && (await t('ghostCount')) === 0, JSON.stringify(made));
+    await t('undo2'); await t('blur');
+    // Esc during the drag creates nothing; a drag that is too short creates nothing; a drag starting inside a caption is a caption drag, not a create
+    await drag({ x: from, y: rowY }, { x: to, y: rowY }, { release: false }); await key('Escape', 'Escape', { vk: 27 }); await mouse('mouseReleased', to, rowY); await sleep(80);
+    step('create: Esc cancels the drag, nothing is made', (await t('count')) === ids0.length && (await t('ghostCount')) === 0);
+    await drag({ x: from, y: rowY }, { x: from + 3, y: rowY }); step('create: a 3 px drag is just a click', (await t('count')) === ids0.length);
+    // N: a block at the playhead on the active track
+    await t('seek', 9); await sleep(300); await key('n', 'KeyN', { text: 'n', vk: 78 }); await sleep(120); made = await t('newer', ids0);
+    step('N: a 2 s block at the playhead', made.length === 1 && Math.abs(made[0].start - (await t('playhead'))) < 1e-6 && Math.abs(made[0].end - made[0].start - 2) < 1e-6, JSON.stringify(made));
+    await t('undo2'); await t('blur');
+
+    // multi-select: click + Shift-click, then one drag moves both, as one undo step
+    c = await center('blockA'); await mouse('mouseMoved', c.x, c.y); await mouse('mousePressed', c.x, c.y); await mouse('mouseReleased', c.x, c.y);
+    let cb = await center('blockB'); await mouse('mousePressed', cb.x, cb.y, { modifiers: 8 }); await mouse('mouseReleased', cb.x, cb.y, { modifiers: 8 }); await sleep(60);
+    step('select: Shift-click adds a caption to the selection', (await t('sel')) === JSON.stringify(['blockA', 'blockB']), await t('sel'));
+    await mouse('mousePressed', cb.x, cb.y, { modifiers: 8 }); await mouse('mouseReleased', cb.x, cb.y, { modifiers: 8 }); await sleep(60);
+    step('select: Shift-click on a selected caption removes it', (await t('sel')) === JSON.stringify(['blockA']), await t('sel'));
+    await mouse('mousePressed', cb.x, cb.y, { modifiers: 8 }); await mouse('mouseReleased', cb.x, cb.y, { modifiers: 8 }); await sleep(60);
+    const lockedGroup = await t('snapshot'); c = await center('blockA'); await drag(c, { x: c.x + pps * .5, y: c.y });
+    step('group: a locked member stops the whole drag', (await t('snapshot')) === lockedGroup && /ロック/.test(await t('status')) && (await t('ghostCount')) === 0, await t('status'));
+    await t('unlockTiming', 'blockB'); await mouse('mousePressed', cb.x, cb.y, { modifiers: 8 }); await mouse('mouseReleased', cb.x, cb.y, { modifiers: 8 }); await mouse('mousePressed', cb.x, cb.y, { modifiers: 8 }); await mouse('mouseReleased', cb.x, cb.y, { modifiers: 8 }); await sleep(60);
+    step('group: both are selected again', (await t('sel')) === JSON.stringify(['blockA', 'blockB']), await t('sel'));
+    const beforeGroup = { a: await t('seg', 'blockA'), b: await t('seg', 'blockB') }, depth11 = await t('depth'); c = await center('blockA');
+    await drag(c, { x: c.x + pps * .5, y: c.y }, { release: false }); const groupGhosts = await client.evaluate('document.querySelectorAll(".caption-drag-ghost").length');
+    step('group: dragging one member shows a ghost for each', groupGhosts === 2 && /^\+0\.\d\ds$/.test(await t('readout')), groupGhosts + ' ' + await t('readout'));
+    await mouse('mouseReleased', c.x + pps * .5, c.y); await sleep(100);
+    const afterGroup = { a: await t('seg', 'blockA'), b: await t('seg', 'blockB') };
+    step('group: both moved by the same amount', Math.abs(afterGroup.a.start - beforeGroup.a.start - .5) <= tolerance && Math.abs((afterGroup.a.start - beforeGroup.a.start) - (afterGroup.b.start - beforeGroup.b.start)) < 1e-6, JSON.stringify(afterGroup));
+    step('group: the selection survives the drag and it is one undo step', (await t('sel')) === JSON.stringify(['blockA', 'blockB']) && (await t('depth')) === depth11 + 1, await t('sel'));
+    await t('undo2'); step('group: undo puts both back', JSON.stringify(await t('seg', 'blockA')) === JSON.stringify(beforeGroup.a) && JSON.stringify(await t('seg', 'blockB')) === JSON.stringify(beforeGroup.b));
+    await key('.', 'Period', { text: '.', vk: 190 }); step('group: the nudge key moves the whole selection', Math.abs((await t('seg', 'blockA')).start - beforeGroup.a.start - .05) < 1e-6 && Math.abs((await t('seg', 'blockB')).start - beforeGroup.b.start - .05) < 1e-6); await t('undo2');
+
+    // marquee: Shift + drag across a row selects what it touches; Esc cancels
+    await key('Escape', 'Escape', { vk: 27 }); step('select: Esc clears the selection', (await t('sel')) === '[]', await t('sel'));
+    rowY = await t('rowY', trackTwo);
+    await drag({ x: await t('timeX', .3), y: rowY - 6 }, { x: await t('timeX', 6.8), y: rowY + 6 }, { modifiers: 8, release: false });
+    step('marquee: a box is drawn while dragging', await t('marquee')); await shot('08-marquee');
+    await mouse('mouseReleased', await t('timeX', 6.8), rowY + 6, { modifiers: 8 }); await sleep(80);
+    step('marquee: releasing selects the captions it touched', (await t('sel')) === JSON.stringify(['blockA', 'blockB']) && !(await t('marquee')), await t('sel'));
+    await key('Escape', 'Escape', { vk: 27 });
+    await drag({ x: await t('timeX', .3), y: rowY - 6 }, { x: await t('timeX', 6.8), y: rowY + 6 }, { modifiers: 8, release: false }); await key('Escape', 'Escape', { vk: 27 });
+    await mouse('mouseReleased', await t('timeX', 6.8), rowY + 6, { modifiers: 8 }); await sleep(80);
+    step('marquee: Esc cancels it and selects nothing', !(await t('marquee')) && (await t('sel')) === '[]', await t('sel'));
+
+    // right-click menu: duplicate a selection, split at the playhead, delete
+    c = await center('blockA'); await mouse('mousePressed', c.x, c.y); await mouse('mouseReleased', c.x, c.y);
+    cb = await center('blockB'); await mouse('mousePressed', cb.x, cb.y, { modifiers: 8 }); await mouse('mouseReleased', cb.x, cb.y, { modifiers: 8 });
+    await mouse('mousePressed', c.x, c.y, { button: 'right', buttons: 2 }); await mouse('mouseReleased', c.x, c.y, { button: 'right', buttons: 0 }); await sleep(100);
+    let menu = await t('menuItems'); step('menu: right-click on a selected caption opens the caption menu', menu.length === 5 && /2/.test(menu[3]) && /2/.test(menu[4]) && /\(off\)/.test(menu[0]), JSON.stringify(menu)); await shot('09-caption-menu');
+    const dup = await t('rect', '.caption-menu .caption-menu-item:nth-child(4)'); await mouse('mousePressed', (dup.left + dup.right) / 2, (dup.top + dup.bottom) / 2); await mouse('mouseReleased', (dup.left + dup.right) / 2, (dup.top + dup.bottom) / 2); await sleep(120);
+    made = await t('newer', ids0); step('menu: duplicate copies both captions and selects the copies', made.length === 2 && JSON.parse(await t('sel')).every(id => made.some(item => item.id === id)) && (await t('depth')) === depth11 + 1, JSON.stringify(made));
+    await t('undo2'); step('menu: one undo removes both copies', (await t('count')) === ids0.length);
+    const spoken11 = first.id, words11 = await t('tokens', spoken11), gap = (words11[1].end + words11[2].start) / 2;
+    await t('select', spoken11); await t('seek', gap); await sleep(300); const playhead11 = await t('playhead');
+    await key('s', 'KeyS', { text: 's', vk: 83 }); await sleep(120);
+    step('S: splits the selected caption at the playhead', (await t('count')) === ids0.length + 1 && Math.abs((await t('seg', spoken11)).end - playhead11) < .06, `${await t('count')} ${JSON.stringify(await t('seg', spoken11))} ${playhead11}`);
+    await t('undo2'); step('S: undo joins it again', (await t('count')) === ids0.length && JSON.stringify((await t('seg', spoken11)).end) === JSON.stringify(first.end));
+    await t('select', 'blockB'); const countBefore = await t('count'); await key('Delete', 'Delete', { vk: 46 }); await sleep(100);
+    step('Delete: removes the selected caption', (await t('count')) === countBefore - 1 && (await t('seg', 'blockB')) === undefined, await t('status'));
+    await t('undo2'); step('Delete: undo brings it back', (await t('seg', 'blockB')) !== undefined && (await t('count')) === countBefore);
+    await t('blur');
 
     const problems = log.filter(line => !/favicon|Failed to load resource/.test(line));
     step('no page errors', problems.length === 0, problems.join(' | '));

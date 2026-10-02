@@ -8,7 +8,7 @@ if (typeof document === 'undefined' || typeof document.getElementById !== 'funct
 const W = J.captionWb, TL = J.captionTimeline;
 const { ui, $, fmt, status, commandError, segmentTrackId, activeTrack, trackName, segmentText, tokenMap, sourceVideo, escapeHtml, runCommand, accessibilityWarnings, selectSegment, on, emit } = W;
 const blocks = new Map(), rows = new Map(), labels = new Map(), headParts = new Map();
-let expectedScroll = null, scrubbing = false, wordsFrame = 0;
+let expectedScroll = null, scrubbing = false, wordsFrame = 0, swallowClick = false;
 
 const scrollEl = () => $('captionTimelineScroll');
 const viewportWidth = () => scrollEl().clientWidth || 600;
@@ -110,6 +110,8 @@ function openMenu(anchor, items) {
   document.addEventListener('pointerdown', onMenuOutside, true);
   const first = menu.querySelector('button:not(:disabled)'); if (first) first.focus();
 }
+/* A menu at the pointer (right-click): the "anchor" is a point; focus goes back to `restore` when the menu closes. */
+const pointAnchor = (x, y, restore) => ({ isConnected: true, getBoundingClientRect: () => ({ left: x, right: x, top: y, bottom: y }), focus: () => { if (restore && restore.isConnected) restore.focus(); } });
 function openTrackMenu(trackId) {
   const project = ui.store.project, tracks = project.tracks || [], track = J.captionTrack(project, trackId), anchor = headParts.has(trackId) ? headParts.get(trackId).more : null; if (!track || !anchor) return;
   const index = tracks.indexOf(track), primary = !!track.primary;
@@ -188,7 +190,7 @@ function renderTimeline() {
     block.setAttribute('aria-label', `${text}, ${fmt(segment.start)}–${fmt(segment.end)}, ${trackName(segmentTrackId(segment))}`);
     const locked = segmentTimingLocked(segment); entry.lock.hidden = !locked; block.classList.toggle('is-locked', locked);
     block.style.left = `${rect.left}px`; block.style.width = `${rect.width}px`;
-    block.classList.toggle('selected', segment.id === ui.selectedId); block.classList.toggle('is-now', ui.currentIds.has(segment.id));
+    block.classList.toggle('selected', ui.selection.segmentIds.has(segment.id)); block.classList.toggle('is-now', ui.currentIds.has(segment.id));
     if (row && block.parentNode !== row) row.appendChild(block);
     const next = J.captionTrackNeighbor(project, segment, 1), rollable = !!next && next.start - segment.end < .02 && !(segment.locks && segment.locks.segmentation);   // only the seam of two touching captions rolls; any other end edge trims
     if (rollable && !entry.handle) { const handle = document.createElement('span'); handle.className = 'caption-boundary-handle'; handle.dataset.boundarySegment = segment.id; handle.setAttribute('role', 'slider'); handle.tabIndex = 0; block.appendChild(handle); entry.handle = handle; }
@@ -217,7 +219,7 @@ function renderList() {
   project.segments.forEach(segment => {
     const text = segmentText(segment), item = document.createElement('li'), button = document.createElement('button');
     button.type = 'button'; button.className = 'caption-segment'; button.dataset.segmentId = segment.id; button.classList.toggle('is-now', ui.currentIds.has(segment.id));
-    button.setAttribute('aria-selected', String(segment.id === ui.selectedId));
+    button.setAttribute('aria-selected', String(ui.selection.segmentIds.has(segment.id)));
     const warning = accessibilityWarnings(segment).length ? '<span class="caption-segment-warning" aria-label="アクセシビリティ警告">⚠</span>' : '';
     const tag = tracks.length > 1 ? `<span class="caption-segment-track-tag">${escapeHtml(trackName(segmentTrackId(segment)))}</span>` : '';
     button.innerHTML = `<span class="caption-segment-time">${fmt(segment.start)}</span><span>${tag}${escapeHtml(text)} ${warning}</span>`;
@@ -283,29 +285,60 @@ function dragTargets(layout, segmentId) {
   for (const near of [before, after]) if (near) { const segment = project.segments.find(item => item.id === near.id); for (const id of segment.tokenIds) { const token = tokens.get(id); if (token) wordTimes.push(token.start, token.end); } }
   return TL.snapTargets({ duration: layout.duration, playhead: video ? video.currentTime : undefined, loop: ui.transport.marked || (ui.transport.loopOn ? ui.transport.region : null), cuts, segments: layout.segments, excludeId: segmentId, wordTimes });
 }
+function groupTargets(layout, ids) {
+  const project = ui.store.project, video = sourceVideo(), cuts = []; for (const clip of J.videoClips(project, layout.duration)) cuts.push(clip.start, clip.end);
+  return TL.snapTargets({ duration: layout.duration, playhead: video ? video.currentTime : undefined, loop: ui.transport.marked || (ui.transport.loopOn ? ui.transport.region : null), cuts, segments: layout.segments, excludeId: ids });
+}
 function rowIdAt(clientY) {
   let best = null, distance = Infinity;
   for (const [id, row] of rows) { const rect = row.getBoundingClientRect(), d = clientY < rect.top ? rect.top - clientY : clientY > rect.bottom ? clientY - rect.bottom : 0; if (d < distance) { distance = d; best = id; } }
   return best;
 }
 function startSegmentDrag(event) {
-  if (event.button !== 0 || ui.drag || ui.boundaryDrag) return;
+  if (event.button !== 0 || ui.drag || ui.boundaryDrag || ui.gesture) return;
   const block = event.target.closest('.caption-timeline-segment'); if (!block || event.target.closest('[data-boundary-segment]')) return;
+  const grip = event.target.closest('[data-trim]');
+  if (!grip && (event.shiftKey || event.ctrlKey || event.metaKey)) return;   // on the body the click toggles the selection and there is no drag (Shift on a trim grip still means "fit the words")
   const segment = ui.store.project.segments.find(item => item.id === block.dataset.segmentId); if (!segment) return;
-  if (segmentTimingLocked(segment)) { status(commandError({ code: 'SEGMENT_FIELD_LOCKED' }), true); return; }
-  const grip = event.target.closest('[data-trim]'), mode = grip ? `trim-${grip.dataset.trim}` : 'move', edge = mode === 'trim-end' ? segment.end : segment.start;
+  const together = !grip && ui.selection.segmentIds.size > 1 && ui.selection.segmentIds.has(segment.id);
+  const members = together ? ui.store.project.segments.filter(item => ui.selection.segmentIds.has(item.id)) : [segment];
+  if (members.some(segmentTimingLocked)) {
+    status(commandError({ code: 'SEGMENT_FIELD_LOCKED' }), true);
+    if (together) { const release = () => { window.removeEventListener('pointerup', release, true); swallowClick = true; setTimeout(() => { swallowClick = false; }, 0); }; window.addEventListener('pointerup', release, true); }   // the click that ends this press must not collapse the selection
+    return;
+  }
+  if (together) { ui.drag = { mode: 'group', segmentId: segment.id, ids: members.map(item => item.id), block, pointerId: event.pointerId, x: event.clientX, y: event.clientY, grab: timelineTimeAt(event.clientX), started: false, result: null, frame: 0 }; return; }
+  const mode = grip ? `trim-${grip.dataset.trim}` : 'move', edge = mode === 'trim-end' ? segment.end : segment.start;
   ui.drag = { mode, segmentId: segment.id, block, pointerId: event.pointerId, x: event.clientX, y: event.clientY, grab: timelineTimeAt(event.clientX) - edge, started: false, result: null, frame: 0 };
 }
+const ghostsOf = drag => drag.ghosts || [drag.ghost];
+const removeGhosts = drag => ghostsOf(drag).forEach(ghost => ghost && ghost.remove());
+const dragBlocks = drag => (drag.ids || [drag.segmentId]).map(id => blocks.get(id)).filter(Boolean).map(entry => entry.block);
 function beginDrag(drag) {
-  const video = sourceVideo(); drag.started = true; drag.originTime = video ? video.currentTime : 0; drag.layout = dragLayout(); drag.targets = dragTargets(drag.layout, drag.segmentId);
+  const video = sourceVideo(); drag.started = true; drag.originTime = video ? video.currentTime : 0; drag.layout = dragLayout();
+  drag.targets = drag.ids ? groupTargets(drag.layout, drag.ids) : dragTargets(drag.layout, drag.segmentId);
   if (video && !video.paused) video.pause();
   try { drag.block.setPointerCapture(drag.pointerId); } catch (error) { /* synthetic pointers cannot be captured */ }
-  drag.block.classList.add('is-dragging'); document.body.classList.add('is-caption-dragging');
-  drag.ghost = document.createElement('div'); drag.ghost.className = 'caption-drag-ghost'; drag.ghost.setAttribute('aria-hidden', 'true');
+  dragBlocks(drag).forEach(block => block.classList.add('is-dragging')); document.body.classList.add('is-caption-dragging');
+  const makeGhost = () => { const ghost = document.createElement('div'); ghost.className = 'caption-drag-ghost'; ghost.setAttribute('aria-hidden', 'true'); return ghost; };
+  if (drag.ids) drag.ghosts = drag.ids.map(makeGhost); else drag.ghost = makeGhost();
   drag.line = document.createElement('div'); drag.line.className = 'caption-drag-snap'; drag.line.hidden = true; drag.line.setAttribute('aria-hidden', 'true');
   drag.readout = document.createElement('div'); drag.readout.className = 'caption-drag-readout'; drag.readout.setAttribute('aria-hidden', 'true');
   $('captionTimelineContent').append(drag.line, drag.readout);
-  if (ui.selectedId !== drag.segmentId) selectSegment(drag.segmentId);
+  if (!ui.selection.segmentIds.has(drag.segmentId)) selectSegment(drag.segmentId);
+}
+/* A whole selection shifts by one amount: a ghost per caption on its own row, one snap line, one readout. */
+function showGroupDrag(drag, result) {
+  const pps = ui.timeline.pps, byId = new Map(drag.layout.segments.map(item => [item.id, item]));
+  result.moves.forEach((move, index) => {
+    const ghost = drag.ghosts[index], row = rows.get(byId.get(move.id).trackId);
+    if (row && ghost.parentNode !== row) row.appendChild(ghost);
+    ghost.style.left = `${move.start * pps}px`; ghost.style.width = `${Math.max(2, (move.end - move.start) * pps)}px`; ghost.classList.toggle('is-invalid', !result.valid);
+    ghost.dataset.reason = result.valid ? '' : DRAG_MESSAGES[result.code] || commandError({ code: result.code });
+  });
+  const first = result.moves.reduce((a, b) => b.start < a.start ? b : a, result.moves[0]);
+  drag.line.hidden = !result.snappedTo; if (result.snappedTo) { drag.line.style.left = `${result.snappedTo.time * pps}px`; drag.line.dataset.kind = result.snappedTo.kind; }
+  drag.readout.style.left = `${first.start * pps}px`; drag.readout.textContent = `${result.delta < 0 ? '−' : '+'}${Math.abs(result.delta).toFixed(2)}s`; drag.readout.classList.toggle('is-invalid', !result.valid);
 }
 function showDrag(drag, result) {
   const pps = ui.timeline.pps, row = rows.get(result.trackId);
@@ -325,6 +358,10 @@ function previewDragTime(drag, time) {
 function moveSegmentDrag(event) {
   const drag = ui.drag; if (!drag || event.pointerId !== drag.pointerId) return;
   if (!drag.started) { if (Math.hypot(event.clientX - drag.x, event.clientY - drag.y) < DRAG_THRESHOLD) return; beginDrag(drag); }
+  if (drag.mode === 'group') {
+    const result = TL.resolveGroupMove({ layout: drag.layout, ids: drag.ids, delta: timelineTimeAt(event.clientX) - drag.grab, pps: ui.timeline.pps, snap: ui.transport.snap && !event.altKey, targets: drag.targets });
+    drag.result = result; if (result.moves.length) { showGroupDrag(drag, result); previewDragTime(drag, Math.min(...result.moves.map(move => move.start))); } return;
+  }
   const segment = ui.store.project.segments.find(item => item.id === drag.segmentId);
   const result = TL.resolveDrag({ layout: drag.layout, segmentId: drag.segmentId, mode: drag.mode, time: timelineTimeAt(event.clientX), grab: drag.grab, trackId: drag.mode === 'move' ? rowIdAt(event.clientY) : segmentTrackId(segment),
     pps: ui.timeline.pps, snap: ui.transport.snap && !event.altKey, shift: event.shiftKey, targets: drag.targets });
@@ -336,7 +373,7 @@ function endSegmentDrag(restoreTime) {
   const drag = ui.drag; ui.drag = null; if (!drag) return null;
   if (drag.frame) cancelAnimationFrame(drag.frame);
   if (!drag.started) return drag;
-  drag.block.classList.remove('is-dragging'); document.body.classList.remove('is-caption-dragging');
+  dragBlocks(drag).forEach(block => block.classList.remove('is-dragging')); document.body.classList.remove('is-caption-dragging');
   drag.line.remove(); drag.readout.remove();
   try { drag.block.releasePointerCapture(drag.pointerId); } catch (error) { /* already released */ }
   if (restoreTime !== undefined && sourceVideo()) { sourceVideo().currentTime = restoreTime; if (ui.preview) ui.preview.renderNow(restoreTime); }
@@ -346,13 +383,18 @@ function finishSegmentDrag(event) {
   const drag = ui.drag; if (!drag || event.pointerId !== drag.pointerId) return;
   if (!drag.started) { ui.drag = null; return; }
   const result = drag.result, video = sourceVideo(), time = video ? video.currentTime : undefined;
-  endSegmentDrag();
-  if (!result || !result.changed) { drag.ghost.remove(); return; }
+  endSegmentDrag(); swallowClick = true; setTimeout(() => { swallowClick = false; }, 0);   // the click that follows must not collapse a selection
+  if (!result || !result.changed) { removeGhosts(drag); return; }
   if (!result.valid) {   // refused: the red ghost stays a moment and says why; the caption was never moved
-    drag.ghost.classList.add('is-invalid'); setTimeout(() => drag.ghost.remove(), 900);
+    ghostsOf(drag).forEach(ghost => ghost.classList.add('is-invalid')); setTimeout(() => removeGhosts(drag), 900);
     status(DRAG_MESSAGES[result.code] || commandError({ code: result.code }), true); return;
   }
-  drag.ghost.remove();
+  removeGhosts(drag);
+  if (drag.mode === 'group') {
+    const commands = TL.groupMoveOrder(result.moves, result.delta).map(move => ({ type: 'move-segment', segmentId: move.id, start: move.start }));
+    if (runCommand({ type: 'batch', commands, label: 'move captions' }, drag.segmentId)) status(`${commands.length}件の字幕を動かしました。`);
+    if (ui.preview) ui.preview.renderNow(time); return;
+  }
   const segment = ui.store.project.segments.find(item => item.id === drag.segmentId);
   const command = result.mode === 'move' ? { type: 'move-segment', segmentId: drag.segmentId, start: result.start }
     : result.mode === 'trim-start' ? { type: 'trim-segment', segmentId: drag.segmentId, start: result.start, words: result.words }
@@ -364,18 +406,149 @@ function finishSegmentDrag(event) {
 function cancelSegmentDrag() {
   const drag = ui.drag; if (!drag) return false;
   endSegmentDrag(drag.started ? drag.originTime : undefined);
-  if (drag.started) { drag.ghost.remove(); status('ドラッグを取り消しました。'); }
+  if (drag.started) { removeGhosts(drag); status('ドラッグを取り消しました。'); }
   return true;
 }
 const dragging = () => !!(ui.drag && ui.drag.started);
 /* `,` / `.`: nudge the selected caption; it stops at its neighbours like a drag does. */
 function nudgeSegment(direction) {
   const segment = W.selectedSegment(); if (!segment) { status('字幕を選んでください。', true); return true; }
+  if (ui.selection.segmentIds.size > 1) {
+    const result = TL.resolveGroupMove({ layout: dragLayout(), ids: [...ui.selection.segmentIds], delta: direction * TL.NUDGE, pps: 1, snap: false });
+    if (!result.valid) { status(DRAG_MESSAGES[result.code] || commandError({ code: result.code }), true); return true; }
+    if (!result.changed || Math.abs(result.delta - direction * TL.NUDGE) > 1e-6) { status('これ以上動かせません。', true); return true; }
+    runCommand({ type: 'batch', commands: TL.groupMoveOrder(result.moves, result.delta).map(move => ({ type: 'move-segment', segmentId: move.id, start: move.start })), label: 'nudge captions' }, segment.id); if (ui.preview) ui.preview.renderNow();
+    return true;
+  }
   const result = TL.nudge(dragLayout(), segment.id, direction);
   if (!result.valid) { status(DRAG_MESSAGES[result.code] || commandError({ code: result.code }), true); return true; }
   if (!result.changed) { status('これ以上動かせません。', true); return true; }
   runCommand({ type: 'move-segment', segmentId: segment.id, start: result.start }, segment.id); if (ui.preview) ui.preview.renderNow();
   return true;
+}
+
+/* ---- Creating and multi-select (T5) ----
+   Drag on an empty part of a track row = a new text block for that range; Shift / Ctrl + drag, or a drag that starts in the VIDEO row or between
+   the rows, = marquee. Double-click an empty part = a 2 s block there. `N` = a block at the playhead. Shift / Ctrl + click toggles a caption. */
+const NEW_TEXT = '新しい字幕';
+function focusBlockText() {
+  if (W.selectLeftTab) W.selectLeftTab('caption');
+  const box = $('captionBlockText'); if (box && !box.closest('[hidden]')) { box.focus(); box.select(); }
+}
+function createBlock(range) {
+  const id = ui.store.nextSegmentId();
+  if (!runCommand({ type: 'create-text-block', text: NEW_TEXT, start: range.start, end: range.end, trackId: range.trackId }, id, id)) return false;
+  selectSegment(id); if (ui.preview) ui.preview.renderNow(); focusBlockText();
+  status('字幕を追加しました。文字を入力して Enter で確定します。'); return true;
+}
+function newCaptionAtPlayhead() {
+  const video = sourceVideo(), track = activeTrack(); if (!track) return true;
+  const range = TL.newBlockRange(dragLayout(), track.id, video ? video.currentTime : 0);
+  if (!range) { status('ここには字幕を追加できません（同じトラックの字幕と重なります）。', true); return true; }
+  createBlock(range); return true;
+}
+function startEmptyGesture(event) {
+  if (event.button !== 0 || ui.drag || ui.boundaryDrag || ui.gesture || headDrag) return;
+  if (event.target.closest('.caption-timeline-segment, .caption-boundary-handle, #captionRuler')) return;
+  const row = event.target.closest('.caption-track-row'), additive = event.shiftKey || event.ctrlKey || event.metaKey;
+  ui.gesture = { kind: row && !additive ? 'create' : 'marquee', pointerId: event.pointerId, x: event.clientX, y: event.clientY, time: timelineTimeAt(event.clientX), trackId: row ? row.dataset.trackId : null,
+    additive, base: new Set(ui.selection.segmentIds), started: false, result: null, hits: [] };
+}
+function beginGesture(gesture) {
+  gesture.started = true; gesture.layout = dragLayout(); document.body.classList.add('is-caption-dragging');
+  if (gesture.kind === 'create') {
+    gesture.targets = groupTargets(gesture.layout, []);
+    gesture.ghost = document.createElement('div'); gesture.ghost.className = 'caption-drag-ghost'; gesture.ghost.setAttribute('aria-hidden', 'true');
+    gesture.readout = document.createElement('div'); gesture.readout.className = 'caption-drag-readout'; gesture.readout.setAttribute('aria-hidden', 'true');
+    gesture.line = document.createElement('div'); gesture.line.className = 'caption-drag-snap'; gesture.line.hidden = true; gesture.line.setAttribute('aria-hidden', 'true');
+    rows.get(gesture.trackId).appendChild(gesture.ghost); $('captionTimelineContent').append(gesture.readout, gesture.line);
+  } else {
+    gesture.box = document.createElement('div'); gesture.box.className = 'caption-marquee'; gesture.box.setAttribute('aria-hidden', 'true'); $('captionTimelineContent').appendChild(gesture.box);
+  }
+}
+function moveGesture(event) {
+  const gesture = ui.gesture; if (!gesture || event.pointerId !== gesture.pointerId) return;
+  if (!gesture.started) { if (Math.hypot(event.clientX - gesture.x, event.clientY - gesture.y) < DRAG_THRESHOLD) return; beginGesture(gesture); }
+  const pps = ui.timeline.pps;
+  if (gesture.kind === 'create') {
+    const result = TL.createRange({ layout: gesture.layout, trackId: gesture.trackId, a: gesture.time, b: timelineTimeAt(event.clientX), pps, snap: ui.transport.snap && !event.altKey, targets: gesture.targets });
+    gesture.result = result; gesture.ghost.style.left = `${result.start * pps}px`; gesture.ghost.style.width = `${Math.max(2, (result.end - result.start) * pps)}px`;
+    const refused = !result.valid && result.code === 'TRACK_SEGMENT_OVERLAP'; gesture.ghost.classList.toggle('is-invalid', refused); gesture.ghost.dataset.reason = refused ? DRAG_MESSAGES.TRACK_SEGMENT_OVERLAP : '';
+    gesture.line.hidden = !result.snappedTo; if (result.snappedTo) { gesture.line.style.left = `${result.snappedTo.time * pps}px`; gesture.line.dataset.kind = result.snappedTo.kind; }
+    gesture.readout.style.left = `${result.end * pps}px`; gesture.readout.textContent = `${fmt(result.start)}–${fmt(result.end)}`;
+    return;
+  }
+  const host = $('captionTimelineContent').getBoundingClientRect(), left = Math.min(gesture.x, event.clientX), right = Math.max(gesture.x, event.clientX), top = Math.min(gesture.y, event.clientY), bottom = Math.max(gesture.y, event.clientY);
+  Object.assign(gesture.box.style, { left: `${left - host.left}px`, top: `${top - host.top}px`, width: `${right - left}px`, height: `${bottom - top}px` });
+  const rects = [...blocks].map(([id, entry]) => { const rect = entry.block.getBoundingClientRect(); return { id, left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom }; });
+  gesture.hits = TL.marqueeHits(rects, { left, right, top, bottom });
+  for (const [id, entry] of blocks) entry.block.classList.toggle('is-marquee-hit', gesture.hits.includes(id));
+}
+function endGestureVisuals(gesture) {
+  document.body.classList.remove('is-caption-dragging');
+  for (const key of ['ghost', 'readout', 'line', 'box']) if (gesture[key]) gesture[key].remove();
+  for (const entry of blocks.values()) entry.block.classList.remove('is-marquee-hit');
+}
+function finishGesture(event) {
+  const gesture = ui.gesture; if (!gesture || event.pointerId !== gesture.pointerId) return;
+  ui.gesture = null; if (!gesture.started) return;
+  endGestureVisuals(gesture); swallowClick = true; setTimeout(() => { swallowClick = false; }, 0);
+  if (gesture.kind === 'marquee') {
+    const ids = new Set(gesture.additive ? gesture.base : []); for (const id of gesture.hits) ids.add(id);
+    ui.moveTokens.clear(); ui.selection.wordId = null; ui.selection.segmentIds = ids;
+    const first = ui.store.project.segments.find(segment => ids.has(segment.id)); if (first) ui.selection.trackId = segmentTrackId(first);
+    emit('selection'); status(ids.size ? `${ids.size}件の字幕を選択しました。` : '選択を解除しました。'); return;
+  }
+  const result = gesture.result; if (!result) return;
+  if (result.valid) { createBlock({ start: result.start, end: result.end, trackId: gesture.trackId }); return; }
+  if (result.code === 'TRACK_SEGMENT_OVERLAP') status(DRAG_MESSAGES.TRACK_SEGMENT_OVERLAP, true);   // too short to be a caption: treated like a click, nothing happens
+}
+function cancelGesture() {
+  const gesture = ui.gesture; if (!gesture) return false;
+  ui.gesture = null; if (!gesture.started) return true;
+  endGestureVisuals(gesture); status('ドラッグを取り消しました。'); return true;
+}
+
+/* ---- commands on the selection: split at the playhead, duplicate, delete (also the right-click menu and the S / Delete keys) ---- */
+const selectedIds = () => ui.store.project.segments.filter(segment => ui.selection.segmentIds.has(segment.id)).map(segment => segment.id);
+function splitAtPlayhead() {
+  const segment = W.selectedSegment(), video = sourceVideo();
+  if (!segment) { status('字幕を選んでください。', true); return true; }
+  if (ui.selection.segmentIds.size > 1) { status('分割できるのは1つの字幕だけです。', true); return true; }
+  if (!video) return true;
+  const id = ui.store.nextSegmentId();
+  if (runCommand({ type: 'split-segment', segmentId: segment.id, time: video.currentTime, newSegmentId: id, boundarySource: 'manual' }, segment.id)) status('再生ヘッドの位置で字幕を2つに分けました。元に戻すで戻せます。');
+  return true;
+}
+function duplicateSelected() {
+  const ids = selectedIds(); if (!ids.length) { status('字幕を選んでください。', true); return true; }
+  const before = new Set(ui.store.project.segments.map(segment => segment.id));
+  const commands = ids.map(segmentId => ({ type: 'duplicate-segment', segmentId })), command = commands.length === 1 ? commands[0] : { type: 'batch', commands, label: 'duplicate captions' };
+  if (!runCommand(command, ids[0])) return true;
+  const made = ui.store.project.segments.filter(segment => !before.has(segment.id)).map(segment => segment.id);
+  ui.moveTokens.clear(); ui.selection.wordId = null; ui.selection.segmentIds = new Set(made); emit('selection');
+  status(`${made.length}件の字幕を複製しました。元に戻すで戻せます。`); return true;
+}
+function deleteSelected() {
+  const ids = selectedIds(); if (!ids.length) { status('字幕を選んでください。', true); return true; }
+  const commands = ids.map(segmentId => ({ type: 'delete-segment', segmentId })), command = commands.length === 1 ? commands[0] : { type: 'batch', commands, label: 'delete captions' };
+  if (!runCommand(command, ids[0])) return true;
+  ui.moveTokens.clear(); W.clearSelection(); status(`${ids.length}件の字幕を削除しました。元に戻すで戻せます。`); return true;
+}
+function openCaptionMenu(event) {
+  const block = event.target.closest('.caption-timeline-segment'); if (!block) return;
+  event.preventDefault();
+  const id = block.dataset.segmentId; if (!ui.selection.segmentIds.has(id)) selectSegment(id);
+  const project = ui.store.project, ids = selectedIds(), many = ids.length > 1, segment = project.segments.find(item => item.id === id), video = sourceVideo(), time = video ? video.currentTime : NaN;
+  const previous = J.captionTrackNeighbor(project, segment, -1), next = J.captionTrackNeighbor(project, segment, 1), cutFixed = item => !!(item && item.locks && item.locks.segmentation);
+  const rect = block.getBoundingClientRect(), x = event.clientX || rect.left, y = event.clientY || rect.bottom;
+  openMenu(pointAnchor(x, y, block), [
+    { label: '再生ヘッドで分割', disabled: many || !video || !(time > segment.start && time < segment.end), run: splitAtPlayhead },
+    { label: '前の字幕と結合', disabled: many || !previous || cutFixed(segment) || cutFixed(previous), run: () => W.mergeWith(-1) },
+    { label: '次の字幕と結合', disabled: many || !next || cutFixed(segment) || cutFixed(next), run: () => W.mergeWith(1) },
+    { label: many ? `複製（${ids.length}件）` : '複製', run: duplicateSelected },
+    { label: many ? `削除（${ids.length}件）` : '削除', run: deleteSelected }
+  ]);
 }
 
 function startBoundaryDrag(event, segmentId) {
@@ -407,9 +580,9 @@ function markNow(time) {
 
 /* A selection change only moves the marks; the strip is not rebuilt. */
 function markSelection() {
-  const id = ui.selectedId, current = activeTrack();
-  $('captionSegmentList').querySelectorAll('[data-segment-id]').forEach(node => node.setAttribute('aria-selected', String(node.dataset.segmentId === id)));
-  $('captionSegmentTrack').querySelectorAll('[data-segment-id]').forEach(node => node.classList.toggle('selected', node.dataset.segmentId === id));
+  const current = activeTrack();
+  $('captionSegmentList').querySelectorAll('[data-segment-id]').forEach(node => node.setAttribute('aria-selected', String(ui.selection.segmentIds.has(node.dataset.segmentId))));
+  $('captionSegmentTrack').querySelectorAll('[data-segment-id]').forEach(node => node.classList.toggle('selected', ui.selection.segmentIds.has(node.dataset.segmentId)));
   $('captionTrackLabels').querySelectorAll('[data-track-select]').forEach(node => node.setAttribute('aria-pressed', String(!!current && node.dataset.trackSelect === current.id)));
 }
 
@@ -422,7 +595,9 @@ function init() {
   heads.addEventListener('pointerdown', startHeadDrag);
   $('captionTrackAddInline').addEventListener('click', () => W.addTrack());
   $('captionSegmentTrack').addEventListener('click', event => {
+    if (swallowClick) return;
     const word = event.target.closest('[data-word-id]'), target = event.target.closest('[data-segment-id]');
+    if (target && (event.shiftKey || event.ctrlKey || event.metaKey)) { W.toggleSelect(target.dataset.segmentId); return; }
     if (target) selectSegment(target.dataset.segmentId);
     if (word) { const token = tokenMap().get(word.dataset.wordId); if (token) { seekTimeline(token.start); status(`${token.text}: ${fmt(token.start)}–${fmt(token.end)}`); } }
   });
@@ -434,7 +609,7 @@ function init() {
     const target = event.target.closest('[data-segment-id]'); if (target && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); selectSegment(target.dataset.segmentId); }
   });
   // Empty space in the rows or the video row moves the playhead; the ruler scrubs while dragging.
-  scroll.addEventListener('click', event => { if (event.target.closest('[data-segment-id],.caption-boundary-handle,#captionRuler')) return; seekTimeline(timelineTimeAt(event.clientX)); });
+  scroll.addEventListener('click', event => { if (swallowClick || event.target.closest('[data-segment-id],.caption-boundary-handle,#captionRuler')) return; seekTimeline(timelineTimeAt(event.clientX)); });
   // Alt+drag, or a drag in the upper half of the ruler, marks the loop region; a plain click there still moves the playhead.
   let marking = null;
   ruler.addEventListener('pointerdown', event => {
@@ -450,11 +625,18 @@ function init() {
   ruler.addEventListener('pointerup', event => { if (marking && !marking.moved) { if (ui.transport.marked) W.setMarked(null); seekTimeline(timelineTimeAt(event.clientX)); } marking = null; scrubbing = false; });
   ruler.addEventListener('pointercancel', () => { marking = null; scrubbing = false; });
   $('captionSegmentTrack').addEventListener('pointerdown', event => { const handle = event.target.closest('[data-boundary-segment]'); if (handle) startBoundaryDrag(event, handle.dataset.boundarySegment); else startSegmentDrag(event); });
-  window.addEventListener('pointermove', event => { moveBoundary(event); moveSegmentDrag(event); moveHeadDrag(event); });
-  window.addEventListener('pointerup', event => { finishBoundary(); finishSegmentDrag(event); endHeadDrag(true); });
-  window.addEventListener('pointercancel', () => { cancelSegmentDrag(); endHeadDrag(false); });
+  $('captionTimelineContent').addEventListener('pointerdown', startEmptyGesture);
+  $('captionSegmentTrack').addEventListener('contextmenu', openCaptionMenu);
+  $('captionSegmentTrack').addEventListener('dblclick', event => {
+    const row = event.target.closest('.caption-track-row'); if (!row || event.target.closest('[data-segment-id]')) return;
+    const range = TL.newBlockRange(dragLayout(), row.dataset.trackId, timelineTimeAt(event.clientX));
+    if (!range) status('ここには字幕を追加できません（同じトラックの字幕と重なります）。', true); else createBlock(range);
+  });
+  window.addEventListener('pointermove', event => { moveBoundary(event); moveSegmentDrag(event); moveHeadDrag(event); moveGesture(event); });
+  window.addEventListener('pointerup', event => { finishBoundary(); finishSegmentDrag(event); endHeadDrag(true); finishGesture(event); });
+  window.addEventListener('pointercancel', () => { cancelSegmentDrag(); endHeadDrag(false); cancelGesture(); });
   // Esc cancels a drag before any other Esc handler (stop loop, deselect) sees it.
-  document.addEventListener('keydown', event => { if (event.key === 'Escape' && headDrag) { endHeadDrag(false); event.preventDefault(); event.stopImmediatePropagation(); return; } if (event.key === 'Escape' && ui.drag && cancelSegmentDrag()) { event.preventDefault(); event.stopImmediatePropagation(); } }, true);
+  document.addEventListener('keydown', event => { if (event.key === 'Escape' && headDrag) { endHeadDrag(false); event.preventDefault(); event.stopImmediatePropagation(); return; } if (event.key === 'Escape' && ui.drag && cancelSegmentDrag()) { event.preventDefault(); event.stopImmediatePropagation(); return; } if (event.key === 'Escape' && ui.gesture && cancelGesture()) { event.preventDefault(); event.stopImmediatePropagation(); } }, true);
   scroll.addEventListener('wheel', event => {
     if (event.ctrlKey || event.metaKey) { event.preventDefault(); ui.timeline.follow = false; zoomTimeline(Math.exp(-event.deltaY * .0025), event.clientX - scroll.getBoundingClientRect().left); return; }
     if (scroll.scrollWidth <= scroll.clientWidth + 1) return;
@@ -471,6 +653,6 @@ function init() {
   for (const id of ['captionSegmentList', 'captionSegmentTrack']) $(id).addEventListener('dblclick', event => { const target = event.target.closest('[data-segment-id]'); if (target) selectSegment(target.dataset.segmentId, true); });
   on('project', renderSegments); on('selection', markSelection);
 }
-Object.assign(W, { moveSelectedTrack, openTrackMenu, renameInline, cancelSegmentDrag, dragging, nudgeSegment, finishBoundary, fitTimeline, markNow, markSelection, moveBoundary, placeLoop, renderSegments, renderTimeline, revealTime, seekTimeline, startBoundaryDrag, timelineFollow, timelineTimeAt, updatePlayhead, zoomTimeline });
+Object.assign(W, { deleteSelected, duplicateSelected, newCaptionAtPlayhead, splitAtPlayhead, moveSelectedTrack, openTrackMenu, renameInline, cancelSegmentDrag, dragging, nudgeSegment, finishBoundary, fitTimeline, markNow, markSelection, moveBoundary, placeLoop, renderSegments, renderTimeline, revealTime, seekTimeline, startBoundaryDrag, timelineFollow, timelineTimeAt, updatePlayhead, zoomTimeline });
 W.inits.push(init);
 })();

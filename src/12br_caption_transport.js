@@ -97,7 +97,7 @@ function onKey(event) {
   // Native widgets that use the same keys keep them: buttons take Space, sliders take the arrows.
   if (action === 'play' && target.tagName === 'BUTTON') return;
   if (/^(back|forward)-/.test(action) || action === 'prev-caption' || action === 'next-caption') { if (target.closest && target.closest('[data-boundary-segment]')) return; }
-  if (!sourceVideo() && action !== 'escape' && !/^(nudge|track)-/.test(action)) return;
+  if (!sourceVideo() && action !== 'escape' && action !== 'new' && action !== 'delete' && !/^(nudge|track)-/.test(action)) return;
   const handled = run(action); if (!handled) return;
   event.preventDefault(); event.stopImmediatePropagation();
 }
@@ -117,6 +117,9 @@ function run(action) {
     case 'nudge-forward': return W.nudgeSegment(1);
     case 'track-up': return W.moveSelectedTrack(-1);
     case 'track-down': return W.moveSelectedTrack(1);
+    case 'new': return W.newCaptionAtPlayhead();
+    case 'split': return W.splitAtPlayhead();
+    case 'delete': return W.deleteSelected();
     case 'zoom-in': ui.timeline.follow = false; W.zoomTimeline(2); return true;
     case 'zoom-out': ui.timeline.follow = false; W.zoomTimeline(.5); return true;
     case 'zoom-fit': W.fitTimeline(); return true;

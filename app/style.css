@@ -188,6 +188,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .caption-drag-readout { position: absolute; z-index: 6; top: 2px; transform: translateX(6px); padding: 0 4px; border-radius: 3px; background: var(--raised); color: var(--text); font: 10px var(--mono); pointer-events: none; white-space: nowrap; }
 .caption-drag-readout.is-invalid { color: #ff5d6c; }
 body.is-caption-dragging { cursor: grabbing; user-select: none; }
+.caption-marquee { position: absolute; z-index: 6; box-sizing: border-box; border: 1px solid var(--cyan); background: rgba(22,244,212,.1); pointer-events: none; }
+.caption-timeline-segment.is-marquee-hit { border-color: var(--cyan); box-shadow: 0 0 0 1px var(--cyan); }
 .caption-boundary-handle { position: absolute; z-index: 3; top: -3px; right: -5px; width: 9px; height: 32px; padding: 0; border: 0; border-radius: 2px; background: var(--amber); cursor: ew-resize; }
 .caption-loop-region { position: absolute; z-index: 3; top: 0; bottom: 0; left: 0; box-sizing: border-box; border-inline: 1px solid var(--cyan); background: rgba(22,244,212,.07); pointer-events: none; }
 .caption-loop-region::before { content: ''; position: absolute; inset: 0 0 auto; height: 22px; background: rgba(22,244,212,.22); }

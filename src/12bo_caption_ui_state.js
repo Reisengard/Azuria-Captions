@@ -18,7 +18,7 @@ function emit(name, detail) { for (const item of (listeners[name] || []).slice()
 
 /* Selection is state of its own: the playhead never changes it (it only marks the captions on screen in `currentIds`).
    `ui.selectedId`, `ui.trackId` and `ui.wordId` read and write this object. */
-const ui = { store: null, media: null, preview: null, moveTokens: new Set(), variation: 0, lookScope: 'project', errors: {}, timeline: { fit: true, pps: 0, scrollLeft: 0, follow: true }, boundaryDrag: null, drag: null,
+const ui = { store: null, media: null, preview: null, moveTokens: new Set(), variation: 0, lookScope: 'project', errors: {}, timeline: { fit: true, pps: 0, scrollLeft: 0, follow: true }, boundaryDrag: null, drag: null, gesture: null,
   transport: { speed: 1, loopOn: false, marked: null, region: null, snap: true },
   exporter: null, exportAbort: null, currentIds: new Set(), selection: { segmentIds: new Set(), trackId: null, wordId: null } };
 Object.defineProperties(ui, {

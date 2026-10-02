@@ -271,6 +271,7 @@ class CaptionStore {
       case 'move-segment': this.moveSegment(command); break;
       case 'trim-segment': this.trimSegment(command); break;
       case 'delete-segment': this.deleteSegment(command); break;
+      case 'duplicate-segment': this.duplicateSegment(command); break;
       case 'edit-segment-text': this.editSegmentText(command); break;
       case 'retime-tokens': this.retimeTokens(command); break;
       case 'batch': this.runBatch(command); break;
@@ -520,6 +521,33 @@ class CaptionStore {
     this.project.segments.splice(index, 1);
     delete this.project.plans[segment.id];
     this.project.transcript.tokens = this.project.transcript.tokens.filter(token => !words.has(token.id));
+  }
+
+  /* { segmentId, newSegmentId?, start?, trackId? }: a copy of the caption as a typed block (its words get new ids and even timing; the box and
+     preset animations are kept). Without `start` it goes into the first free gap after the original (on another track: from the same time);
+     a gap shorter than the original shortens the copy (never below 0.1 s); no gap at all refuses. */
+  duplicateSegment(command) {
+    const { segment } = this.segment(command.segmentId), project = this.project, plan = project.plans && project.plans[segment.id];
+    const own = segment.trackId || J.CAPTION_PRIMARY_TRACK_ID, trackId = command.trackId == null ? own : this.requireTrack(command.trackId).id;
+    const length = segment.end - segment.start, duration = Number(project.media.duration);
+    let start, end;
+    if (command.start !== undefined) { start = Number(command.start); end = start + length; }
+    else {
+      const anchor = trackId === own ? segment.end : segment.start, gaps = [];
+      let cursor = 0;
+      for (const other of J.captionTrackSegments(project, trackId).slice().sort((a, b) => a.start - b.start)) { if (other.start > cursor) gaps.push([cursor, other.start]); cursor = Math.max(cursor, other.end); }
+      if (duration > cursor) gaps.push([cursor, duration]);
+      const rooms = gaps.map(([from, to]) => ({ from: Math.max(from, anchor), room: to - Math.max(from, anchor) })).filter(item => item.room >= J.CAPTION_MIN_SEGMENT_SECONDS - 1e-6);
+      const fit = rooms.find(item => item.room >= length - 1e-6) || rooms[0];
+      if (!fit) fail('TRACK_SEGMENT_OVERLAP', 'There is no free room for a copy on this track.', { segmentId: segment.id, trackId });
+      start = fit.from; end = start + Math.min(length, fit.room);
+    }
+    start = +start.toFixed(6); end = +end.toFixed(6);
+    const text = segment.tokenIds.map(id => this.token(id).text).join(' ');
+    const created = { type: 'create-text-block', text, start, end, trackId, segmentId: command.newSegmentId, lockSegmentation: !(segment.locks && segment.locks.segmentation === false) };
+    if (plan && plan.manual && plan.manual.box) created.box = plan.manual.box;
+    if (plan) { const animation = J.captionTextBlockAnimation(plan), chosen = Object.fromEntries(Object.entries(animation).filter(([, id]) => id)); if (Object.keys(chosen).length) created.animation = chosen; }
+    this.createTextBlock(created);
   }
 
   /* { segmentId, text }: rewrite a caption's words. Same word count: texts replaced, IDs / times / emphasis kept. Otherwise only the

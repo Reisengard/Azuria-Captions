@@ -207,6 +207,10 @@ function init() {
   $('captionDisableAnimation').addEventListener('change', event => { const segment = selectedSegment(); if (!segment) return;
     runCommand({ type: 'set-segment-animation-disabled', segmentId: segment.id, disabled: event.target.checked }, segment.id); });
   $('captionEditLook').addEventListener('click', openSegmentLook);
+  $('captionBlockText').addEventListener('keydown', event => {   // a freshly created block is typed over right away: Enter commits, Esc leaves the field
+    if (event.isComposing) return;
+    if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); applyBlockText(); } else if (event.key === 'Escape') event.target.blur();
+  });
   $('captionBlockApply').addEventListener('click', applyBlockText); $('captionBlockDelete').addEventListener('click', deleteBlock);
   for (const [key, id] of Object.entries(BLOCK_ANIMATION_CONTROLS)) $(id).addEventListener('change', event => setBlockAnimation(key, event.target.value));
   $('captionSelectedStart').addEventListener('change', applyTiming); $('captionSelectedEnd').addEventListener('change', applyTiming);
