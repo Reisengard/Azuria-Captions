@@ -46,10 +46,22 @@ out = TL.tapSyncWindows([items[0]], [{ down: 59.5, up: null }], { offset: 0, dur
 near(out[0].start, 59.5); near(out[0].end, 60);
 assert.deepEqual(TL.tapSyncWindows(items, [], {}), []);
 
+// words (C5): taps mark word starts, the last word of the caption runs to the caption end, offset subtracted, holds end on release
+const words = [{ id: 'w1', start: 1, end: 1.4 }, { id: 'w2', start: 1.4, end: 1.8 }, { id: 'w3', start: 1.8, end: 2 }];
+let wt = TL.wordSyncTimes(words, [{ down: 1.1, up: 1.15 }, { down: 1.6, up: 1.65 }, { down: 1.9, up: 1.95 }], { offset: .1, start: 1, end: 2.5 });
+assert.equal(wt.length, 3); near(wt[0].start, 1); near(wt[0].end, 1.5); near(wt[1].start, 1.5); near(wt[1].end, 1.8); near(wt[2].start, 1.8); near(wt[2].end, 2.5);
+wt = TL.wordSyncTimes(words, [{ down: 1.2, up: 1.5 }, { down: 1.7, up: null }], { offset: 0, start: 1, end: 2.5 });   // hold on word 1 ends on release; the last tapped keeps its length, capped by the untapped word
+near(wt[0].end, 1.5); near(wt[1].start, 1.7); assert.ok(wt[1].end <= 1.8 + 1e-9 || wt[1].end - wt[1].start <= TL.MIN_WORD + 1e-9);
+wt = TL.wordSyncTimes(words, [{ down: .5, up: null }, { down: .6, up: null }, { down: .61, up: null }], { offset: 0, start: 1, end: 2 });   // before the caption, crowded: clamped, ordered, minimum length
+for (let i = 0; i < wt.length; i++) { assert.ok(wt[i].start >= 1 - 1e-9 && wt[i].end <= 2 + 1e-9); assert.ok(wt[i].end - wt[i].start >= TL.MIN_WORD - 1e-9); if (i) assert.ok(wt[i].start >= wt[i - 1].end - 1e-9); }
+wt = TL.wordSyncTimes(words, [{ down: 9, up: null }, { down: 9, up: null }, { down: 9, up: null }], { offset: 0, start: 1, end: 2 });   // after the caption: still inside it
+assert.ok(wt.every(item => item.end <= 2 + 1e-9 && item.start < item.end));
+assert.deepEqual(TL.wordSyncTimes(words, [], {}), []);
+
 // wiring: the session file, the key hook, the loop wrap bypass, the button and its localized copy
 const src = name => fs.readFileSync(path.join(root, 'src', name), 'utf8');
 const sync = src('12bs_caption_sync.js'), transport = src('12br_caption_transport.js'), body = fs.readFileSync(path.join(root, 'app', 'body.html'), 'utf8');
 assert.match(sync, /type: 'batch'/); assert.match(sync, /label: 'tap sync'/); assert.match(sync, /tapSyncWindows/); assert.match(sync, /localStorage/);
 assert.match(transport, /W\.syncKey/); assert.match(transport, /!tr\.syncing/);
-assert.match(body, /id="captionSync"/);
+assert.match(body, /id="captionSync"/); assert.match(body, /id="captionSyncWords"/); assert.match(sync, /type: 'retime-tokens'/); assert.match(sync, /wordSyncTimes/);
 console.log('Caption tap sync tests passed.');

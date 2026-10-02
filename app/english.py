@@ -553,6 +553,13 @@ CAPTION_UI = {
     "'確定（Enter）'": "'Confirm (Enter)'", "'破棄（Esc）'": "'Discard (Esc)'", "'タップ同期'": "'Tap sync'",
     "'同期を破棄しました。変更はありません。'": "'Sync discarded. Nothing changed.'", "'タップがなかったため、変更はありません。'": "'No taps, so nothing changed.'",
     "'タイミングは変わりませんでした。'": "'The timing did not change.'", "`${done}件の字幕のタイミングを同期しました`": "`Synced the timing of ${done} caption(s)`",
+    # Tap sync for words (C5)
+    '>単語を同期': '>Sync words', 'title="この字幕をループ再生し、各単語が始まる瞬間に Space を押して単語のタイミングを合わせます"': 'title="Loop this caption and press Space as each word starts to set the word timing"',
+    "'単語を同期する字幕を選んでください。'": "'Select the caption whose words you want to sync.'",
+    "'この字幕のタイミングは固定中のため、同期できません。'": "'This caption's timing is kept as is, so it cannot be synced.'",
+    "'同期できる単語がありません。'": "'There are no words to sync.'",
+    "`単語の同期: 字幕がループします。各単語が始まる瞬間に Space を押してください（${tokens.length}語）。`": "`Word sync: the caption loops. Press Space the moment each word starts (${tokens.length}).`",
+    "`${done}語のタイミングを同期しました`": "`Synced the timing of ${done} word(s)`",
     # Word styles panel
     "'自動（スタイルに合わせる）'": "'Auto (match style)'",
     "`${count.count} / ${count.total} 語`": "`${count.count} / ${count.total} words`",

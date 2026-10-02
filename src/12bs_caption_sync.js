@@ -1,5 +1,5 @@
 /* ============================================================
-   JIZURA — Video Captions workbench: tap sync for captions (C4)
+   JIZURA — Video Captions workbench: tap sync for captions (C4) and for the words of one caption (C5)
    The video plays; Space (or the Tap button) marks "the next caption starts now". A short tap ends the caption where the next one starts,
    a hold ends it on release. Nothing is committed during the pass: ghosts on the timeline show the new times, Stop sends one batch (one undo), Esc discards.
    ============================================================ */
@@ -23,7 +23,9 @@ function isSpoken(segment) {
   return !J.isCaptionTextBlock(ui.store.project, segment) && segment.tokenIds.every(id => { const token = tokens.get(id); return token && token.timingQuality === 'word'; });
 }
 
+const label = item => session.kind === 'words' ? item.text : segmentText(session.byId.get(item.id));
 function windows() {
+  if (session.kind === 'words') return TL.wordSyncTimes(session.items, session.taps, { offset: tr.syncOffset, start: session.floor, end: session.after }).map(item => ({ id: item.tokenId, start: item.start, end: item.end }));
   return TL.tapSyncWindows(session.items, session.taps, { offset: tr.syncOffset, floor: session.floor, after: session.after, duration: Number(ui.store.project.media.duration) || Infinity });
 }
 const rowFor = trackId => document.querySelector(`#captionSegmentTrack [data-track-id="${trackId}"]`);
@@ -36,15 +38,16 @@ function paint() {
   list.forEach((item, index) => {
     let ghost = session.ghosts[index];
     if (!ghost) { ghost = session.ghosts[index] = document.createElement('div'); ghost.className = 'caption-drag-ghost caption-sync-ghost'; ghost.setAttribute('aria-hidden', 'true'); if (row) row.appendChild(ghost); const block = blockFor(item.id); if (block) block.classList.add('is-sync-replaced'); }
-    ghost.style.left = `${item.start * pps}px`; ghost.style.width = `${Math.max(2, (item.end - item.start) * pps)}px`; ghost.title = `${fmt(item.start)}–${fmt(item.end)} ${segmentText(session.byId.get(item.id))}`;
+    ghost.style.left = `${item.start * pps}px`; ghost.style.width = `${Math.max(2, (item.end - item.start) * pps)}px`; ghost.title = `${fmt(item.start)}–${fmt(item.end)} ${label(session.items[index])}`;
     ghost.classList.toggle('is-held', session.holding === index);
   });
+  while (session.ghosts.length > list.length) session.ghosts.pop().remove();   // a looped word pass starts over
 }
 function renderPanel() {
   if (!panel) return;
   panel.hidden = !session; if (!session) return;
   const done = session.taps.length, total = session.items.length, next = session.items[done];
-  parts.next.textContent = next ? `次: 「${segmentText(session.byId.get(next.id))}」（${done + 1} / ${total}）` : `すべてタップしました（${total}件）。「確定」で反映します。`;
+  parts.next.textContent = next ? `次: 「${label(next)}」（${done + 1} / ${total}）` : `すべてタップしました（${total}件）。「確定」で反映します。`;
   parts.tap.disabled = !next && session.holding === null; parts.tap.classList.toggle('is-down', session.holding !== null);
   parts.offset.value = String(tr.syncOffset); parts.offsetValue.textContent = `${tr.syncOffset.toFixed(2)}s`;
 }
@@ -72,6 +75,28 @@ function start() {
   return true;
 }
 
+/* Words of the selected caption: it loops while the words are tapped one by one; a new loop pass starts the taps over. */
+function startWords() {
+  if (session) return true;
+  const video = sourceVideo(), segment = selectedSegment(); if (!video) { status('動画を読み込んでください。', true); return false; }
+  if (!segment) { status('単語を同期する字幕を選んでください。', true); return false; }
+  if (timingLocked(segment)) { status('この字幕のタイミングは固定中のため、同期できません。', true); return false; }
+  if (ui.drag || ui.gesture) return false;
+  const tokens = segment.tokenIds.map(id => W.tokenMap().get(id)).filter(Boolean);
+  if (!tokens.length) { status('同期できる単語がありません。', true); return false; }
+  W.closeEditor && W.closeEditor(false);
+  session = { kind: 'words', items: tokens.map(token => ({ id: token.id, text: token.text, start: token.start, end: token.end })), floor: segment.start, after: segment.end, trackId: segmentTrackId(segment), segmentId: segment.id, tokenKey: segment.tokenIds.join(), region: null,
+    taps: [], holding: null, ghosts: [], byId: new Map([[segment.id, segment]]), video, prevSpeed: tr.speed, prevLoop: { on: tr.loopOn, region: tr.region }, lastTime: -1 };
+  W.setSpeed(SYNC_SPEED); W.setLoop(false); W.setLoop(true);
+  tr.region = TL.loopRegion(null, segment, Number(ui.store.project.media.duration) || Infinity);   // the loop is this caption (± the lead), not a range marked on the ruler
+  W.seekTimeline(tr.region.start);
+  $('captionSync').setAttribute('aria-pressed', 'true'); renderPanel(); paint();
+  video.play().catch(error => status(error.message, true));
+  status(`単語の同期: 字幕がループします。各単語が始まる瞬間に Space を押してください（${tokens.length}語）。`);
+  parts.tap.focus();
+  return true;
+}
+
 function tapDown() {
   if (!session || session.holding !== null || session.taps.length >= session.items.length) return;
   session.taps.push({ down: +session.video.currentTime.toFixed(3), up: null }); session.holding = session.taps.length - 1; paint(); renderPanel();
@@ -81,6 +106,10 @@ function tapUp() {
   session.taps[session.holding].up = +session.video.currentTime.toFixed(3); session.holding = null; paint(); renderPanel();
 }
 
+function wordsCommand() {
+  const times = windows().filter(item => { const token = session.items.find(word => word.id === item.id); return Math.abs(token.start - item.start) > 1e-6 || Math.abs(token.end - item.end) > 1e-6; }).map(item => ({ tokenId: item.id, start: item.start, end: item.end }));
+  return times.length ? { type: 'retime-tokens', segmentId: session.segmentId, times } : null;
+}
 function commandFor(item) {
   const segment = session.byId.get(item.id), block = J.isCaptionTextBlock(ui.store.project, segment);
   if (isSpoken(segment)) return Math.abs(item.start - segment.start) < 1e-6 ? null : { type: 'move-segment', segmentId: segment.id, start: item.start };
@@ -89,6 +118,10 @@ function commandFor(item) {
 }
 /* One batch = one undo step. Moving captions one after another can overlap for a moment, so the reverse order is tried as well; nothing is changed when both fail. */
 function commit() {
+  if (session.kind === 'words') {
+    const command = wordsCommand(); if (!command) { status('タイミングは変わりませんでした。'); return true; }
+    try { ui.store.execute(command); ui.errors = {}; emit('project'); return command.times.length; } catch (error) { status(W.commandError(error), true); return false; }
+  }
   const commands = windows().map(commandFor).filter(Boolean);
   if (!commands.length) { status('タイミングは変わりませんでした。'); return true; }
   let failure = null;
@@ -102,6 +135,7 @@ function commit() {
 function end() {
   const s = session; if (!s) return;
   session = null; tr.syncing = false;
+  if (s.kind === 'words') { W.setLoop(false); if (s.prevLoop.on) W.setLoop(true); }
   s.ghosts.forEach(ghost => ghost.remove()); document.querySelectorAll('.is-sync-replaced').forEach(block => block.classList.remove('is-sync-replaced'));
   if (!s.video.paused) s.video.pause();
   W.setSpeed(s.prevSpeed); $('captionSync').setAttribute('aria-pressed', 'false'); renderPanel();
@@ -114,7 +148,7 @@ function stop(apply) {
   const done = s.taps.length ? commit() : 0;
   if (done === false) return;   // refused: the pass stays open so it can be fixed (Esc discards)
   end();
-  if (done) { if (ui.preview) ui.preview.renderNow(); W.toastUndo(`${done}件の字幕のタイミングを同期しました`); } else if (!s.taps.length) status('タップがなかったため、変更はありません。');
+  if (done) { if (ui.preview) ui.preview.renderNow(); W.toastUndo(s.kind === 'words' ? `${done}語のタイミングを同期しました` : `${done}件の字幕のタイミングを同期しました`); } else if (!s.taps.length) status('タップがなかったため、変更はありません。');
 }
 
 /* Called by the transport keyboard handler: Space taps, Enter confirms, Esc discards; the other transport keys are swallowed during a pass. */
@@ -146,6 +180,7 @@ function build() {
 function init() {
   tr.syncOffset = loadOffset(); tr.syncing = false; build();
   $('captionSync').addEventListener('click', () => { if (session) stop(true); else start(); });
+  $('captionSyncWords').addEventListener('click', () => { if (session) stop(true); else startWords(); });
   parts.tap.addEventListener('pointerdown', event => { if (event.button) return; event.preventDefault(); tapDown(); });
   for (const name of ['pointerup', 'pointercancel']) parts.tap.addEventListener(name, tapUp);
   parts.offset.addEventListener('input', () => { tr.syncOffset = TL.clampReaction(parts.offset.value); parts.offsetValue.textContent = `${tr.syncOffset.toFixed(2)}s`; paint(); });
@@ -153,9 +188,14 @@ function init() {
   parts.done.addEventListener('click', () => stop(true)); parts.cancel.addEventListener('click', () => stop(false));
   document.addEventListener('keyup', event => { if (session && event.code === 'Space') { event.preventDefault(); tapUp(); } }, true);
   window.addEventListener('blur', tapUp);
-  on('time', time => { if (!session) return; paint(); if (session.region && !session.video.paused && time >= session.region.end) session.video.pause(); });
-  on('project', () => { if (session && !session.items.every(item => session.byId.has(item.id) && ui.store.project.segments.some(segment => segment.id === item.id))) end(); });
+  on('time', time => {
+    if (!session) return;
+    if (session.kind === 'words' && time < session.lastTime - .3 && session.taps.length) { session.taps = []; session.holding = null; renderPanel(); }   // the loop wrapped: a fresh pass
+    session.lastTime = time; paint(); if (session.region && !session.video.paused && time >= session.region.end) session.video.pause(); });
+  on('project', () => {
+    if (session && session.kind === 'words') { const segment = ui.store.project.segments.find(item => item.id === session.segmentId); if (!segment || segment.tokenIds.join() !== session.tokenKey) end(); return; }
+    if (session && !session.items.every(item => session.byId.has(item.id) && ui.store.project.segments.some(segment => segment.id === item.id))) end(); });
 }
-Object.assign(W, { syncActive: active, syncKey, syncStart: start, syncStop: stop, syncTapDown: tapDown, syncTapUp: tapUp });
+Object.assign(W, { syncActive: active, syncKey, syncStart: start, syncWordsStart: startWords, syncStop: stop, syncTapDown: tapDown, syncTapUp: tapUp });
 W.inits.push(init);
 })();

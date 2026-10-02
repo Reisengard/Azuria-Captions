@@ -110,6 +110,9 @@ const IN_PAGE = `(() => {
     undo2() { const ok = ui.store.undo(); J.captionWb.emit('project'); return ok; },
     syncState() { const p = document.getElementById('captionSyncPanel'), v = ui.media.current.video; return { panel: !!p && !p.hidden, speed: ui.transport.speed, paused: v.paused, next: p ? document.getElementById('captionSyncNext').textContent : '' }; },
     syncStart() { return J.captionWb.syncStart(); },
+    syncWordsStart() { return J.captionWb.syncWordsStart(); },
+    editText(id, text) { ui.store.execute({ type: 'edit-segment-text', segmentId: id, text }); J.captionWb.emit('project'); return true; },
+    loopState() { return { on: ui.transport.loopOn, region: ui.transport.region }; },
     seek(time) { J.captionWb.seekTimeline(time); return true; },
     playhead() { return ui.media.current.video.currentTime; },
     focusId() { return document.activeElement && document.activeElement.id; },
@@ -431,6 +434,23 @@ const IN_PAGE = `(() => {
       await key(' ', 'Space', { text: ' ', vk: 32 }); await sleep(60); await key('Escape', 'Escape', { vk: 27 }); await sleep(150);
       step('sync: Esc discards the pass (nothing changed, panel and ghosts gone)', !(await t('syncState')).panel && JSON.stringify(await t('seg', 'blockA')) === JSON.stringify(beforeA) && (await t('depth')) === depth4 && (await t('ghostCount')) === 0, JSON.stringify(await t('syncState')));
       await t('blur');
+    }
+
+    // C5: tap sync for words (loop, Space taps word starts, Enter commits one retime, one undo)
+    {
+      await t('editText', 'blockA', 'Alpha Beta Gamma'); const depth5 = await t('depth'), segA = await t('seg', 'blockA'), words0 = await t('tokens', 'blockA');
+      await t('select', 'blockA'); await t('emitSelection'); await sleep(100);
+      await t('syncWordsStart'); await sleep(300);
+      const ws = await t('syncState'), lp = await t('loopState'); step('word sync: starts looping the caption at 0.75x with the first word named', ws.panel && ws.speed === .75 && lp.on && lp.region.start <= segA.start && lp.region.end >= segA.end && /Alpha|Next|次/.test(ws.next), JSON.stringify({ ws, lp }));
+      const waitFor5 = async time => { for (let i = 0; i < 200 && (await t('playhead')) < time; i++) await sleep(50); };
+      const marks = [];
+      for (const at of [segA.start + .2, segA.start + .8, segA.start + 1.4]) { await waitFor5(at); marks.push(await t('playhead')); await key(' ', 'Space', { text: ' ', vk: 32 }); await sleep(40); }
+      await key('Enter', 'Enter', { vk: 13, text: String.fromCharCode(13) }); await sleep(250);
+      const words1 = await t('tokens', 'blockA'), after = await t('syncState');
+      step('word sync: Enter retimes the three words from the taps (offset subtracted), inside the caption', !after.panel && words1.length === 3 && Math.abs(words1[0].start - (marks[0] - .12)) < .3 && Math.abs(words1[1].start - (marks[1] - .12)) < .3 && Math.abs(words1[2].start - (marks[2] - .12)) < .3 && words1[0].end <= words1[1].start + 1e-6 && words1[2].end <= segA.end + 1e-6, JSON.stringify({ words1, marks, segA }));
+      step('word sync: one undo step; speed and loop restored', (await t('depth')) === depth5 + 1 && after.speed === 1 && !(await t('loopState')).on, JSON.stringify({ depth: await t('depth'), after }));
+      await t('undo2'); step('word sync: one undo restores the word times', JSON.stringify(await t('tokens', 'blockA')) === JSON.stringify(words0));
+      await t('undo2'); await t('blur');
     }
 
     // T6: waveform behind the VIDEO row, resizable and collapsible strip

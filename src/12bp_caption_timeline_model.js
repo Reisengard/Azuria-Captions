@@ -336,5 +336,26 @@ function tapSyncWindows(items, taps, options) {
   return out;
 }
 
-J.captionTimeline = { TAP_HOLD, REACTION_MAX, REACTION_DEFAULT, clampReaction, tapSyncScope, tapSyncWindows, WAVE_RATE, WAVE_MAX_SECONDS, waveformAllowed, waveformPeaks, waveformColumns, STRIP_MIN, clampStripHeight, NEW_LENGTH, createRange, freeGap, groupMoveOrder, marqueeHits, newBlockRange, resolveGroupMove, adjacentTrackId, reorderIndex, NUDGE, SNAP_PX, MIN_SEGMENT, nearestSnap, nudge, resolveDrag, snapTargets, trackNeighbors, FRAME, LOOP_LEAD, SPEEDS, adjacentSegment, keyAction, loopRegion, loopSeek, markRegion, nextSpeed, stepTime, MAX_PPS, TICK_MIN_PX, blockRect, clampPps, clampScroll, contentWidth, fitPps, followScroll, formatTick, overlapsRange, rulerTicks, tickStep, timeToX, visibleRange, wordLabelsVisible, wordTicksVisible, xToTime, zoomAround };
+/* ---- Tap sync for words (C5): one caption, looped; each tap marks the next word's start. ----
+   tokens: the caption's words in order [{ id, start, end }]; taps as above for the first taps.length words; window = the caption [start, end].
+   A tap ends the word where the next one starts, a hold ends it on release; the last tapped word keeps its length (capped by the first untapped
+   word), or runs to the caption end when it is the last word. Words never overlap, never leave the caption and last at least MIN_WORD. */
+const MIN_WORD = .02;
+function wordSyncTimes(tokens, taps, options) {
+  const o = options || {}, offset = clampReaction(o.offset === undefined ? REACTION_DEFAULT : o.offset), low = Number(o.start) || 0, high = Number.isFinite(o.end) ? o.end : Infinity;
+  const out = []; let previousEnd = low;
+  taps.slice(0, tokens.length).forEach((tap, index) => {
+    const token = tokens[index], next = taps[index + 1] && index + 1 < tokens.length ? taps[index + 1] : null, untapped = tokens[index + 1] && !next ? tokens[index + 1] : null;
+    const room = MIN_WORD * (tokens.length - index), start = Math.min(Math.max(previousEnd, tap.down - offset, low), high - room);
+    const held = tap.up !== null && tap.up !== undefined && tap.up - tap.down >= TAP_HOLD;
+    let end = held ? tap.up - offset : next ? next.down - offset : untapped ? start + (token.end - token.start) : high;
+    if (next && held) end = Math.min(end, next.down - offset);
+    const ceiling = untapped ? Math.max(untapped.start, start + MIN_WORD) : high;
+    end = Math.min(Math.max(end, start + MIN_WORD), ceiling, high - MIN_WORD * (tokens.length - index - 1));
+    out.push({ tokenId: token.id, start: round6(start), end: round6(Math.max(end, start + MIN_WORD)) }); previousEnd = end;
+  });
+  return out;
+}
+
+J.captionTimeline = { MIN_WORD, wordSyncTimes, TAP_HOLD, REACTION_MAX, REACTION_DEFAULT, clampReaction, tapSyncScope, tapSyncWindows, WAVE_RATE, WAVE_MAX_SECONDS, waveformAllowed, waveformPeaks, waveformColumns, STRIP_MIN, clampStripHeight, NEW_LENGTH, createRange, freeGap, groupMoveOrder, marqueeHits, newBlockRange, resolveGroupMove, adjacentTrackId, reorderIndex, NUDGE, SNAP_PX, MIN_SEGMENT, nearestSnap, nudge, resolveDrag, snapTargets, trackNeighbors, FRAME, LOOP_LEAD, SPEEDS, adjacentSegment, keyAction, loopRegion, loopSeek, markRegion, nextSpeed, stepTime, MAX_PPS, TICK_MIN_PX, blockRect, clampPps, clampScroll, contentWidth, fitPps, followScroll, formatTick, overlapsRange, rulerTicks, tickStep, timeToX, visibleRange, wordLabelsVisible, wordTicksVisible, xToTime, zoomAround };
 })();
