@@ -5,7 +5,7 @@ The product is named **Azuria Sub** (renamed 2026-10-02; code identifiers, stora
 ## Source of truth
 - `docs/architecture/captions-editor-rework-plan.md` — **the plan for the current rework** (timeline, caption editing/sync, interface; steps E0…U6). **Read this first** and update step status when a step finishes. It replaces delta-plan items UI-3/4/5.
 - `docs/architecture/subtitle-mvp-delta-plan.md` — decisions, audit findings, filename mapping, step plan with status. Earlier decisions, audit findings, filename mapping and step status; its rules still apply.
-- `JIZURA_HANDOFF_SUBTITLE_MVP_REVISION.md` — original scope revision; the delta plan overrides it where they differ.
+- `docs/archive/JIZURA_HANDOFF_SUBTITLE_MVP_REVISION.md` — original scope revision; the delta plan overrides it where they differ.
 - `docs/architecture/decisions/` — ADRs.
 - Where docs and code disagree, trust the code and fix the doc.
 

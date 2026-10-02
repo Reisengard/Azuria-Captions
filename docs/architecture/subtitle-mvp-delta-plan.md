@@ -1,6 +1,6 @@
 # JIZURA — Subtitle MVP delta plan
 
-Source of truth for the refactor started from `JIZURA_HANDOFF_SUBTITLE_MVP_REVISION.md`.
+Source of truth for the refactor started from `docs/archive/JIZURA_HANDOFF_SUBTITLE_MVP_REVISION.md`.
 Where this file and the handoff disagree, **this file wins** (it records the audit and the owner's decisions).
 Where this file and the code disagree, trust the code and update this file.
 

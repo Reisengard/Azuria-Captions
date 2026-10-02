@@ -1,6 +1,6 @@
 # Video Captions MVP architecture
 
-This document is the implementation contract for adding Video Captions without changing the existing Lyric Motion product. The detailed product sequence lives in `JIZURA_VIDEO_CAPTIONS_MVP_IMPLEMENTATION_PLAN.md`; this page records the repository-specific baseline that future slices build on.
+This document is the implementation contract for adding Video Captions without changing the existing Lyric Motion product. The detailed product sequence lives in `docs/archive/JIZURA_VIDEO_CAPTIONS_MVP_IMPLEMENTATION_PLAN.md`; this page records the repository-specific baseline that future slices build on.
 
 ## Baseline
 
