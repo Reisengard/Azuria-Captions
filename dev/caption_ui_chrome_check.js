@@ -398,6 +398,18 @@ const IN_PAGE = `(() => {
     step('edit: Details folds timing, track, look and locks (opens on demand, stays on screen)', (await t('edit')).details && (await t('edit')).inViewport && (await t('rect', '#captionSelectedStart')).width > 0, JSON.stringify(await t('edit')));
     await key('Escape', 'Escape', { vk: 27 }); await sleep(80); await key('Escape', 'Escape', { vk: 27 }); await sleep(80); await t('blur');
 
+    // C3: one-press sync (I / O)
+    {
+      const before = await t('seg', first.id), words = await t('tokens', first.id), mid = (words[1].start + words[1].end) / 2, depth = await t('depth');
+      await t('select', first.id); await t('emitSelection'); await t('seek', mid); await sleep(250); await key('i', 'KeyI', { text: 'i', vk: 73 }); await sleep(150);
+      const after = await t('seg', first.id), toast3 = await t('toast');
+      step('I: start goes to the playhead, words fitted, toast says so', after.start > before.start + .01 && Math.abs(after.start - mid) < .06 && (await t('depth')) === depth + 1 && !!toast3, JSON.stringify({ before, after, toast3 }));
+      await t('undo2'); step('I: one undo restores the caption', JSON.stringify(await t('seg', first.id)) === JSON.stringify(before));
+      await t('select', first.id); await t('emitSelection'); await t('seek', before.end + .05); await sleep(250); await key('o', 'KeyO', { text: 'o', vk: 79 }); await sleep(150);
+      const grown3 = await t('seg', first.id); step('O: end goes to the playhead (or is refused by a neighbour)', Math.abs(grown3.end - (before.end + .05)) < .06 || grown3.end === before.end, JSON.stringify(grown3));
+      await t('undo2'); await t('blur');
+    }
+
     // T6: waveform behind the VIDEO row, resizable and collapsible strip
     let wave = { drawn: '0', painted: 0 }; for (let i = 0; i < 40 && wave.drawn !== '1'; i++) { await sleep(100); wave = await t('waveDrawn'); }
     step('waveform: drawn behind the VIDEO row from the decoded audio', wave.drawn === '1' && wave.painted > 200, JSON.stringify(wave));

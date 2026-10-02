@@ -44,6 +44,7 @@ assert.equal(TL.adjacentSegment(segments, 9, 1), null); assert.equal(TL.adjacent
 
 // keyboard map
 const key = (code, extra = {}) => TL.keyAction(Object.assign({ code, key: code }, extra));
+assert.equal(key('KeyI'), 'set-start'); assert.equal(key('KeyO'), 'set-end'); assert.equal(key('KeyI', { shiftKey: true }), null); assert.equal(key('KeyO', { ctrlKey: true }), null);
 assert.equal(key('Space'), 'play'); assert.equal(key('KeyL'), 'loop'); assert.equal(key('Escape'), 'escape');
 assert.equal(key('ArrowLeft'), 'back-frame'); assert.equal(key('ArrowRight', { shiftKey: true }), 'forward-1s');
 assert.equal(key('ArrowUp'), 'prev-caption'); assert.equal(key('ArrowDown'), 'next-caption'); assert.equal(key('Home'), 'start'); assert.equal(key('End'), 'end');

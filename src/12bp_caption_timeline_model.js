@@ -98,6 +98,8 @@ function keyAction(event) {
     case 'Home': return 'start';
     case 'End': return 'end';
     case 'KeyL': return 'loop';
+    case 'KeyI': return shift ? null : 'set-start';
+    case 'KeyO': return shift ? null : 'set-end';
     case 'KeyN': return shift ? null : 'new';
     case 'KeyS': return shift ? null : 'split';
     case 'Delete': case 'Backspace': return 'delete';

@@ -149,9 +149,17 @@ function nudgeTiming(key, step) {
   input.value = Math.max(0, Number(input.value) + step).toFixed(2); applyTiming();
 }
 
+/* One press (I / O, toolbar): the selected caption's start or end goes to the playhead. If a word is in the way the words are fitted
+   into the new window (they become estimated) and the toast says so; the store still refuses overlaps and locked ends. */
 function timingAtPlayhead(key) {
-  const video = sourceVideo(); if (!video) return;
-  $(key === 'start' ? 'captionSelectedStart' : 'captionSelectedEnd').value = Number(video.currentTime).toFixed(2); applyTiming();
+  const video = sourceVideo(), segment = selectedSegment(); if (!video || !segment) { if (!segment) status('字幕を選んでください。', true); return false; }
+  const time = +Number(video.currentTime).toFixed(3), change = key === 'start' ? { start: time } : { end: time };
+  const start = change.start === undefined ? segment.start : time, end = change.end === undefined ? segment.end : time;
+  const verdict = J.captionSegmentFits(ui.store.project, segment, start, end, segmentTrackId(segment), {});
+  const fit = !verdict.ok && verdict.code === 'SEGMENT_WORDS_OUTSIDE';
+  const done = runCommand(Object.assign({ type: 'trim-segment', segmentId: segment.id, words: fit ? 'fit' : 'keep' }, change), segment.id);
+  if (done) { if (ui.preview) ui.preview.renderNow(); if (fit) toastUndo('単語が範囲外になるため、単語の時刻を新しい範囲に合わせました（推定）。'); }
+  return true;
 }
 
 function openSegmentLook() {
@@ -200,8 +208,8 @@ function buildToolbar() {
   toolbar = document.createElement('div'); toolbar.id = 'captionToolbar'; toolbar.className = 'caption-toolbar'; toolbar.setAttribute('role', 'toolbar'); toolbar.setAttribute('aria-label', '選択中の字幕の操作'); toolbar.hidden = true;
   const warn = toolButton('warn', '⚠', '警告を表示'); warn.className = 'caption-tool caption-tool-warn'; warn.setAttribute('aria-haspopup', 'dialog'); warn.hidden = true;
   const more = toolButton('more', '⋯', 'その他の操作'); more.setAttribute('aria-haspopup', 'menu');
-  toolbar.append(warn, toolButton('text', '✎ 文字', '文字を編集'), toolButton('split', '✂ 分割', '再生ヘッドで分割 (S)'), toolButton('start', '⇤ ここから', '開始を再生ヘッドに合わせる'),
-    toolButton('end', 'ここまで ⇥', '終了を再生ヘッドに合わせる'), toolButton('look', '✦ 見た目', '見た目と動きを編集'), more);
+  toolbar.append(warn, toolButton('text', '✎ 文字', '文字を編集'), toolButton('split', '✂ 分割', '再生ヘッドで分割 (S)'), toolButton('start', '⇤ ここから', '開始を再生ヘッドに合わせる (I)'),
+    toolButton('end', 'ここまで ⇥', '終了を再生ヘッドに合わせる (O)'), toolButton('look', '✦ 見た目', '見た目と動きを編集'), more);
   toolbar.addEventListener('pointerdown', event => event.stopPropagation());
   toolbar.addEventListener('click', event => { const button = event.target.closest('[data-tool]'); if (button && !button.disabled) runTool(button.dataset.tool, button); });
   $('captionPreviewFrame').appendChild(toolbar);

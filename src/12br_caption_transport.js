@@ -114,6 +114,8 @@ function run(action) {
     case 'start': seekEdge(false); return true;
     case 'end': seekEdge(true); return true;
     case 'loop': setLoop(!tr.loopOn); return true;
+    case 'set-start': return W.timingAtPlayhead('start');
+    case 'set-end': return W.timingAtPlayhead('end');
     case 'nudge-back': return W.nudgeSegment(-1);
     case 'nudge-forward': return W.nudgeSegment(1);
     case 'track-up': return W.moveSelectedTrack(-1);
