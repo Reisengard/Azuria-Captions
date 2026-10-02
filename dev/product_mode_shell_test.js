@@ -17,6 +17,6 @@ assert.doesNotMatch(body, /live-captions|liveCaptionsWorkspace/, 'live captions 
 assert.match(shell, /jizura\.productMode\.v1/, 'mode selection is not persisted independently');
 assert.match(shell, /ArrowLeft.*ArrowRight.*Home.*End/, 'tab keyboard navigation is incomplete');
 assert.match(shell, /jizura:product-mode/, 'mode changes do not expose an integration event');
-assert.match(shell, /\/\* The assembled script[\s\S]*\ninit\(\);\n\}\)\(\);/, 'product shell waits too late to bind in the single-file build');
+assert.match(shell, /\/\* The assembled script[\s\S]*\r?\ninit\(\);\r?\n\}\)\(\);/, 'product shell waits too late to bind in the single-file build');
 
 console.log('Gate 5.1 product mode shell tests passed.');
