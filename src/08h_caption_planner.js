@@ -289,7 +289,7 @@ J.captionProjectZones = (project, frame) => projectZones(project, frame, styleFo
 
 J.planCaptions = (project, media, options = {}) => {
   const frame = frameFor(project, media), resolvedStyle = styleFor(project), style = resolvedStyle.value;
-  const emphasized = J.applyCaptionEmphasis(project.transcript), tokenMap = new Map(emphasized.tokens.map(token => [token.id, token]));
+  const emphasized = J.applyCaptionEmphasis(project.transcript, { segments: project.segments }), tokenMap = new Map(emphasized.tokens.map(token => [token.id, token]));
   const zones = projectZones(project, frame, style), plans = {}, recentPlans = [], lastByTrack = new Map(), styles = new Map();
   // Budget and repetition are global (recentPlans holds every track in time order); continuity is per track (previousPlan).
   const trackStyleFor = track => {

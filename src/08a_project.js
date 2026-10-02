@@ -123,7 +123,7 @@ J.validateProject = project => {
   }
   if (project.mode === 'video-captions' && project.transcript != null && typeof J.validateTranscript === 'function') {
     const duration = project.media && Number.isFinite(project.media.duration) ? project.media.duration : undefined;
-    J.validateTranscript(project.transcript, { duration });
+    J.validateTranscript(project.transcript, { duration, segments: project.segments });
   }
   if (project.mode === 'video-captions' && typeof J.validateCaptionProject === 'function') J.validateCaptionProject(project);
   return project;

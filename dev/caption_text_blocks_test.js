@@ -210,7 +210,7 @@ assert.equal(empty.project.segments.length, 1, 'blocks can be typed before a vid
 const body = fs.readFileSync(path.join(root, 'app', 'body.html'), 'utf8'), ui = fs.readFileSync(path.join(root, 'src', '12c_caption_workbench.js'), 'utf8');
 for (const id of ['captionManualTrack', 'captionBlockEditor', 'captionBlockText', 'captionBlockApply', 'captionBlockDelete', 'captionBlockEnter', 'captionBlockHold', 'captionBlockExit']) assert.match(body, new RegExp(`id="${id}"`), `text block UI is missing #${id}`);
 for (const command of ['create-text-block', 'edit-text-block', 'delete-text-block']) assert.match(ui, new RegExp(`type: '${command}'`), `the workbench does not issue ${command}`);
-assert.match(ui, /J\.isCaptionTextBlock\(ui\.store\.project, segment\)\) \{ runCommand\(\{ type: 'edit-text-block'/, 'numeric timing on a block must re-spread its words');
+assert.match(ui, /function applyTiming\(\)[^]*?type: 'trim-segment'/, 'numeric timing goes through trim-segment, which re-spreads a typed block in the store');
 assert.match(ui, /window\.confirm\(`テキストブロック/, 'deleting a block asks first');
 
 console.log('Caption text block tests passed.');

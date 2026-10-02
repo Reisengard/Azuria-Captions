@@ -71,7 +71,10 @@ J.validateTranscript = (transcript, options = {}) => {
   }
   if (!Array.isArray(transcript.tokens)) fail('TRANSCRIPT_TOKENS_REQUIRED', 'Transcript tokens must be an array.');
   const ids = new Set();
-  let previous = null;
+  // Spoken words may not overlap within one track (ADR 0010). Without segments there is one shared lane (the old rule).
+  const owners = new Map();
+  if (Array.isArray(options.segments)) for (const segment of options.segments) for (const id of segment && segment.tokenIds || []) if (!owners.has(id)) owners.set(id, segment.trackId || (J.CAPTION_PRIMARY_TRACK_ID || ''));
+  const previousByLane = new Map();
   for (let index = 0; index < transcript.tokens.length; index++) {
     const token = transcript.tokens[index];
     const tokenId = token && token.id;
@@ -86,17 +89,21 @@ J.validateTranscript = (transcript, options = {}) => {
     if (Number.isFinite(options.duration) && token.end > options.duration + 1e-9) {
       fail('TOKEN_END_AFTER_DURATION', `Subtitle ends at ${token.end.toFixed(2)}s, beyond the video duration (${options.duration.toFixed(2)}s).`, { tokenId, tokenIndex: index, end: token.end, duration: options.duration });
     }
-    // Spoken words never overlap. Words of a manual text block (source "manual") may overlap speech or other
-    // blocks: they live on their own track, and the store keeps one caption per track on screen (ADR 0007).
+    // Spoken words never overlap on the same track. Words of a manual text block (source "manual") may overlap speech or other
+    // blocks: they live on their own track, and the store keeps one caption per track on screen (ADR 0007, ADR 0010).
     const typed = token.source === 'manual';
-    if (!typed && previous && token.start < previous.end) {
+    // ignoreUnowned: a planner call on a partial project (one caption planned alone) cannot see every word's track.
+    const skip = options.segments && options.ignoreUnowned === true && !owners.has(tokenId);
+    const lane = options.segments ? (owners.get(tokenId) || J.CAPTION_PRIMARY_TRACK_ID || '') : '';
+    const previous = previousByLane.get(lane) || null;
+    if (!typed && !skip && previous && token.start < previous.end) {
       fail('TOKEN_TIMING_OVERLAP', `Token "${tokenId}" overlaps "${previous.id}".`, { tokenId, previousTokenId: previous.id, tokenIndex: index });
     }
     if (!J.TIMING_QUALITIES.includes(token.timingQuality)) fail('TOKEN_TIMING_QUALITY_INVALID', `Token "${tokenId}" has invalid timing quality.`, { tokenId, tokenIndex: index });
     if (token.confidence != null && (!Number.isFinite(token.confidence) || token.confidence < 0 || token.confidence > 1)) {
       fail('TOKEN_CONFIDENCE_INVALID', `Token "${tokenId}" confidence must be between 0 and 1.`, { tokenId, tokenIndex: index });
     }
-    if (!typed) previous = token;
+    if (!typed && !skip) previousByLane.set(lane, token);
   }
   return transcript;
 };

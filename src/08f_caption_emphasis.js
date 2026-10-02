@@ -83,8 +83,8 @@ J.scoreCaptionEmphasis = (token, context = {}) => {
 
 /* Return a new transcript; imported text, timings, stable IDs, and manual data
    remain untouched. Only the generated emphasis field is replaced. */
-J.applyCaptionEmphasis = transcript => {
-  if (typeof J.validateTranscript === 'function') J.validateTranscript(transcript);
+J.applyCaptionEmphasis = (transcript, options = {}) => {
+  if (typeof J.validateTranscript === 'function') J.validateTranscript(transcript, { segments: options.segments, ignoreUnowned: true });
   const result = clone(transcript);
   // Typed text blocks and speech are scored as separate streams, so a title laid over speech
   // does not change the context (sentence start, repetition) of the spoken words, or vice versa.

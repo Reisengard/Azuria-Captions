@@ -268,11 +268,17 @@ class CaptionStore {
       }
       case 'split-segment': this.splitSegment(command); break;
       case 'merge-segments': this.mergeSegments(command); break;
+      case 'move-segment': this.moveSegment(command); break;
+      case 'trim-segment': this.trimSegment(command); break;
+      case 'delete-segment': this.deleteSegment(command); break;
+      case 'edit-segment-text': this.editSegmentText(command); break;
+      case 'retime-tokens': this.retimeTokens(command); break;
+      case 'batch': this.runBatch(command); break;
+      // Kept for older callers: trim-segment with the words kept, plus the boundary metadata.
       case 'set-segment-timing': {
         const { segment } = this.segment(command.segmentId);
         this.assertUnlocked(segment, 'timing');
-        if (command.start !== undefined) { this.assertUnlocked(segment, 'start'); segment.start = Number(command.start); }
-        if (command.end !== undefined) { this.assertUnlocked(segment, 'end'); segment.end = Number(command.end); }
+        if (command.start !== undefined || command.end !== undefined) this.trimSegment({ segmentId: command.segmentId, start: command.start, end: command.end, words: 'keep' });
         if (command.boundarySource !== undefined) { this.assertUnlocked(segment, 'boundarySource'); segment.boundarySource = String(command.boundarySource); }
         if (command.boundaryReasons !== undefined) { this.assertUnlocked(segment, 'boundaryReasons'); segment.boundaryReasons = clone(command.boundaryReasons); }
         break;
@@ -381,14 +387,33 @@ class CaptionStore {
 
   splitSegment(command) {
     const { segment, index } = this.segment(command.segmentId);
-    this.assertUnlocked(segment, 'segmentation', 'segmentation');
-    const splitIndex = command.beforeTokenId != null ? segment.tokenIds.indexOf(command.beforeTokenId) : Number(command.splitIndex);
+    // { time }: split where the playhead is. A typed block's segmentation lock is its default, so it does not stop this (as for move-segment-to-track).
+    const byTime = command.time !== undefined && command.beforeTokenId == null && command.splitIndex === undefined;
+    const block = byTime && J.isCaptionTextBlock(this.project, segment);
+    if (!block) this.assertUnlocked(segment, 'segmentation', 'segmentation');
+    let splitIndex = command.beforeTokenId != null ? segment.tokenIds.indexOf(command.beforeTokenId) : Number(command.splitIndex), timeBoundary = null;
+    if (byTime) {
+      const time = Number(command.time);
+      if (!Number.isFinite(time) || time <= segment.start || time >= segment.end || segment.tokenIds.length < 2) fail('SEGMENT_SPLIT_INVALID', `Segment "${segment.id}" cannot be split at that time.`, { segmentId: segment.id, time: command.time });
+      const tokens = segment.tokenIds.map(id => this.token(id));
+      // The word gap containing the time; a time inside a word goes to the nearest gap. A block has no real gaps: the nearest even boundary.
+      let best = -1, bestDistance = Infinity;
+      for (let i = 1; i < tokens.length; i++) {
+        const low = tokens[i - 1].end, high = tokens[i].start;
+        const distance = block ? Math.abs(time - (segment.start + (segment.end - segment.start) * i / tokens.length)) : time < low ? low - time : time > high ? time - high : 0;
+        if (distance < bestDistance - 1e-12) { best = i; bestDistance = distance; }
+      }
+      splitIndex = best;
+      const low = tokens[best - 1].end, high = tokens[best].start;
+      timeBoundary = block || (time >= low && time <= high) ? time : (low + high) / 2;
+      if (block && (time - segment.start < J.CAPTION_MIN_SEGMENT_SECONDS || segment.end - time < J.CAPTION_MIN_SEGMENT_SECONDS)) fail('SEGMENT_TIMING_INVALID', 'Both halves of a split must be at least 0.1 s long.', { segmentId: segment.id, time });
+    }
     if (!Number.isInteger(splitIndex) || splitIndex <= 0 || splitIndex >= segment.tokenIds.length) {
       fail('SEGMENT_SPLIT_INVALID', `Segment "${segment.id}" split must leave tokens on both sides.`, { segmentId: segment.id });
     }
     const leftIds = segment.tokenIds.slice(0, splitIndex), rightIds = segment.tokenIds.slice(splitIndex);
     const leftLast = this.token(leftIds[leftIds.length - 1]), rightFirst = this.token(rightIds[0]);
-    const boundary = command.boundaryTime == null ? (leftLast.end + rightFirst.start) / 2 : Number(command.boundaryTime);
+    const boundary = timeBoundary != null ? timeBoundary : command.boundaryTime == null ? (leftLast.end + rightFirst.start) / 2 : Number(command.boundaryTime);
     const rightId = command.newSegmentId || this.nextSegmentId();
     if (this.project.segments.some(item => item.id === rightId)) fail('SEGMENT_ID_DUPLICATE', `Segment id "${rightId}" is duplicated.`, { segmentId: rightId });
     const oldEnd = segment.end;
@@ -404,6 +429,184 @@ class CaptionStore {
       this.project.plans[rightId] = clone(this.project.plans[segment.id]);
       this.project.plans[rightId].id = `plan_${rightId}`; this.project.plans[rightId].segmentId = rightId;
     }
+    if (block) { this.spreadTokens(leftIds, segment.start, segment.end); this.spreadTokens(rightIds, right.start, right.end); }
+  }
+
+  /* A typed block's words are spread evenly over its window (the maths of captionTextBlockTokens). */
+  spreadTokens(ids, start, end) {
+    ids.forEach((id, index) => {
+      const token = this.token(id);
+      token.start = start + (end - start) * index / ids.length; token.end = start + (end - start) * (index + 1) / ids.length;
+    });
+  }
+
+  /* ---- timing commands (rework plan E1, ADR 0010): the rules live here, not in the UI ---- */
+  requireFits(segment, start, end, trackId, options) {
+    const verdict = J.captionSegmentFits(this.project, segment, start, end, trackId, options);
+    if (verdict.ok) return;
+    const messages = {
+      TRACK_SEGMENT_OVERLAP: 'This time range overlaps another caption on the same track.',
+      SEGMENT_TIMING_INVALID: 'A caption must lie inside the video and be at least 0.1 s long.',
+      SEGMENT_WORDS_OUTSIDE: 'The caption window must contain its words.',
+    };
+    const details = Object.assign({ segmentId: segment.id }, verdict); delete details.ok; delete details.code;
+    fail(verdict.code, messages[verdict.code], details);
+  }
+
+  stableSortTokens() {
+    const transcript = this.project.transcript;
+    transcript.tokens = transcript.tokens.map((token, index) => ({ token, index })).sort((a, b) => a.token.start - b.token.start || a.index - b.index).map(item => item.token);
+  }
+
+  /* { segmentId, start, trackId? }: the caption and its words shift together; optionally onto another track in the same step. */
+  moveSegment(command) {
+    const { segment } = this.segment(command.segmentId), project = this.project;
+    const start = Number(command.start);
+    if (!Number.isFinite(start)) fail('SEGMENT_TIMING_INVALID', 'Move requires a start time.', { segmentId: segment.id, start: command.start });
+    const from = segment.trackId || J.CAPTION_PRIMARY_TRACK_ID;
+    const target = command.trackId == null ? from : this.requireTrack(command.trackId).id, retrack = target !== from;
+    const delta = start - segment.start, end = segment.end + delta, shifts = Math.abs(delta) >= 1e-9;
+    if (!shifts && !retrack) fail('SEGMENT_MOVE_NOOP', 'The caption is already there.', { segmentId: segment.id });
+    if (shifts) { this.assertUnlocked(segment, 'timing'); this.assertUnlocked(segment, 'start'); this.assertUnlocked(segment, 'end'); }
+    if (retrack) { this.assertUnlocked(segment, 'trackAssignment'); this.assertUnlocked(segment, 'trackAssignment', 'visualPlan'); }
+    this.requireFits(segment, start, end, target, { fit: true });
+    if (J.isCaptionTextBlock(project, segment)) {
+      this.editTextBlock({ segmentId: segment.id, start: +start.toFixed(6), end: +end.toFixed(6), trackId: target });
+      return;
+    }
+    for (const id of segment.tokenIds) {
+      const token = this.token(id);
+      token.start = +(token.start + delta).toFixed(6); token.end = +(token.end + delta).toFixed(6);
+    }
+    segment.start = +start.toFixed(6); segment.end = +end.toFixed(6); segment.boundarySource = 'manual';
+    if (retrack) {   // box and style differ on the new track: re-plan this caption only
+      const old = project.plans && project.plans[segment.id];
+      segment.trackId = target;
+      this.planTextBlock(segment, clone(old && old.manual || {}));
+    }
+    this.stableSortTokens();
+    J.captionSortSegments(project);
+  }
+
+  /* { segmentId, start?, end?, words: 'keep' | 'fit' }: change the display window. 'keep' refuses to cut a word; 'fit' scales
+     the words into the new window and marks them estimated. A typed block always re-spreads its words. */
+  trimSegment(command) {
+    const { segment } = this.segment(command.segmentId), project = this.project;
+    if (command.start === undefined && command.end === undefined) fail('SEGMENT_TRIM_EMPTY', 'Nothing to trim.', { segmentId: segment.id });
+    const words = command.words === undefined ? 'keep' : command.words;
+    if (words !== 'keep' && words !== 'fit') fail('SEGMENT_TRIM_MODE_INVALID', 'Trim words must be "keep" or "fit".', { segmentId: segment.id, words });
+    this.assertUnlocked(segment, 'timing');
+    if (command.start !== undefined) this.assertUnlocked(segment, 'start');
+    if (command.end !== undefined) this.assertUnlocked(segment, 'end');
+    const start = command.start !== undefined ? Number(command.start) : segment.start, end = command.end !== undefined ? Number(command.end) : segment.end;
+    const block = J.isCaptionTextBlock(project, segment);
+    this.requireFits(segment, start, end, segment.trackId || J.CAPTION_PRIMARY_TRACK_ID, { fit: block || words === 'fit' });
+    if (block) { this.editTextBlock({ segmentId: segment.id, start, end }); return; }
+    if (words === 'fit') {
+      const span = segment.end - segment.start, scale = span > 0 ? (end - start) / span : 1;
+      for (const id of segment.tokenIds) {
+        const token = this.token(id), a = start + (token.start - segment.start) * scale, b = start + (token.end - segment.start) * scale;
+        token.start = +Math.min(Math.max(a, start), end).toFixed(6); token.end = +Math.min(Math.max(b, token.start), end).toFixed(6);
+        token.timingQuality = 'estimated';
+      }
+    }
+    segment.start = start; segment.end = end; segment.boundarySource = 'manual';
+  }
+
+  /* Deletes any caption: its plan and its words (the same rule as deleting a track). */
+  deleteSegment(command) {
+    const { segment, index } = this.segment(command.segmentId), words = new Set(segment.tokenIds);
+    this.project.segments.splice(index, 1);
+    delete this.project.plans[segment.id];
+    this.project.transcript.tokens = this.project.transcript.tokens.filter(token => !words.has(token.id));
+  }
+
+  /* { segmentId, text }: rewrite a caption's words. Same word count: texts replaced, IDs / times / emphasis kept. Otherwise only the
+     changed run is re-spread inside the time the old run covered (estimated); unchanged words keep their IDs and times. A pure
+     insertion between words with no gap borrows the neighbouring word's time so every word gets a visible duration. */
+  editSegmentText(command) {
+    const { segment } = this.segment(command.segmentId), project = this.project;
+    if (J.isCaptionTextBlock(project, segment)) { this.editTextBlock({ segmentId: segment.id, text: command.text }); return; }
+    this.assertUnlocked(segment, 'tokenText');
+    const next = J.tokenizeCaptionText(command.text, project.transcript.language);
+    if (!next.length) fail('TOKEN_TEXT_REQUIRED', 'Enter caption text first.', { segmentId: segment.id });
+    const old = segment.tokenIds.map(id => this.token(id));
+    if (next.length === old.length) {
+      next.forEach((text, i) => {
+        if (old[i].text === text) return;
+        this.assertTokenFieldUnlocked(old[i].id, 'tokenText');
+        old[i].text = text; old[i].normalizedText = J.normalizeTokenText(text);
+      });
+      return;
+    }
+    let prefix = 0; while (prefix < old.length && prefix < next.length && old[prefix].text === next[prefix]) prefix++;
+    let suffix = 0; while (suffix < old.length - prefix && suffix < next.length - prefix && old[old.length - 1 - suffix].text === next[next.length - 1 - suffix]) suffix++;
+    const oldRun = old.slice(prefix, old.length - suffix), newTexts = next.slice(prefix, next.length - suffix);
+    for (const token of oldRun) this.assertTokenFieldUnlocked(token.id, 'tokenText');
+    const before = old[prefix - 1] || null, after = old[old.length - suffix] || null;
+    const taken = new Set(project.transcript.tokens.map(token => token.id));
+    const fresh = newTexts.map((text, i) => {
+      const prior = oldRun[i];
+      let id = prior && prior.id;
+      if (!id) { id = `${segment.id}_edit_${i}`; while (taken.has(id)) id += '_'; taken.add(id); }
+      const token = J.canonicalToken({ id, text, start: 0, end: 0, source: prior ? prior.source : 'edit', timingQuality: 'estimated' }, i);
+      if (prior && prior.manualEmphasis != null && J.normalizeTokenText(prior.text) === token.normalizedText) token.manualEmphasis = clone(prior.manualEmphasis);
+      return token;
+    });
+    const timed = fresh.slice();
+    let low = oldRun.length ? oldRun[0].start : before ? before.end : segment.start;
+    let high = oldRun.length ? oldRun[oldRun.length - 1].end : after ? after.start : segment.end;
+    if (fresh.length && high - low < 0.05 * fresh.length) {
+      if (before) { timed.unshift(before); low = before.start; } else if (after) { timed.push(after); high = after.end; }
+    }
+    timed.forEach((token, i) => {
+      token.start = +(low + (high - low) * i / timed.length).toFixed(6); token.end = +(low + (high - low) * (i + 1) / timed.length).toFixed(6);
+      token.timingQuality = 'estimated';
+    });
+    const dropped = new Set(oldRun.map(token => token.id));
+    project.transcript.tokens = project.transcript.tokens.filter(token => !dropped.has(token.id)).concat(fresh);
+    this.stableSortTokens();
+    segment.tokenIds = segment.tokenIds.slice(0, prefix).concat(fresh.map(token => token.id), segment.tokenIds.slice(prefix + oldRun.length));
+    const plan = project.plans && project.plans[segment.id];
+    this.planTextBlock(segment, clone(plan && plan.manual || {}));
+  }
+
+  /* { segmentId, times: [{ tokenId, start, end }] }: word times from tap sync. The window grows to contain them when that is free. */
+  retimeTokens(command) {
+    const { segment } = this.segment(command.segmentId);
+    this.assertUnlocked(segment, 'timing');
+    const times = Array.isArray(command.times) ? command.times : [];
+    if (!times.length) fail('RETIME_EMPTY', 'Nothing to retime.', { segmentId: segment.id });
+    const own = new Set(segment.tokenIds), changes = new Map();
+    for (const item of times) {
+      if (!plainObject(item) || !own.has(item.tokenId)) fail('TOKEN_NOT_IN_SEGMENT', `Token "${String(item && item.tokenId)}" is not in this caption.`, { segmentId: segment.id, tokenId: item && item.tokenId });
+      if (!Number.isFinite(item.start) || !Number.isFinite(item.end) || item.end <= item.start || item.start < 0) fail('TOKEN_TIMING_INVALID', 'Each word needs a start before its end.', { tokenId: item.tokenId });
+      this.assertTokenFieldUnlocked(item.tokenId, 'timing');
+      changes.set(item.tokenId, item);
+    }
+    let low = Infinity, high = -Infinity, previousEnd = -Infinity;
+    for (const id of segment.tokenIds) {
+      const token = this.token(id), change = changes.get(id), start = change ? change.start : token.start, end = change ? change.end : token.end;
+      if (start < previousEnd - 1e-9) fail('TOKEN_TIMING_OVERLAP', `Word "${token.text}" starts before the previous word ends.`, { tokenId: id });
+      previousEnd = end; low = Math.min(low, start); high = Math.max(high, end);
+    }
+    const start = Math.min(segment.start, low), end = Math.max(segment.end, high);
+    if (start !== segment.start) this.assertUnlocked(segment, 'start');
+    if (end !== segment.end) this.assertUnlocked(segment, 'end');
+    this.requireFits(segment, start, end, segment.trackId || J.CAPTION_PRIMARY_TRACK_ID, { fit: true });
+    for (const [id, change] of changes) { const token = this.token(id); token.start = change.start; token.end = change.end; token.timingQuality = 'word'; }
+    segment.start = start; segment.end = end;
+  }
+
+  /* Several commands as one undo step. All or nothing: execute() restores its snapshot when one of them fails. */
+  runBatch(command) {
+    const list = Array.isArray(command.commands) ? command.commands : [];
+    if (!list.length) fail('BATCH_EMPTY', 'A batch needs at least one command.');
+    for (const item of list) {
+      if (!plainObject(item) || typeof item.type !== 'string') fail('COMMAND_INVALID', 'Batch commands require a type.');
+      if (item.type === 'batch') fail('BATCH_NESTED', 'Batches cannot be nested.');
+    }
+    for (const item of list) this.apply(Object.assign({}, item, { updatedAt: command.updatedAt }));
   }
 
   mergeSegments(command) {

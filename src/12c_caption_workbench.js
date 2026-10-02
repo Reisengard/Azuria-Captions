@@ -504,6 +504,7 @@ function commandError(error) {
     TRACKS_LIMIT: 'トラックは最大3つまでです。', TRACK_PRIMARY_UNDELETABLE: 'メイントラックは削除できません。', TRACK_NAME_INVALID: 'トラック名は1〜40文字で入力してください。',
     TRACK_STYLE_INVALID: 'トラックのスタイルの値が正しくありません。', TOKENS_REQUIRED: '移動する単語を選んでください。', TRACK_NOTHING_TO_REROLL: 'ロックされていない字幕がありません。',
     TRACK_SEGMENT_OVERLAP: '移動先のトラックで他の字幕と時間が重なります。先にその字幕を移動または短くしてください。',
+    SEGMENT_WORDS_OUTSIDE: '字幕は含まれる単語と隣の字幕の範囲内に設定してください。',
     TEXT_BLOCK_OVERLAP: 'この時間には同じトラックに別の字幕があります。別のトラックを選ぶか、空いている時間を指定してください。', TOKEN_END_AFTER_DURATION: '字幕の終了が動画の長さを超えています。',
     CAPTION_LOOK_INVALID: '選んだエフェクトが正しくありません。', TEXT_BLOCK_ANIMATION_INVALID: 'ブロックのアニメーションが正しくありません。', SEGMENT_NOT_TEXT_BLOCK: 'テキストブロックではありません。' };
   return messages[error.code] || error.message || '変更を適用できませんでした。';
@@ -517,15 +518,9 @@ function runCommand(command, errorKey, nextSelection) {
 
 function applyTiming() {
   const segment = selectedSegment(); if (!segment) return;
-  const start = Number($('captionSelectedStart').value), end = Number($('captionSelectedEnd').value), tokens = tokenMap();
-  // A text block's words follow its timing (spread evenly again); the store refuses an overlap on its track.
-  if (J.isCaptionTextBlock(ui.store.project, segment)) { runCommand({ type: 'edit-text-block', segmentId: segment.id, start, end }, segment.id); return; }
-  const first = tokens.get(segment.tokenIds[0]), last = tokens.get(segment.tokenIds[segment.tokenIds.length - 1]);
-  const previous = J.captionTrackNeighbor(ui.store.project, segment, -1), next = J.captionTrackNeighbor(ui.store.project, segment, 1);
-  if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end <= start || start > first.start || end < last.end || previous && start < previous.end || next && end > next.start) {
-    ui.errors[segment.id] = '字幕は含まれる単語と隣の字幕の範囲内に設定してください。'; renderInspector(); status(ui.errors[segment.id], true); return;
-  }
-  runCommand({ type: 'set-segment-timing', segmentId: segment.id, start, end, boundarySource: 'manual' }, segment.id);
+  const start = Number($('captionSelectedStart').value), end = Number($('captionSelectedEnd').value);
+  // The timing rules (window inside the video, words kept, no overlap on the track, a block's words re-spread) live in the store.
+  runCommand({ type: 'trim-segment', segmentId: segment.id, start, end, words: 'keep' }, segment.id);
 }
 
 const CAPTION_TECHNIQUE_GROUPS = {

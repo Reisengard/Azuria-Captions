@@ -214,6 +214,48 @@ J.captionBoxCollisions = project => {
   return found;
 };
 
+/* ---------- timing rules (rework plan E1, ADR 0010) ----------
+   One place decides whether a caption may sit at [start, end] on a track; store commands use it and refuse,
+   loading an old file only reports overlaps as warnings (existing projects must still open). */
+J.CAPTION_MIN_SEGMENT_SECONDS = 0.1;
+const TIMING_EPS = 1e-6;
+
+/* { ok: true } or { ok: false, code, ... }. options.fit: the caption's words are re-timed with it, so they need not stay inside the window. */
+J.captionSegmentFits = (project, segment, start, end, trackId, options = {}) => {
+  const track = trackId == null ? trackOf(segment) : trackId;
+  if (!Number.isFinite(start) || !Number.isFinite(end) || start < -TIMING_EPS || end - start < J.CAPTION_MIN_SEGMENT_SECONDS - TIMING_EPS) {
+    return { ok: false, code: 'SEGMENT_TIMING_INVALID', start, end };
+  }
+  const duration = project && project.media && project.media.duration;
+  if (Number.isFinite(duration) && end > duration + TIMING_EPS) return { ok: false, code: 'SEGMENT_TIMING_INVALID', start, end, duration };
+  for (const other of J.captionTrackSegments(project, track)) {
+    if (other.id !== segment.id && start < other.end - TIMING_EPS && end > other.start + TIMING_EPS) return { ok: false, code: 'TRACK_SEGMENT_OVERLAP', otherSegmentId: other.id, trackId: track, start, end };
+  }
+  if (!options.fit) {
+    const byId = new Map((project && project.transcript && project.transcript.tokens || []).map(token => [token.id, token]));
+    for (const id of segment.tokenIds || []) {
+      const token = byId.get(id);
+      if (token && (token.start < start - TIMING_EPS || token.end > end + TIMING_EPS)) return { ok: false, code: 'SEGMENT_WORDS_OUTSIDE', tokenId: id, start, end };
+    }
+  }
+  return { ok: true };
+};
+
+/* Captions of one track that share screen time. Advisory (shown on those captions); nothing is moved or refused. */
+J.captionTrackOverlaps = project => {
+  const found = [], byTrack = new Map();
+  for (const segment of project && project.segments || []) {
+    const lane = byTrack.get(trackOf(segment)) || (byTrack.set(trackOf(segment), []), byTrack.get(trackOf(segment)));
+    for (const other of lane) {
+      if (segment.start < other.end - TIMING_EPS && segment.end > other.start + TIMING_EPS) {
+        found.push({ code: 'track-segment-overlap', segmentId: other.id, otherSegmentId: segment.id, trackId: trackOf(segment), start: Math.max(segment.start, other.start), end: Math.min(segment.end, other.end) });
+      }
+    }
+    lane.push(segment);
+  }
+  return found;
+};
+
 /* An untouched track box follows the frame; an edited one stays exactly as set. */
 J.captionSyncTrackBoxes = project => {
   if (!project || !Array.isArray(project.tracks)) return project;

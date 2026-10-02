@@ -21,11 +21,11 @@ assert.match(source, /J\.captionEmphasizedTokenIds\(/, 'chips do not show which 
 assert.match(captionPane, /<details id="captionMoveSection"/, 'moving to another track is not folded away');
 assert.match(captionPane, /<details id="captionLookSection"/, 'look and motion are not folded away');
 assert.match(captionPane, /id="captionLock" type="checkbox"/, 'keeping a caption as is must read as an on/off setting');
-for (const command of ['edit-token-text', 'set-manual-emphasis', 'split-segment', 'merge-segments', 'set-segment-timing']) {
+for (const command of ['edit-token-text', 'set-manual-emphasis', 'split-segment', 'merge-segments', 'trim-segment']) {
   assert.match(source, new RegExp(`type: '${command}'`), `G5.3 UI does not issue ${command}`);
 }
 assert.match(source, /ui\.errors\[token\.id\]/, 'token validation is not attached to affected tokens');
 assert.match(source, /ui\.errors\[segment\.id\]/, 'segment validation is not attached to affected segments');
-assert.match(source, /previous && start < previous\.end/, 'numeric timing does not enforce the previous segment boundary');
-assert.match(source, /next && end > next\.start/, 'numeric timing does not enforce the next segment boundary');
+assert.match(source, /function applyTiming\(\)[^]*?type: 'trim-segment'/, "numeric timing does not go through the store's trim-segment");
+assert.match(fs.readFileSync(path.join(root, 'src', '08k_caption_tracks.js'), 'utf8'), /TRACK_SEGMENT_OVERLAP/, 'the store does not enforce neighbouring captions');
 console.log('Gate 5.3 transcript and segment editing UI tests passed.');
