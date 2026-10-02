@@ -22,7 +22,7 @@ const PREF_KEY = 'jizura.captionShell', DEFAULT_DRAWER = 'captions';
 /* View preference, kept per browser (not in the project). `drawer` is a drawer name, or '' when the preview has the whole width. */
 function readPref() {
   try { const value = JSON.parse(localStorage.getItem(PREF_KEY) || 'null'); if (value && typeof value.drawer === 'string' && (value.drawer === '' || DRAWERS[value.drawer])) return value.drawer; } catch (error) {}
-  return DEFAULT_DRAWER;
+  return typeof matchMedia === 'function' && matchMedia('(max-width: 680px)').matches ? '' : DEFAULT_DRAWER;   // on a phone the preview comes first
 }
 function writePref(drawer) { try { localStorage.setItem(PREF_KEY, JSON.stringify({ drawer })); } catch (error) {} }
 
@@ -86,6 +86,11 @@ function syncTracksItem() {
 function init() {
   for (const button of document.querySelectorAll('#captionRail [data-drawer]')) button.addEventListener('click', () => toggleDrawer(button.dataset.drawer));
   $('captionDrawerClose').addEventListener('click', () => { setDrawer(''); const rail = document.querySelector('#captionRail [data-drawer]'); if (rail) rail.focus(); });
+  $('captionDrawer').addEventListener('keydown', event => {   // Esc inside the drawer closes it and puts focus back on its rail item
+    if (event.key !== 'Escape' || event.defaultPrevented || !ui.drawer || event.target.closest('[role=menu], .caption-popover')) return;
+    const current = document.querySelector(`#captionRail [data-drawer="${ui.drawer}"]`);
+    setDrawer(''); if (current) current.focus();
+  });
   bindMenu();
   setDrawer(readPref(), { persist: false, layout: false });
   W.on('project', syncTracksItem, 5); syncTracksItem();

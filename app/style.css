@@ -912,16 +912,24 @@ html[data-product-mode=video-captions] label.file:hover { border-color: var(--am
   #app[data-product-mode=video-captions] { height: auto; }
   .caption-surface { flex: 0 0 auto; min-height: 0; }
   .caption-bar { flex-wrap: wrap; }
-  .caption-workbench { display: flex; height: auto; min-height: 0; flex-direction: column; }
-  .caption-rail { flex-direction: row; overflow-x: auto; overflow-y: visible; border-right: 0; border-bottom: 1px solid var(--line); }
-  .caption-rail button { min-width: 52px; }
-  .caption-drawer { position: static; width: auto; max-height: 60vh; box-shadow: none; }
+  /* U5: the rail is a bottom tab bar, the drawer a sheet above it, the timeline shows one track at a time */
+  .caption-workbench { --caption-tabbar-h: 56px; display: flex; height: auto; min-height: 0; flex-direction: column; padding-bottom: calc(var(--caption-tabbar-h) + env(safe-area-inset-bottom, 0px)); }
+  .caption-rail { position: fixed; z-index: 40; left: 0; right: 0; bottom: 0; flex-direction: row; justify-content: space-around; gap: 0; height: calc(var(--caption-tabbar-h) + env(safe-area-inset-bottom, 0px)); padding: 4px 4px env(safe-area-inset-bottom, 0px); overflow: hidden; border-right: 0; border-top: 1px solid var(--line2); box-sizing: border-box; }
+  .caption-rail button { flex: 1 1 0; min-width: 44px; min-height: 44px; }
+  .caption-rail button[hidden] { display: none; }
+  .caption-rail button[aria-expanded=true] { box-shadow: inset 0 2px 0 var(--amber); }
+  .caption-drawer { position: fixed; z-index: 35; left: 0; right: 0; top: auto; bottom: calc(var(--caption-tabbar-h) + env(safe-area-inset-bottom, 0px)); width: auto; max-height: 62vh; border-right: 0; border-top: 1px solid var(--line2); box-shadow: 0 -10px 30px rgba(0,0,0,.45); }
   .caption-stage { min-height: 420px; }
   .caption-timeline-strip { height: auto !important; max-height: none !important; }
   .caption-strip-grip { display: none; }
   .caption-timeline-strip.is-collapsed #captionTimeline, .caption-timeline-strip.is-collapsed .caption-timeline-toolbar { display: flex; }
   .caption-strip-head { flex-wrap: wrap; gap: 8px; }
+  .caption-track-row:not(.is-active-track), .caption-track-head:not(.is-active-track) { display: none; }
+  .caption-menu-button, .caption-bar button, .caption-tool { min-height: 40px; }
 }
+@media (prefers-reduced-motion: reduce) { .caption-drawer, .caption-rail, .caption-toast, .caption-popover { transition: none !important; animation: none !important; } }
+/* Visible keyboard focus on the shell's own controls (the rail and drawer buttons otherwise rely on the browser default) */
+.caption-rail button:focus-visible, .caption-main-menu > :focus-visible, .caption-menu-button:focus-visible, .caption-strip-grip:focus-visible { outline: 2px solid var(--cyan); outline-offset: -2px; }
 
 /* U3: box popover, export dialog */
 .caption-box-popover { width: 260px; max-width: calc(100vw - 8px); padding: 12px; }

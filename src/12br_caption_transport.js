@@ -92,8 +92,14 @@ function ignoresKey(event) {
 function onKey(event) {
   if (!ui.store || event.defaultPrevented || event.isComposing) return;
   const root = document.getElementById('app'); if (root && root.dataset.productMode && root.dataset.productMode !== 'video-captions') return;
+  if ((event.ctrlKey || event.metaKey) && !event.altKey && (event.code === 'KeyZ' || event.code === 'KeyY') && !ignoresKey(event)) {   // Ctrl+Z undo, Ctrl+Shift+Z / Ctrl+Y redo
+    const redo = event.code === 'KeyY' || event.shiftKey;
+    if (redo ? ui.store.canRedo() && ui.store.redo() : ui.store.canUndo() && ui.store.undo()) W.emit('project');
+    event.preventDefault(); event.stopImmediatePropagation(); return;
+  }
   const action = TL.keyAction(event); if (!action || ignoresKey(event)) return;
   const target = event.target || {};
+  if (action === 'escape' && !(W.syncKey && ui.transport.syncing) && target.closest && target.closest('#captionDrawer')) return;   // Esc inside the drawer closes the drawer (shell)
   if (W.syncKey && W.syncKey(event)) { event.preventDefault(); event.stopImmediatePropagation(); return; }   // during a tap-sync pass Space taps, Enter confirms, Esc discards
   // Native widgets that use the same keys keep them: buttons take Space, sliders take the arrows.
   if ((action === 'play' || action === 'edit') && target.tagName === 'BUTTON') return;

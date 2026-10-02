@@ -110,6 +110,8 @@ const IN_PAGE = `(() => {
     removeTrack(id) { ui.store.execute({ type: 'remove-track', trackId: id }); J.captionWb.emit('project'); },
     errors() { return JSON.stringify(ui.errors); },
     count() { return ui.store.project.segments.length; },
+    u5() { const r = id => { const e = $(id); const b = e.getBoundingClientRect(); return { top: b.top, bottom: b.bottom, width: b.width, height: b.height, pos: getComputedStyle(e).position }; };
+      const rows = [...document.querySelectorAll('.caption-track-row')]; return { rail: r('captionRail'), vh: innerHeight, vw: innerWidth, drawerOpen: !$('captionDrawer').hidden, drawer: $('captionDrawer').hidden ? null : r('captionDrawer'), rows: rows.length, shown: rows.filter(e => e.offsetParent !== null).length, focus: document.activeElement && document.activeElement.id, undo: ui.store.undoStack.length, scroll: document.documentElement.scrollWidth }; },
     u4(query, warn) { const search = $('captionListSearch'), warnBtn = $('captionListWarn'); search.value = query || ''; search.dispatchEvent(new Event('input', { bubbles: true })); if (warn !== undefined && (warnBtn.getAttribute('aria-pressed') === 'true') !== warn) warnBtn.click(); const rows = [...$('captionSegmentList').querySelectorAll('[data-segment-id]')]; return { rows: rows.length, total: ui.store.project.segments.length, count: $('captionListCount').textContent, noMatch: !$('captionListNoMatch').hidden, pressed: warnBtn.getAttribute('aria-pressed'), warned: rows.filter(r => r.querySelector('.caption-segment-warning')).length }; },
     sel() { return JSON.stringify([...ui.selection.segmentIds].sort()); },
     undo2() { const ok = ui.store.undo(); J.captionWb.emit('project'); return ok; },
@@ -525,6 +527,28 @@ const IN_PAGE = `(() => {
     step('u4: the warning filter keeps only captions with a warning', u4.pressed === 'true' && u4.rows === u4.warned, JSON.stringify(u4));
     u4 = await t('u4', '', false);
     step('u4: clearing the filters brings every caption back', u4.rows === u4.total && u4.pressed === 'false', JSON.stringify(u4));
+
+    // U5: Esc in the drawer, undo by key, the narrow tab bar with one track at a time
+    await clickSel('#captionRail_text'); await t('rect', '#captionDrawer');
+    await client.evaluate(`document.querySelector('#captionDrawer button, #captionDrawer input, #captionDrawer select').focus()`);
+    await key('Escape', 'Escape', { vk: 27 }); await sleep(100); let u5 = await t('u5');
+    step('u5: Esc inside the drawer closes it and focuses its rail item', !u5.drawerOpen && u5.focus === 'captionRail_text', JSON.stringify(u5));
+    await clickSel('#captionRail_captions');
+    await client.evaluate(`J.captionWorkbench.store.execute({ type: 'create-text-block', segmentId: 'blockU5', text: 'Undo me', start: 7, end: 8, trackId: 'track_2' }); J.captionWb.emit('project'); document.activeElement.blur()`);
+    await key('z', 'KeyZ', { vk: 90, modifiers: 2 }); await sleep(100);
+    step('u5: Ctrl+Z undoes the last command', await client.evaluate(`!J.captionWorkbench.store.project.segments.some(s => s.id === 'blockU5')`));
+    await key('z', 'KeyZ', { vk: 90, modifiers: 10 }); await sleep(100);
+    step('u5: Ctrl+Shift+Z redoes it', await client.evaluate(`J.captionWorkbench.store.project.segments.some(s => s.id === 'blockU5')`));
+    await client.evaluate(`J.captionWorkbench.store.undo(); J.captionWb.emit('project')`);
+    await client.send('Emulation.setDeviceMetricsOverride', { width: 480, height: 800, deviceScaleFactor: 1, mobile: false }); await sleep(300);
+    u5 = await t('u5');
+    step('u5: under 680 px the rail is a bottom tab bar', u5.rail.pos === 'fixed' && Math.abs(u5.rail.bottom - u5.vh) < 2 && u5.rail.width >= u5.vw - 20 && u5.rail.height >= 44, JSON.stringify(u5));
+    step('u5: the timeline shows one track at a time', u5.rows > 1 && u5.shown === 1, JSON.stringify(u5));
+    step('u5: no horizontal page scroll at 480 px', u5.scroll <= u5.vw, JSON.stringify(u5));
+    await clickSel('#captionRail_text'); u5 = await t('u5');
+    step('u5: the drawer is a sheet above the tab bar', u5.drawerOpen && u5.drawer.pos === 'fixed' && Math.abs(u5.drawer.bottom - u5.rail.top) < 2, JSON.stringify(u5));
+    await clickSel('#captionRail_text');
+    await client.send('Emulation.clearDeviceMetricsOverride'); await sleep(200);
 
     const problems = log.filter(line => !/favicon|Failed to load resource/.test(line));
     step('no page errors', problems.length === 0, problems.join(' | '));

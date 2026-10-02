@@ -116,6 +116,7 @@ function syncRows(project) {
     if (button.textContent !== name) { button.textContent = name; label.title = name; }
     grip.hidden = !!item.primary;
     button.setAttribute('aria-pressed', String(!!current && item.id === current.id));
+    row.classList.toggle('is-active-track', !!current && item.id === current.id); label.classList.toggle('is-active-track', !!current && item.id === current.id);
   });
   for (const [id, row] of rows) if (!seen.has(id)) { row.remove(); rows.delete(id); }
   for (const [id, label] of labels) if (!seen.has(id)) { label.remove(); labels.delete(id); headParts.delete(id); }
@@ -626,6 +627,8 @@ function markSelection() {
   $('captionSegmentList').querySelectorAll('[data-segment-id]').forEach(node => node.setAttribute('aria-selected', String(ui.selection.segmentIds.has(node.dataset.segmentId))));
   $('captionSegmentTrack').querySelectorAll('[data-segment-id]').forEach(node => node.classList.toggle('selected', ui.selection.segmentIds.has(node.dataset.segmentId)));
   $('captionTrackLabels').querySelectorAll('[data-track-select]').forEach(node => node.setAttribute('aria-pressed', String(!!current && node.dataset.trackSelect === current.id)));
+  for (const node of $('captionSegmentTrack').querySelectorAll('[data-track-id]')) node.classList.toggle('is-active-track', !!current && node.dataset.trackId === current.id);   // narrow screens show only this row
+  for (const node of $('captionTrackLabels').querySelectorAll('[data-track-head]')) node.classList.toggle('is-active-track', !!current && node.dataset.trackHead === current.id);
 }
 
 function init() {
