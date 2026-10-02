@@ -879,7 +879,10 @@ html[data-product-mode=video-captions] label.file:hover { border-color: var(--am
 .caption-bar .brand { flex: none; align-items: baseline; gap: 8px; }
 .caption-bar .brand .word { font: 600 19px/1 var(--brand); letter-spacing: .01em; color: var(--text); }
 .caption-bar .brand .word b { margin-left: .3em; font-weight: 600; color: var(--amber); }
-.caption-bar .proj { flex: 1 1 80px; min-width: 0; }
+.caption-bar .proj { display: flex; flex: 1 1 80px; align-items: baseline; gap: 10px; min-width: 0; }
+.caption-save-state { flex: none; color: var(--muted); font-size: 11px; white-space: nowrap; }
+.caption-save-state:empty { display: none; }
+.caption-save-state.error { color: var(--amber); }
 .caption-history { flex: none; gap: 4px; }
 .caption-bar .modes { flex: none; }
 .caption-menu-wrap { position: relative; flex: none; }
@@ -893,7 +896,7 @@ html[data-product-mode=video-captions] label.file:hover { border-color: var(--am
 /* rail | drawer | stage, then the timeline strip across the full width */
 .caption-workbench { --caption-rail-w: 60px; --caption-drawer-w: 340px; position: relative; flex: 1 1 auto; min-height: 0; display: grid;
   grid-template-columns: var(--caption-rail-w) var(--caption-drawer-w) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
-.caption-workbench[data-drawer=""] { --caption-drawer-w: 0px; }
+.caption-workbench[data-drawer=""] { --caption-drawer-w: 0px !important; }
 .caption-rail { grid-column: 1; grid-row: 1; display: flex; flex-direction: column; gap: 2px; min-height: 0; padding: 8px 4px; overflow-y: auto; border-right: 1px solid var(--line); background: var(--panel); }
 .caption-rail button { display: grid; justify-items: center; gap: 2px; width: 100%; padding: 7px 2px 6px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--muted); white-space: normal; }
 .caption-rail button:hover { background: var(--raised); color: var(--text); border-color: transparent; }
@@ -902,6 +905,10 @@ html[data-product-mode=video-captions] label.file:hover { border-color: var(--am
 .caption-rail-label { font-size: 10px; line-height: 1.15; text-align: center; overflow-wrap: anywhere; }
 .caption-drawer { grid-column: 2; grid-row: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; border-right: 1px solid var(--line); background: var(--panel); }
 .caption-drawer[hidden] { display: none; }
+.caption-drawer { position: relative; }
+.caption-drawer-resize { position: absolute; top: 0; right: -3px; bottom: 0; z-index: 5; width: 7px; cursor: col-resize; touch-action: none; }
+.caption-drawer-resize::after { content: ""; position: absolute; top: 0; bottom: 0; left: 3px; width: 2px; background: transparent; transition: background .12s; }
+.caption-drawer-resize:hover::after, .caption-drawer-resize:focus-visible::after, .caption-drawer-resize.is-dragging::after { background: var(--amber); }
 .caption-drawer-head { display: flex; flex: none; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
 .caption-drawer-head h2 { margin: 0; color: var(--text); font-size: 13px; letter-spacing: .04em; }
 .caption-drawer-body { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; padding: 14px; overflow: auto; }
@@ -927,7 +934,8 @@ html[data-product-mode=video-captions] label.file:hover { border-color: var(--am
 .caption-timeline-strip { position: relative; grid-column: 1 / -1; grid-row: 2; display: flex; flex-direction: column; gap: 6px; min-width: 0; max-height: 38vh; padding: 8px 14px 10px; overflow: auto; border-top: 1px solid var(--line); background: var(--panel); }
 
 @media (max-width: 1000px) {
-  .caption-workbench { --caption-drawer-w: 0px; }
+  .caption-workbench { --caption-drawer-w: 0px !important; }
+  .caption-drawer-resize { display: none; }
   .caption-drawer { position: absolute; z-index: 20; top: 0; bottom: 0; left: var(--caption-rail-w); width: min(340px, calc(100% - var(--caption-rail-w))); box-shadow: 12px 0 30px rgba(0,0,0,.45); }
   .caption-bar .brand .ver { display: none; }
 }
@@ -1000,7 +1008,7 @@ html[data-product-mode=video-captions] label.file:hover { border-color: var(--am
   <section id="videoCaptionsWorkspace" class="product-surface caption-surface" role="tabpanel" aria-labelledby="productVideoCaptions" hidden>
 <header class="bar caption-bar">
       <div class="brand"><span class="word">Azuria<b>Sub</b></span><span class="ver">v0.9.0</span></div>
-      <div class="proj"><strong id="captionProjectName" class="caption-project-name">無題の字幕プロジェクト</strong></div>
+      <div class="proj"><strong id="captionProjectName" class="caption-project-name">無題の字幕プロジェクト</strong><span id="captionSaveState" class="caption-save-state"></span></div>
       <div class="acts caption-history" role="group" aria-label="元に戻す・やり直す">
         <button id="captionUndo" type="button" disabled>元に戻す</button>
         <button id="captionRedo" type="button" disabled>やり直す</button>
@@ -1598,6 +1606,15 @@ html[data-product-mode=video-captions] label.file:hover { border-color: var(--am
     <progress id="captionExportProgress" class="caption-export-progress" max="1" value="0" hidden aria-label="导出の進み具合"></progress>
     <p id="captionExportState" class="caption-export-state" role="status"></p>
     <div class="terms-foot"><button value="close" class="ghost">关闭</button><button id="captionExportPanel" type="button" class="primary" disabled>导出を開始</button></div>
+  </form>
+</dialog>
+<dialog id="captionRestoreDlg" class="terms" aria-labelledby="captionRestoreTitle">
+  <form method="dialog">
+    <h2 id="captionRestoreTitle">前回の作業を復元しますか？</h2>
+    <p>このブラウザに自动保存されたプロジェクトがあります。</p>
+    <dl class="caption-meta"><dt>名前</dt><dd id="captionRestoreName">—</dd><dt>保存</dt><dd id="captionRestoreTime">—</dd><dt>字幕</dt><dd id="captionRestoreCount">—</dd></dl>
+    <p class="terms-sub">動画ファイルは保存されません。復元後に元の動画を選び直してください。</p>
+    <div class="terms-foot"><button value="discard" class="ghost">破棄して新規</button><button value="restore" class="primary" autofocus>復元</button></div>
   </form>
 </dialog>
 <dialog id="captionHelpDlg" class="terms" aria-labelledby="captionHelpTitle">
@@ -47287,7 +47304,41 @@ function readPref() {
   try { const value = JSON.parse(localStorage.getItem(PREF_KEY) || 'null'); if (value && typeof value.drawer === 'string' && (value.drawer === '' || DRAWERS[value.drawer])) return value.drawer; } catch (error) {}
   return typeof matchMedia === 'function' && matchMedia('(max-width: 680px)').matches ? '' : DEFAULT_DRAWER;   // on a phone the preview comes first
 }
-function writePref(drawer) { try { localStorage.setItem(PREF_KEY, JSON.stringify({ drawer })); } catch (error) {} }
+function writePref(drawer) { try { localStorage.setItem(PREF_KEY, JSON.stringify({ drawer, width: ui.drawerWidth || null })); } catch (error) {} }
+
+/* Drawer width: drag the handle on its right edge (or use the arrow keys); kept per browser next to the drawer preference. */
+const DRAWER_MIN = 240, DRAWER_MAX = 640;
+const clampDrawer = value => Math.max(DRAWER_MIN, Math.min(DRAWER_MAX, Math.round(value), Math.max(DRAWER_MIN, window.innerWidth - 420)));
+function applyDrawerWidth(width, persist) {
+  const bench = document.querySelector('.caption-workbench'), handle = $('captionDrawerResize'); if (!bench) return;
+  if (width) { ui.drawerWidth = clampDrawer(width); bench.style.setProperty('--caption-drawer-w', ui.drawerWidth + 'px'); if (handle) handle.setAttribute('aria-valuenow', String(ui.drawerWidth)); }
+  else { ui.drawerWidth = null; bench.style.removeProperty('--caption-drawer-w'); }
+  if (persist) writePref(ui.drawer);
+  if (W.onWorkbenchResize) W.onWorkbenchResize();
+}
+function bindDrawerResize() {
+  const drawer = $('captionDrawer'); if (!drawer) return;
+  const handle = document.createElement('div');
+  handle.id = 'captionDrawerResize'; handle.className = 'caption-drawer-resize'; handle.tabIndex = 0;
+  handle.setAttribute('role', 'separator'); handle.setAttribute('aria-orientation', 'vertical'); handle.setAttribute('aria-label', 'Resize panel');
+  handle.setAttribute('aria-valuemin', String(DRAWER_MIN)); handle.setAttribute('aria-valuemax', String(DRAWER_MAX)); handle.setAttribute('aria-valuenow', '340');
+  drawer.appendChild(handle);
+  handle.addEventListener('pointerdown', event => {
+    if (event.button !== 0) return;
+    event.preventDefault(); handle.setPointerCapture(event.pointerId); handle.classList.add('is-dragging');
+    const left = drawer.getBoundingClientRect().left;
+    const move = e => applyDrawerWidth(e.clientX - left, false);
+    const done = () => { handle.classList.remove('is-dragging'); handle.removeEventListener('pointermove', move); handle.removeEventListener('pointerup', done); handle.removeEventListener('pointercancel', done); writePref(ui.drawer); };
+    handle.addEventListener('pointermove', move); handle.addEventListener('pointerup', done); handle.addEventListener('pointercancel', done);
+  });
+  handle.addEventListener('dblclick', () => applyDrawerWidth(null, true));   // back to the default width
+  handle.addEventListener('keydown', event => {
+    const step = event.shiftKey ? 48 : 16, current = ui.drawerWidth || drawer.getBoundingClientRect().width;
+    if (event.key === 'ArrowLeft') { event.preventDefault(); applyDrawerWidth(current - step, true); }
+    else if (event.key === 'ArrowRight') { event.preventDefault(); applyDrawerWidth(current + step, true); }
+  });
+  try { const saved = JSON.parse(localStorage.getItem(PREF_KEY) || 'null'); if (saved && Number(saved.width) > 0) applyDrawerWidth(saved.width, false); } catch (error) {}
+}
 
 function setDrawer(name, options) {
   const drawer = DRAWERS[name] ? name : '';
@@ -47355,6 +47406,7 @@ function init() {
     setDrawer(''); if (current) current.focus();
   });
   bindMenu();
+  bindDrawerResize();
   setDrawer(readPref(), { persist: false, layout: false });
   W.on('project', syncTracksItem, 5); syncTracksItem();
 }
@@ -47679,6 +47731,120 @@ bind();
 if (J.mountVideoEditor) ui.videoEditor = J.mountVideoEditor({ host: $('captionVideoEditor'), project: () => ui.store.project, video: sourceVideo,
   commit: value => runCommand({ type: 'set-video-edits', value }), status });
 J.captionWorkbench = ui;
+})();
+
+/* ============================================================
+   Azuria Sub — Video Captions autosave: the last project is kept in the browser (IndexedDB) and offered back on the next visit
+   ============================================================ */
+(() => {
+'use strict';
+if (typeof document === 'undefined' || typeof document.getElementById !== 'function') return;
+const W = J.captionWb;
+const { ui, $, status } = W;
+const DB_NAME = 'azuria-sub', STORE = 'autosave', KEY = 'last', DELAY = 1500;
+let timer = 0, ready = false, saving = null, lastJson = '';
+
+/* One small record: { json, name, savedAt, segments }. The video file is never stored, so a restored project asks for a relink. */
+function database() {
+  return new Promise((resolve, reject) => {
+    if (typeof indexedDB === 'undefined') return reject(new Error('no IndexedDB'));
+    const request = indexedDB.open(DB_NAME, 1);
+    request.onupgradeneeded = () => { request.result.createObjectStore(STORE); };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+async function run(mode, action) {
+  const db = await database();
+  try {
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE, mode), request = action(tx.objectStore(STORE));
+      tx.oncomplete = () => resolve(request && request.result);
+      tx.onerror = tx.onabort = () => reject(tx.error);
+    });
+  } finally { db.close(); }
+}
+const readRecord = () => run('readonly', store => store.get(KEY));
+const writeRecord = record => run('readwrite', store => store.put(record, KEY));
+const clearRecord = () => run('readwrite', store => store.delete(KEY));
+
+function hasContent(project) {
+  return !!(project.transcript.tokens.length || project.segments.length || Object.keys(project.media || {}).length || (project.settings && project.settings.videoEdit));
+}
+const clock = time => new Date(time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+function showState(text, isError) {
+  const node = $('captionSaveState'); if (!node) return;
+  node.textContent = text; node.classList.toggle('error', !!isError);
+}
+
+async function saveNow() {
+  clearTimeout(timer); timer = 0;
+  if (!ready || saving) return;
+  const project = ui.store.project;
+  if (!hasContent(project)) return;
+  const json = ui.store.serialize();
+  if (json === lastJson) return;
+  const record = { json, name: $('captionProjectName').textContent, savedAt: Date.now(), segments: project.segments.length };
+  saving = writeRecord(record).then(() => { lastJson = json; showState('自動保存 ' + clock(record.savedAt)); })
+    .catch(() => showState('自動保存できません', true))
+    .finally(() => { saving = null; });
+  await saving;
+}
+function schedule() {
+  if (!ready) return;
+  clearTimeout(timer); timer = setTimeout(() => { saveNow(); }, DELAY);
+}
+
+/* ---- restore prompt ---- */
+function askRestore(record) {
+  const dialog = $('captionRestoreDlg');
+  $('captionRestoreName').textContent = record.name || '—';
+  $('captionRestoreTime').textContent = new Date(record.savedAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+  $('captionRestoreCount').textContent = String(record.segments || 0);
+  return new Promise(resolve => {
+    dialog.addEventListener('cancel', event => event.preventDefault(), { once: false });   // a choice is required: Esc must not leave the record in limbo
+    dialog.addEventListener('close', () => resolve(dialog.returnValue === 'restore'), { once: true });
+    if (dialog.showModal) { if (!dialog.open) dialog.showModal(); } else dialog.setAttribute('open', '');
+  });
+}
+async function offerRestore(record) {
+  const restore = await askRestore(record);
+  if (restore) {
+    try {
+      await W.openProject({ name: (record.name || 'project') + '.json', text: async () => record.json });
+      lastJson = record.json; showState('自動保存 ' + clock(record.savedAt));
+    } catch (error) { status(J.recoveryForError ? J.recoveryForError(error).display : error.message, true); }
+  } else { try { await clearRecord(); } catch (error) { /* nothing to clear */ } }
+  ready = true;
+}
+function whenCaptionsVisible() {
+  const workspace = $('videoCaptionsWorkspace');
+  return new Promise(resolve => {
+    if (!workspace || !workspace.hidden) return resolve();
+    $('app').addEventListener('jizura:product-mode', function wait(event) {
+      if (event.detail.mode !== 'video-captions') return;
+      $('app').removeEventListener('jizura:product-mode', wait); resolve();
+    });
+  });
+}
+
+async function start() {
+  let record = null;
+  try { record = await readRecord(); } catch (error) { showState('自動保存できません', true); return; }
+  if (record && typeof record.json === 'string') { await whenCaptionsVisible(); await offerRestore(record); }
+  else ready = true;
+}
+
+function init() {
+  W.on('project', schedule, 20);
+  $('captionNew').addEventListener('click', () => { lastJson = ''; showState(''); clearRecord().catch(() => {}); });   // an empty project must not bring the old one back
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') saveNow(); });
+  window.addEventListener('pagehide', () => { saveNow(); });
+  start();
+}
+
+W.autosave = Object.freeze({ saveNow, readRecord, clearRecord, dbName: DB_NAME, delay: DELAY, isReady: () => ready });
+init();   // 12c_caption_workbench.js has already run its init list and bind()
 })();
 
 </script>

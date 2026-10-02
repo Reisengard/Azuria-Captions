@@ -24,7 +24,41 @@ function readPref() {
   try { const value = JSON.parse(localStorage.getItem(PREF_KEY) || 'null'); if (value && typeof value.drawer === 'string' && (value.drawer === '' || DRAWERS[value.drawer])) return value.drawer; } catch (error) {}
   return typeof matchMedia === 'function' && matchMedia('(max-width: 680px)').matches ? '' : DEFAULT_DRAWER;   // on a phone the preview comes first
 }
-function writePref(drawer) { try { localStorage.setItem(PREF_KEY, JSON.stringify({ drawer })); } catch (error) {} }
+function writePref(drawer) { try { localStorage.setItem(PREF_KEY, JSON.stringify({ drawer, width: ui.drawerWidth || null })); } catch (error) {} }
+
+/* Drawer width: drag the handle on its right edge (or use the arrow keys); kept per browser next to the drawer preference. */
+const DRAWER_MIN = 240, DRAWER_MAX = 640;
+const clampDrawer = value => Math.max(DRAWER_MIN, Math.min(DRAWER_MAX, Math.round(value), Math.max(DRAWER_MIN, window.innerWidth - 420)));
+function applyDrawerWidth(width, persist) {
+  const bench = document.querySelector('.caption-workbench'), handle = $('captionDrawerResize'); if (!bench) return;
+  if (width) { ui.drawerWidth = clampDrawer(width); bench.style.setProperty('--caption-drawer-w', ui.drawerWidth + 'px'); if (handle) handle.setAttribute('aria-valuenow', String(ui.drawerWidth)); }
+  else { ui.drawerWidth = null; bench.style.removeProperty('--caption-drawer-w'); }
+  if (persist) writePref(ui.drawer);
+  if (W.onWorkbenchResize) W.onWorkbenchResize();
+}
+function bindDrawerResize() {
+  const drawer = $('captionDrawer'); if (!drawer) return;
+  const handle = document.createElement('div');
+  handle.id = 'captionDrawerResize'; handle.className = 'caption-drawer-resize'; handle.tabIndex = 0;
+  handle.setAttribute('role', 'separator'); handle.setAttribute('aria-orientation', 'vertical'); handle.setAttribute('aria-label', 'Resize panel');
+  handle.setAttribute('aria-valuemin', String(DRAWER_MIN)); handle.setAttribute('aria-valuemax', String(DRAWER_MAX)); handle.setAttribute('aria-valuenow', '340');
+  drawer.appendChild(handle);
+  handle.addEventListener('pointerdown', event => {
+    if (event.button !== 0) return;
+    event.preventDefault(); handle.setPointerCapture(event.pointerId); handle.classList.add('is-dragging');
+    const left = drawer.getBoundingClientRect().left;
+    const move = e => applyDrawerWidth(e.clientX - left, false);
+    const done = () => { handle.classList.remove('is-dragging'); handle.removeEventListener('pointermove', move); handle.removeEventListener('pointerup', done); handle.removeEventListener('pointercancel', done); writePref(ui.drawer); };
+    handle.addEventListener('pointermove', move); handle.addEventListener('pointerup', done); handle.addEventListener('pointercancel', done);
+  });
+  handle.addEventListener('dblclick', () => applyDrawerWidth(null, true));   // back to the default width
+  handle.addEventListener('keydown', event => {
+    const step = event.shiftKey ? 48 : 16, current = ui.drawerWidth || drawer.getBoundingClientRect().width;
+    if (event.key === 'ArrowLeft') { event.preventDefault(); applyDrawerWidth(current - step, true); }
+    else if (event.key === 'ArrowRight') { event.preventDefault(); applyDrawerWidth(current + step, true); }
+  });
+  try { const saved = JSON.parse(localStorage.getItem(PREF_KEY) || 'null'); if (saved && Number(saved.width) > 0) applyDrawerWidth(saved.width, false); } catch (error) {}
+}
 
 function setDrawer(name, options) {
   const drawer = DRAWERS[name] ? name : '';
@@ -92,6 +126,7 @@ function init() {
     setDrawer(''); if (current) current.focus();
   });
   bindMenu();
+  bindDrawerResize();
   setDrawer(readPref(), { persist: false, layout: false });
   W.on('project', syncTracksItem, 5); syncTracksItem();
 }

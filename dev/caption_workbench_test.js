@@ -23,7 +23,7 @@ const order = ['class="caption-rail"', 'id="captionDrawer"', 'class="caption-sta
 assert.ok(order.every(index => index > 0) && order.every((index, i) => i === 0 || index > order[i - 1]), 'workbench areas are not in source order rail / drawer / preview / timeline');
 const css = fs.readFileSync(path.join(root, 'app', 'style.css'), 'utf8');
 assert.match(css, /\.caption-rail \{ grid-column: 1;[\s\S]*\.caption-drawer \{ grid-column: 2;[\s\S]*\.caption-stage \{ grid-column: 3;/, 'desktop order must be rail | drawer | preview');
-assert.match(css, /\.caption-workbench\[data-drawer=""\] \{ --caption-drawer-w: 0px; \}/, 'a closed drawer must give its width to the preview');
+assert.match(css, /\.caption-workbench\[data-drawer=""\] \{ --caption-drawer-w: 0px( !important)?; \}/, 'a closed drawer must give its width to the preview');
 assert.ok(body.indexOf('id="captionVideoEditor"') > body.indexOf('id="captionStylePane_video"') && body.indexOf('id="captionVideoEditor"') < body.indexOf('class="caption-stage"'), 'video editor is not in the Video pane');
 // U3: the Box and Export tabs are gone; the box is a popover on the preview, Export is a dialog
 for (const name of ['box', 'export']) assert.doesNotMatch(body, new RegExp(`id="captionRail_${name}"|id="captionStylePane_${name}"`), `the ${name} pane must be gone (U3)`);

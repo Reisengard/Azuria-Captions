@@ -856,7 +856,10 @@ html[data-product-mode=video-captions] label.file:hover { border-color: var(--am
 .caption-bar .brand { flex: none; align-items: baseline; gap: 8px; }
 .caption-bar .brand .word { font: 600 19px/1 var(--brand); letter-spacing: .01em; color: var(--text); }
 .caption-bar .brand .word b { margin-left: .3em; font-weight: 600; color: var(--amber); }
-.caption-bar .proj { flex: 1 1 80px; min-width: 0; }
+.caption-bar .proj { display: flex; flex: 1 1 80px; align-items: baseline; gap: 10px; min-width: 0; }
+.caption-save-state { flex: none; color: var(--muted); font-size: 11px; white-space: nowrap; }
+.caption-save-state:empty { display: none; }
+.caption-save-state.error { color: var(--amber); }
 .caption-history { flex: none; gap: 4px; }
 .caption-bar .modes { flex: none; }
 .caption-menu-wrap { position: relative; flex: none; }
@@ -870,7 +873,7 @@ html[data-product-mode=video-captions] label.file:hover { border-color: var(--am
 /* rail | drawer | stage, then the timeline strip across the full width */
 .caption-workbench { --caption-rail-w: 60px; --caption-drawer-w: 340px; position: relative; flex: 1 1 auto; min-height: 0; display: grid;
   grid-template-columns: var(--caption-rail-w) var(--caption-drawer-w) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
-.caption-workbench[data-drawer=""] { --caption-drawer-w: 0px; }
+.caption-workbench[data-drawer=""] { --caption-drawer-w: 0px !important; }
 .caption-rail { grid-column: 1; grid-row: 1; display: flex; flex-direction: column; gap: 2px; min-height: 0; padding: 8px 4px; overflow-y: auto; border-right: 1px solid var(--line); background: var(--panel); }
 .caption-rail button { display: grid; justify-items: center; gap: 2px; width: 100%; padding: 7px 2px 6px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--muted); white-space: normal; }
 .caption-rail button:hover { background: var(--raised); color: var(--text); border-color: transparent; }
@@ -879,6 +882,10 @@ html[data-product-mode=video-captions] label.file:hover { border-color: var(--am
 .caption-rail-label { font-size: 10px; line-height: 1.15; text-align: center; overflow-wrap: anywhere; }
 .caption-drawer { grid-column: 2; grid-row: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; border-right: 1px solid var(--line); background: var(--panel); }
 .caption-drawer[hidden] { display: none; }
+.caption-drawer { position: relative; }
+.caption-drawer-resize { position: absolute; top: 0; right: -3px; bottom: 0; z-index: 5; width: 7px; cursor: col-resize; touch-action: none; }
+.caption-drawer-resize::after { content: ""; position: absolute; top: 0; bottom: 0; left: 3px; width: 2px; background: transparent; transition: background .12s; }
+.caption-drawer-resize:hover::after, .caption-drawer-resize:focus-visible::after, .caption-drawer-resize.is-dragging::after { background: var(--amber); }
 .caption-drawer-head { display: flex; flex: none; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
 .caption-drawer-head h2 { margin: 0; color: var(--text); font-size: 13px; letter-spacing: .04em; }
 .caption-drawer-body { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; padding: 14px; overflow: auto; }
@@ -904,7 +911,8 @@ html[data-product-mode=video-captions] label.file:hover { border-color: var(--am
 .caption-timeline-strip { position: relative; grid-column: 1 / -1; grid-row: 2; display: flex; flex-direction: column; gap: 6px; min-width: 0; max-height: 38vh; padding: 8px 14px 10px; overflow: auto; border-top: 1px solid var(--line); background: var(--panel); }
 
 @media (max-width: 1000px) {
-  .caption-workbench { --caption-drawer-w: 0px; }
+  .caption-workbench { --caption-drawer-w: 0px !important; }
+  .caption-drawer-resize { display: none; }
   .caption-drawer { position: absolute; z-index: 20; top: 0; bottom: 0; left: var(--caption-rail-w); width: min(340px, calc(100% - var(--caption-rail-w))); box-shadow: 12px 0 30px rgba(0,0,0,.45); }
   .caption-bar .brand .ver { display: none; }
 }
