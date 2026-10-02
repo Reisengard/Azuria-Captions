@@ -3,7 +3,7 @@
   <rect x="0" y="0" width="1080" height="1920" fill="url(#bg)"/>
   <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#354052"/><stop offset="1" stop-color="#11151d"/></linearGradient></defs>
   <rect x="81" y="640" width="847.8" height="448" fill="none" stroke="#ffffff" stroke-opacity="0.16" stroke-width="2" stroke-dasharray="12 12"/>
-  <rect x="158.82" y="745.98" width="692.16" height="236.04" rx="18.48" fill="#111111" fill-opacity="0.82"/>
+  <rect x="158.82" y="745.98" width="692.16" height="236.04" rx="18.48" fill="#121827" fill-opacity="0.82"/>
   <text x="504.9" y="814.44" text-anchor="middle" dominant-baseline="middle" font-family="sans-serif" font-size="84" fill="#FFFFFF"><tspan fill="#FFFFFF" font-weight="650">Make</tspan> <tspan fill="#FFFFFF" font-weight="650">this</tspan></text>
   <text x="504.9" y="913.56" text-anchor="middle" dominant-baseline="middle" font-family="sans-serif" font-size="84" fill="#FFFFFF"><tspan fill="#FFFFFF" font-weight="650">moment</tspan> <tspan fill="#FFFFFF" font-weight="650">count.</tspan></text>
   <text x="81" y="622" font-family="monospace" font-size="18" fill="#ffffff" fill-opacity="0.62">punchy · captionCenterStack · hold · t=1.440</text>

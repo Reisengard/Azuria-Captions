@@ -80,7 +80,7 @@ function drawCaptionSegment(ctx, project, segment, time, info, map) {
       try { cut.treatP = TD.plan ? TD.plan(J.rng(J.h(cut.seed, J.sid(treatId), 93)), baseStyle || {}) || {} : {}; } catch (e) { cut.treatP = {}; }
       cut.treatP = Object.assign({}, cut.treatP, settingsOf('treat', treatId));
     }
-    const sc = Object.assign({}, baseStyle && baseStyle.schemes && baseStyle.schemes[0], { fg: plan.textColor || '#ffffff', bg: plan.backgroundColor || '#111318', accent: plan.accentColor || '#f5a50c' });
+    const sc = Object.assign({}, baseStyle && baseStyle.schemes && baseStyle.schemes[0], { fg: plan.textColor || '#ffffff', bg: plan.backgroundColor || '#121827', accent: plan.accentColor || '#B39D68' });
     const env = J.Renderer.prototype.makeEnv(ctx, { W, H, fps: 30, style: baseStyle ? { fonts: baseStyle.fonts } : {}, fx: { motion }, }, cut, sc,
       { pass: 'main', t: time, lt: time - segment.start, scale: info.scale || 1, allowFilter: true });
     ctx.save();
@@ -89,14 +89,14 @@ function drawCaptionSegment(ctx, project, segment, time, info, map) {
       ctx.beginPath(); ctx.rect(zone.x, zone.y, zone.width, zone.height); ctx.clip();
       for (const source of layout.items) {
         const item = Object.assign({}, source, { seed: cut.seed, stroke: Math.max(2, fontSize * .065),
-          strokeColor: '#080a10', strokeUnder: true, vertical: plan.writingMode === 'vertical' });
+          strokeColor: '#121827', strokeUnder: true, vertical: plan.writingMode === 'vertical' });
         if (reduced && item.captionActive) item.captionActive = Object.assign({}, item.captionActive, { treatment: 'captionActiveColor' });
         const treatment = plan.captionTreatment || 'outline';
         if (treatment === 'neon') item.shadow = { color: sc.accent, blur: 12, dx: 0, dy: 0 };
         if (treatment === 'echo') item.echo = { n: 2, dx: -fontSize * .045, dy: fontSize * .05, a: .35, decay: .55, color: sc.accent };
         if (treatment === 'backplate') {
           const width = Math.max(...lines.map(line => J.measure({ text: line, font: item.font, size: item.size }).w));
-          ctx.fillStyle = 'rgba(8,10,16,.82)';
+          ctx.fillStyle = 'rgba(18,24,39,.85)';
           ctx.fillRect(anchor.x - (anchor.align === 'left' ? 0 : anchor.align === 'right' ? width : width / 2) - 12,
             anchor.y - lines.length * layout.lineHeight / 2 - 7, width + 24, lines.length * layout.lineHeight + 14);
         }
@@ -116,7 +116,7 @@ function drawCaptionSegment(ctx, project, segment, time, info, map) {
   const lineHeight = layout && layout.lineHeight || fontSize * 1.18, firstY = -(lines.length - 1) * lineHeight / 2;
   lines.forEach((line, lineIndex) => { const y = firstY + lineIndex * lineHeight; ctx.lineWidth = Math.max(5, fontSize * .11); ctx.strokeStyle = 'rgba(0,0,0,.88)'; ctx.strokeText(line, 0, y); ctx.fillStyle = plan.textColor || '#ffffff'; ctx.fillText(line, 0, y);
     if (active && lines.length === 1) { const beforeIndex = text.indexOf(active.text), before = beforeIndex >= 0 ? text.slice(0, beforeIndex) : '', total = ctx.measureText(text).width;
-      const left = (anchor.align === 'left' ? 0 : anchor.align === 'right' ? -total : -total / 2); ctx.textAlign = 'left'; ctx.fillStyle = plan.accentColor || project.style && project.style.accentColor || '#f5a50c'; ctx.fillText(active.text, left + ctx.measureText(before).width, y); ctx.textAlign = anchor.align || 'center'; }
+      const left = (anchor.align === 'left' ? 0 : anchor.align === 'right' ? -total : -total / 2); ctx.textAlign = 'left'; ctx.fillStyle = plan.accentColor || project.style && project.style.accentColor || '#B39D68'; ctx.fillText(active.text, left + ctx.measureText(before).width, y); ctx.textAlign = anchor.align || 'center'; }
   });
   ctx.restore(); return { segmentId: segment.id, activeTokenId: states.activeTokenId, plan };
 }

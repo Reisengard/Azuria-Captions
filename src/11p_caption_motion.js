@@ -81,7 +81,7 @@ J.captionActiveCandidates = () => J.CAPTION_ACTIVE_ORDER.filter(id => {
 
 const activeMeta = (attentionCost = 0.06) => meta(0, 0, attentionCost, 0);
 J.registerCaptionActive('captionActiveColor', Object.assign({
-  name: '字幕・アクティブ色', style: context => ({ color: context.accentColor || '#B7FF4A' }),
+  name: '字幕・アクティブ色', style: context => ({ color: context.accentColor || '#B39D68' }),
 }, activeMeta(0.06)));
 J.registerCaptionActive('captionActiveScale', Object.assign({
   name: '字幕・アクティブ拡大', style: context => ({ scale: Math.min(1.04, Math.max(1, Number(context.scale) || 1.04)) }),
@@ -93,7 +93,7 @@ J.registerCaptionActive('captionActiveWeight', Object.assign({
   name: '字幕・アクティブウェイト', style: context => ({ weight: context.variableWeightSupported === false ? null : Math.min(900, Math.max(100, Number(context.weight) || 700)) }),
 }, activeMeta(0.05)));
 J.registerCaptionActive('captionActiveUnderline', Object.assign({
-  name: '字幕・アクティブ下線', style: context => ({ underline: true, underlineColor: context.accentColor || '#B7FF4A' }),
+  name: '字幕・アクティブ下線', style: context => ({ underline: true, underlineColor: context.accentColor || '#B39D68' }),
 }, activeMeta(0.06)));
 
 J.resolveCaptionActiveStyle = (id, state, context = {}) => {

@@ -29,21 +29,21 @@
     ]
   },
   "snapshots": {
-    "portrait-entry.svg": "6681a19605ffffc4e726db873dbc4acbb5f9638337c1a6bdd34d5487961863a5",
-    "portrait-active.svg": "8720c5233bf45f941a37f9d3ad243243f1aeed30c93d6915f6a883a9ce678410",
-    "portrait-hold.svg": "51d65abc394296d5c3db41affdbbba863b6076ebdcd7fbca5bd6c231a34b9126",
-    "portrait-exit.svg": "7dbc7c15cbde7e3525d4d92f322ab59ae97b597593b2b576d4ee5c8ffe61b7a3",
-    "portrait-transition.svg": "dbdee4e66e8c628004839038548916816274e7c366a6a3bb33bd389e0a7aef5b",
-    "landscape-entry.svg": "0ea6da9bfd880916cf5e2b7d3d7dc7a23f4a15eb272ed5e14e3cb015838a04a2",
-    "landscape-active.svg": "6fa1588b1344a2a17d42c344105b726c200a7da4fd2803804005822914826089",
-    "landscape-hold.svg": "04aea1d05ee7b90664efcfca7a28bfd3e0084c99f73ca2f46a626df719ba7b9f",
-    "landscape-exit.svg": "f64f18d423775ed99711e002bbf426b41ac1fb5c7f0a6dedde2ab74867266220",
-    "landscape-transition.svg": "40cf51922e1d099d175929648b61f104af2cf39c286ba41ab45edb6e846028b5",
-    "edge-long-text.svg": "bc03380ff8579295c33af6aae906ef7b6250da9a964ce83a106085701dd1de0d",
-    "edge-emoji.svg": "cdc2f020a734bae1d07bb21c1737fe9a68f01c19ada87467a3f1f9587af56591",
-    "edge-cjk.svg": "6640d720bfbd8e128dc0d491cd112f4ff1cd6d65b370873df6a1a01e5d1006e4",
-    "edge-numbers.svg": "86635b70d1ca3f807d30c8fa6a62f99415a0059f928a205e27de17ae2bd9a21e",
-    "edge-min-duration.svg": "f6c4c2bac59dc5ec28d74b49e987443214c74086ff4b2737a9882d5c42d86239",
-    "edge-max-words.svg": "f7699bda08ab25de18ad291d38d3f34558f31a784a1598df951a9bc884a1507a"
+    "portrait-entry.svg": "ddc2d06515b34982eecefe249034c7eaa2976b7a5996ee1448a345e4eda7deb2",
+    "portrait-active.svg": "26861a3587d0c49f474ebe3e8e9753feb66f014a99fcd91257ead2f2d4479518",
+    "portrait-hold.svg": "a631d59cbc0e6d3c3bfc77e6c4cf933c387b60d833f37f03ea65dc1f50a9f9ac",
+    "portrait-exit.svg": "c2877a4593879041b035ff1d00c8cadc25379d4336450d871a54a95b48815ff4",
+    "portrait-transition.svg": "4ef162d155747ee85f095bf390160e462eac3458fb0da52a03bbedab60ecbc65",
+    "landscape-entry.svg": "d932a021df7c2cbb837cc80d235f80a5c5f84ffb1fc8dcbdf6442078b8ab5f85",
+    "landscape-active.svg": "ee1e7fe54fb952d6dcacc241121f5f423043a27294185a55c5c88f69d79961f2",
+    "landscape-hold.svg": "6aafc4045e1f4c9172b9f3c0c81e3634dad6ed6da5f1003691b7808124a65e15",
+    "landscape-exit.svg": "b9746e56cdcbf8c404097d1861bf45f64a63b61fa38ebcb3aa2ce8629296e282",
+    "landscape-transition.svg": "46621efae323fc8bbe22b06797699f01107c6de18320596e6e11a0bf6dac5c78",
+    "edge-long-text.svg": "690e91d22e63f08f34248e84ff438aa25eeefae6ffc21ca574f49b65cab7fb4d",
+    "edge-emoji.svg": "49fea64215f8a55917a42a6fe3120904ea047966bf72a013e29281e31949f8b1",
+    "edge-cjk.svg": "97f3ae8eac3f6748e2dfb55c741326e88dcabfb969886ab96dca431cce342173",
+    "edge-numbers.svg": "fffd3afa14630560f795ce7c4621c4475a5284badf1ab3955004f173a0360e90",
+    "edge-min-duration.svg": "c0876008d26ebce8a2bc7a5e4d531f091de4a1bb56d4c065ad82d1a4e56b4f88",
+    "edge-max-words.svg": "17cedb22dceacba22442651fb73a614aa7b85b153be54f714bfa4e2ccbbd929e"
   }
 }

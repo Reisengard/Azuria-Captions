@@ -3,8 +3,8 @@
   <rect x="0" y="0" width="1080" height="1920" fill="url(#bg)"/>
   <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#354052"/><stop offset="1" stop-color="#11151d"/></linearGradient></defs>
   <rect x="81" y="1088" width="847.8" height="448" fill="none" stroke="#ffffff" stroke-opacity="0.16" stroke-width="2" stroke-dasharray="12 12"/>
-  <rect x="81.4" y="1385.47" width="847" height="140.5" rx="11" fill="#111318" fill-opacity="0.82"/>
+  <rect x="81.4" y="1385.47" width="847" height="140.5" rx="11" fill="#121827" fill-opacity="0.82"/>
   <text x="504.9" y="1426.22" text-anchor="middle" dominant-baseline="middle" font-family="sans-serif" font-size="50" fill="#FFFFFF"><tspan fill="#FFFFFF" font-weight="650">A</tspan> <tspan fill="#FFFFFF" font-weight="650">longer</tspan> <tspan fill="#FFFFFF" font-weight="650">caption</tspan> <tspan fill="#FFFFFF" font-weight="650">must</tspan></text>
-  <text x="504.9" y="1485.22" text-anchor="middle" dominant-baseline="middle" font-family="sans-serif" font-size="50" fill="#FFFFFF"><tspan fill="#B7FF4A" font-weight="650">remain</tspan> <tspan fill="#FFFFFF" font-weight="650">inside</tspan> <tspan fill="#FFFFFF" font-weight="650">the</tspan> <tspan fill="#FFFFFF" font-weight="650">safe</tspan> <tspan fill="#FFFFFF" font-weight="650">area.</tspan></text>
+  <text x="504.9" y="1485.22" text-anchor="middle" dominant-baseline="middle" font-family="sans-serif" font-size="50" fill="#FFFFFF"><tspan fill="#B39D68" font-weight="650">remain</tspan> <tspan fill="#FFFFFF" font-weight="650">inside</tspan> <tspan fill="#FFFFFF" font-weight="650">the</tspan> <tspan fill="#FFFFFF" font-weight="650">safe</tspan> <tspan fill="#FFFFFF" font-weight="650">area.</tspan></text>
   <text x="81" y="1070" font-family="monospace" font-size="18" fill="#ffffff" fill-opacity="0.62">creator · captionBottomTwoLine · active · t=2.044</text>
 </svg>

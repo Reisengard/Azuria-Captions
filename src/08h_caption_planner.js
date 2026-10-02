@@ -10,7 +10,7 @@ J.CAPTION_GENERATOR_VERSION = 'caption-planner-1';
 const clone = value => JSON.parse(JSON.stringify(value));
 const profiles = {
   creator: {
-    label: 'Creator', font: 'Inter', fontSize: 76, minFontSize: 44, alignment: 'center', accentColor: '#B7FF4A', textColor: '#FFFFFF', backgroundColor: '#111318', contrastStrategy: 'backplate',
+    label: 'Creator', font: 'Inter', fontSize: 76, minFontSize: 44, alignment: 'center', accentColor: '#B39D68', textColor: '#FFFFFF', backgroundColor: '#121827', contrastStrategy: 'backplate',
     zones: ['bottom', 'center', 'top'], layouts: ['captionBottomStack', 'captionBottomTwoLine', 'captionLeftAnchor', 'captionRightAnchor', 'captionCenterStack'],
     entrances: ['captionFade', 'captionSoftRise', 'captionSoftScale', 'captionWordFade', 'captionSoftReplace'], holds: ['captionStill'], exits: ['captionFadeOut'],
     activeTreatments: ['captionActiveColor', 'captionActiveWeight', 'captionActiveUnderline'], maxAttempts: 18, allowFullFrame: false,
@@ -19,7 +19,7 @@ const profiles = {
       continuity: { font: 'fixed', alignment: 'fixed', position: 'fixed', treatment: 'sticky', accentColor: 'fixed', animationFamily: 'sticky' } },
   },
   punchy: {
-    label: 'Punchy', font: 'Inter', fontSize: 84, minFontSize: 44, alignment: 'center', accentColor: '#FFDE59', textColor: '#FFFFFF', backgroundColor: '#111111', contrastStrategy: 'backplate',
+    label: 'Punchy', font: 'Inter', fontSize: 84, minFontSize: 44, alignment: 'center', accentColor: '#B39D68', textColor: '#FFFFFF', backgroundColor: '#121827', contrastStrategy: 'backplate',
     zones: ['center', 'bottom', 'top'], layouts: ['captionBottomStack', 'captionBottomTwoLine', 'captionCenterStack', 'captionSingleWordHero', 'captionLeftAnchor', 'captionRightAnchor', 'captionTwoLinePunch'],
     entrances: ['captionFade', 'captionSoftRise', 'captionSoftScale', 'captionWordFade', 'captionSoftReplace', 'captionImpact'], holds: ['captionStill'], exits: ['captionFadeOut'],
     activeTreatments: ['captionActiveColor', 'captionActiveScale', 'captionActiveLift'], maxAttempts: 20, allowFullFrame: false,
@@ -28,7 +28,7 @@ const profiles = {
       continuity: { font: 'fixed', alignment: 'sticky', position: 'sticky', treatment: 'sticky', accentColor: 'fixed', animationFamily: 'flexible' } },
   },
   'jizura-mv': {
-    label: 'JIZURA / MV', font: 'Noto Sans', fontSize: 80, minFontSize: 42, alignment: 'center', accentColor: '#57E6FF', textColor: '#FFFFFF', backgroundColor: '#0B1020', contrastStrategy: 'outline',
+    label: 'JIZURA / MV', font: 'Noto Sans', fontSize: 80, minFontSize: 42, alignment: 'center', accentColor: '#B39D68', textColor: '#FFFFFF', backgroundColor: '#121827', contrastStrategy: 'outline',
     zones: ['center', 'bottom', 'top'], layouts: ['captionBottomStack', 'captionBottomTwoLine', 'captionCenterStack', 'captionSingleWordHero', 'captionLeftAnchor', 'captionRightAnchor', 'captionTwoLinePunch'],
     entrances: ['captionFade', 'captionSoftRise', 'captionSoftScale', 'captionWordFade', 'captionSoftReplace', 'captionImpact', 'captionType', 'captionBlur', 'captionWipe', 'captionPop', 'captionDrop'],
     holds: ['captionStill', 'captionBreathe'], exits: ['captionFadeOut', 'captionShrinkOut'],

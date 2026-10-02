@@ -34,7 +34,7 @@ function fillRoleOptions() {
 function roleDefaults(project, track) {
   const style = J.captionTrackProjectStyle(project, track) || {}, profile = J.CAPTION_STYLE_PROFILES[J.captionStyleProfileId(project, track)] || {};
   const look = J.resolveCaptionLook(style, J.captionStyleProfileId(project, track)).look;
-  return { style, textColor: (profile.textColor || '#ffffff').toLowerCase(), fontSize: profile.fontSize || 76, accentColor: (style.accentColor || profile.accentColor || '#f5a50c').toLowerCase(), active: look.active };
+  return { style, textColor: (profile.textColor || '#ffffff').toLowerCase(), fontSize: profile.fontSize || 76, accentColor: (style.accentColor || profile.accentColor || '#B39D68').toLowerCase(), active: look.active };
 }
 
 function roleValueText(id, value, set, count) {
@@ -50,7 +50,7 @@ function renderRolesPanel() {
   const trackSelect = $('captionRoleTrack'); trackSelect.replaceChildren();
   for (const item of tracks) { const option = document.createElement('option'); option.value = item.id; option.textContent = item.name || item.id; trackSelect.appendChild(option); }
   trackSelect.value = track ? track.id : ''; $('captionRoleTrackField').hidden = tracks.length < 2;
-  const defaults = track ? roleDefaults(project, track) : { textColor: '#ffffff', fontSize: 76, accentColor: '#f5a50c' };
+  const defaults = track ? roleDefaults(project, track) : { textColor: '#ffffff', fontSize: 76, accentColor: '#B39D68' };
   const baseColor = roles.base && roles.base.color || defaults.textColor;
   const shown = { captionRoleBaseColor: defaults.textColor, captionRoleBaseFontSize: defaults.fontSize, captionRoleActiveColor: defaults.accentColor,
     captionRoleEmphasisColor: baseColor, captionRoleEmphasisScale: 1, captionRoleEmphasisAmount: J.CAPTION_EMPHASIS_THRESHOLD };
@@ -160,7 +160,7 @@ function renderStyleControls() {
   $('captionIntensity').value = Math.round((style.intensity == null ? .5 : style.intensity) * 100);
   $('captionMotion').value = Math.round((style.motion == null ? .45 : style.motion) * 100);
   $('captionDensity').value = segmentation.maxWords || 6; $('captionDensityValue').value = $('captionDensity').value;
-  $('captionAlignment').value = style.alignment || 'center'; $('captionAccent').value = style.accentColor || '#f5a50c';
+  $('captionAlignment').value = style.alignment || 'center'; $('captionAccent').value = style.accentColor || '#B39D68';
   $('captionWritingMode').value = style.writingMode || 'horizontal'; $('captionEmphasisStrength').value = Math.round((style.emphasisStrength == null ? 1 : style.emphasisStrength) * 100);
   $('captionReducedMotion').checked = !!(ui.store.project.settings && ui.store.project.settings.reducedMotionPreview);
   $('captionPreviewFrame').dataset.reducedMotion = String($('captionReducedMotion').checked);

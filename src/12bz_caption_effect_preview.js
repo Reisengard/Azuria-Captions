@@ -20,7 +20,7 @@ J.captionSampleProject = (plan = {}, options = {}) => {
   const segment = { id: 's1', start: 0, end: duration, tokenIds: tokens.map(token => token.id), trackId: J.CAPTION_PRIMARY_TRACK_ID };
   const box = { x: .05, y: .1, width: .9, height: .8 };
   const generated = Object.assign({ id: 'p1', segmentId: 's1', trackId: J.CAPTION_PRIMARY_TRACK_ID, layout: 'captionCenterStack', entrance: 'cut', hold: 'captionStill', exit: 'cut',
-    activeWordTreatment: 'captionActiveColor', captionTreatment: 'outline', motion: .7, seed: 7, fontSize: 56, box, accentColor: '#4fd6ff', textColor: '#ffffff' }, plan);
+    activeWordTreatment: 'captionActiveColor', captionTreatment: 'outline', motion: .7, seed: 7, fontSize: 56, box, accentColor: '#B39D68', textColor: '#ffffff' }, plan);
   const track = Object.assign({ id: J.CAPTION_PRIMARY_TRACK_ID, primary: true, box }, options.roles ? { roles: options.roles } : {});
   return { mode: 'video-captions', media: { width: frame.width, height: frame.height, duration }, transcript: { tokens }, tracks: [track],
     segments: [segment], plans: { s1: { id: 'p1', segmentId: 's1', generated, manual: {}, lockedFields: [] } }, style: { preset: 'creator' }, settings: {}, seed: 1 };

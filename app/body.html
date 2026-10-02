@@ -53,7 +53,7 @@
         <button id="captionRail_tracks" type="button" data-drawer="tracks" aria-controls="captionDrawer" aria-expanded="false"><span class="caption-rail-icon" aria-hidden="true">☰</span><span class="caption-rail-label">トラック</span></button>
         <button id="captionRail_video" type="button" data-drawer="video" aria-controls="captionDrawer" aria-expanded="false"><span class="caption-rail-icon" aria-hidden="true">▶</span><span class="caption-rail-label">動画</span></button>
       </nav>
-      <section id="captionDrawer" class="caption-drawer" aria-labelledby="captionDrawerTitle">
+      <section id="captionDrawer" class="caption-drawer" role="region" aria-labelledby="captionDrawerTitle">
         <div class="caption-drawer-head"><h2 id="captionDrawerTitle">字幕</h2><button id="captionDrawerClose" type="button" class="ghost small" aria-label="パネルを閉じる" title="パネルを閉じる">✕</button></div>
         <div class="caption-drawer-body">
       <div id="captionLeftPane_transcript" class="caption-panel caption-transcript caption-left-pane" role="group" aria-label="文字起こしと字幕セグメント">
@@ -160,7 +160,7 @@
         </details>
         <details class="caption-fold"><summary>文字の見た目</summary>
           <label class="field">文字の装飾<select id="captionTreatment"><option value="outline">Outline</option><option value="backplate">Backplate</option><option value="neon">Neon Glow</option><option value="echo">Color Echo</option></select></label>
-          <label class="field">アクセント色<input id="captionAccent" type="color" value="#f5a50c"></label>
+          <label class="field">アクセント色<input id="captionAccent" type="color" value="#B39D68"></label>
           <label class="field caption-adv-only">文字方向<select id="captionWritingMode"><option value="horizontal">横書き</option><option value="vertical">縦書き</option></select></label>
         </details>
         <details class="caption-fold"><summary>位置と分量</summary>
@@ -168,7 +168,7 @@
           <label class="field caption-adv-only">字幕あたりの単語数<input id="captionDensity" type="range" min="2" max="8" value="6"><output id="captionDensityValue">6</output></label>
         </details>
         <details class="caption-fold caption-role" data-caption-role="active"><summary>話している単語</summary>
-          <label class="caption-role-row"><span>色</span><input id="captionRoleActiveColor" type="color" value="#f5a50c"><output data-role-value="captionRoleActiveColor"></output><button type="button" class="ghost small" data-role-clear="captionRoleActiveColor" title="自動に戻す" aria-label="色を自動に戻す">↺</button></label>
+          <label class="caption-role-row"><span>色</span><input id="captionRoleActiveColor" type="color" value="#B39D68"><output data-role-value="captionRoleActiveColor"></output><button type="button" class="ghost small" data-role-clear="captionRoleActiveColor" title="自動に戻す" aria-label="色を自動に戻す">↺</button></label>
             <p id="captionRoleActiveColorNote" class="caption-role-note" hidden>エフェクトの設定で話している単語の色が指定されているため、ここで選んだ色は使われません。</p>
             <p class="caption-role-note"><span id="captionRoleActiveHint"></span> <button id="captionRoleActiveOpen" type="button" class="ghost small" hidden>エフェクトを開く</button></p>
             <div id="captionRoleActiveOverride" class="caption-warning caption-role-override" hidden><span id="captionRoleActiveOverrideText"></span><button id="captionRoleActiveOverrideClear" type="button" class="small">固定を外す</button></div>
@@ -244,7 +244,7 @@
           </div>
           <label class="field">トラックのスタイル<select id="captionTrackPreset"><option value="">全体に合わせる</option><option value="creator">Creator</option><option value="punchy">Punchy</option></select></label>
           <label class="field">トラックの装飾<select id="captionTrackTreatment"><option value="">全体に合わせる</option><option value="outline">Outline</option><option value="backplate">Backplate</option><option value="neon">Neon Glow</option><option value="echo">Color Echo</option></select></label>
-          <label class="field">トラックのアクセント色<span class="caption-role-pair"><input id="captionTrackAccent" type="color" value="#f5a50c"><button id="captionTrackAccentClear" type="button" class="small">既定</button></span></label>
+          <label class="field">トラックのアクセント色<span class="caption-role-pair"><input id="captionTrackAccent" type="color" value="#B39D68"><button id="captionTrackAccentClear" type="button" class="small">既定</button></span></label>
           <div id="captionTrackWarnings" class="caption-box-warnings" role="status"></div>
         </section>
         </div>
@@ -296,7 +296,7 @@
           </div>
           <div class="caption-timeline-toolbar"><span>タイムライン</span><div><button id="captionTimelineOut" type="button" class="small" aria-label="タイムラインを縮小">−</button><button id="captionTimelineIn" type="button" class="small" aria-label="タイムラインを拡大">＋</button><button id="captionTimelineFit" type="button" class="small">全体</button></div></div>
         </div>
-        <div id="captionTimeline" class="caption-timeline" aria-label="字幕タイムライン">
+        <div id="captionTimeline" class="caption-timeline" role="group" aria-label="字幕タイムライン">
           <div class="caption-timeline-heads">
             <div class="caption-ruler-head"></div>
             <div class="caption-track-label caption-video-head">VIDEO</div>
@@ -305,9 +305,9 @@
           </div>
           <div id="captionTimelineScroll" class="caption-timeline-scroll" tabindex="0">
             <div id="captionTimelineContent" class="caption-timeline-content">
-              <canvas id="captionRuler" class="caption-ruler" aria-label="時間目盛り（クリックまたはドラッグで移動）"></canvas>
+              <canvas id="captionRuler" class="caption-ruler" role="img" aria-label="時間目盛り（クリックまたはドラッグで移動）"></canvas>
               <div id="captionVideoTrack" class="caption-video-track" title="縞模様の部分はトリムで削除され、書き出されません"><canvas id="captionWaveform" class="caption-waveform" aria-hidden="true"></canvas></div>
-              <div id="captionSegmentTrack" class="caption-segment-track"></div>
+              <div id="captionSegmentTrack" class="caption-segment-track" role="group" aria-label="字幕ブロック（Tab で選び、Enter で編集）"></div>
               <div id="captionLoopRegion" class="caption-loop-region" hidden aria-hidden="true"></div>
               <div id="captionPlayhead" class="caption-playhead" aria-hidden="true"></div>
             </div>
@@ -636,7 +636,7 @@
       <kbd>↑ / ↓</kbd><span>前 / 次の字幕</span><kbd>Home / End</kbd><span>先頭 / 末尾</span>
       <kbd>+ / − / 0</kbd><span>拡大 / 縮小 / 全体</span><kbd>Esc</kbd><span>ドラッグ取消 / ループ解除 / 選択解除</span>
       <kbd>Alt+↑ / ↓</kbd><span>選んだ字幕を上 / 下のトラックへ</span><kbd>, / .</kbd><span>選んだ字幕を 0.05 秒ずらす</span><kbd>Shift+ドラッグ（端）</kbd><span>単語の長さも合わせて調整</span>
-      <kbd>N</kbd><span>再生ヘッドの位置に字幕を追加</span><kbd>S</kbd><span>再生ヘッドで字幕を分割</span><kbd>Delete</kbd><span>選んだ字幕を削除</span><kbd>Shift+クリック</kbd><span>選択に追加 / 解除</span>
+      <kbd>I / O</kbd><span>選んだ字幕の開始 / 終了を再生ヘッドに</span><kbd>Enter</kbd><span>選んだ字幕の文字を編集</span><kbd>Ctrl+Z / Ctrl+Shift+Z</kbd><span>元に戻す / やり直す</span><kbd>N</kbd><span>再生ヘッドの位置に字幕を追加</span><kbd>S</kbd><span>再生ヘッドで字幕を分割</span><kbd>Delete</kbd><span>選んだ字幕を削除</span><kbd>Shift+クリック</kbd><span>選択に追加 / 解除</span>
     </div>
     <p class="terms-sub">トラックの空いている所をドラッグまたはダブルクリックすると字幕を追加できます。Shift+ドラッグで範囲選択、右クリックでメニュー（分割・結合・複製・削除）。</p>
     <p class="terms-sub">ルーラーを Alt+ドラッグ（または上半分をドラッグ）すると、ループする範囲を指定できます。</p>
