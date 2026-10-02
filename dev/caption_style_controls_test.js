@@ -111,7 +111,9 @@ function createElement(tag) {
   };
   el.getAttribute = name => Object.prototype.hasOwnProperty.call(attrs, name) ? attrs[name] : null;
   el.append = (...nodes) => { for (const node of nodes) { if (node == null || typeof node !== 'object') continue; node.parentNode = el; el.children.push(node); } };
-  el.appendChild = node => { el.append(node); return node; };
+  el.appendChild = node => { if (node.parentNode && node.parentNode.children) node.parentNode.children = node.parentNode.children.filter(child => child !== node); el.append(node); return node; };
+  el.insertBefore = (node, ref) => { if (node.parentNode && node.parentNode.children) node.parentNode.children = node.parentNode.children.filter(child => child !== node); node.parentNode = el; const at = ref ? el.children.indexOf(ref) : -1; if (at < 0) el.children.push(node); else el.children.splice(at, 0, node); return node; };
+  el.remove = () => { if (el.parentNode && el.parentNode.children) el.parentNode.children = el.parentNode.children.filter(child => child !== el); el.parentNode = null; };
   el.replaceChildren = (...nodes) => { el.children = []; el.append(...nodes); };
   el.querySelectorAll = selector => queryAll(el, selector, []);
   el.querySelector = selector => {
@@ -184,6 +186,7 @@ function DomEvent(type, init) { this.type = type; if (init) Object.assign(this, 
 function DomCustomEvent(type, init) { DomEvent.call(this, type, init); this.detail = init && init.detail; }
 const storage = new Map();
 global.window = globalThis;
+global.getComputedStyle = () => ({ getPropertyValue: () => "" });
 global.Event = DomEvent;
 global.CustomEvent = DomCustomEvent;
 global.localStorage = {

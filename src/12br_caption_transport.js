@@ -22,7 +22,7 @@ function scrubTo(value) {
 }
 
 function attachVideo(video) {
-  video.addEventListener('play', () => { $('captionPlay').textContent = '❚❚'; });
+  video.addEventListener('play', () => { $('captionPlay').textContent = '❚❚'; W.timelineFollow(true); });
   video.addEventListener('pause', () => { $('captionPlay').textContent = '▶'; });
 }
 

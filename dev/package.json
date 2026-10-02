@@ -33,6 +33,7 @@
     "test:release": "node caption_release_test.js",
     "test:text-blocks": "node caption_text_blocks_test.js",
     "test:timing-commands": "node caption_timing_commands_test.js",
+    "test:timeline-model": "node caption_timeline_model_test.js",
     "check:export-chrome": "node export_chrome_check.js --long",
     "spike:media-server": "python media_spike_runner.py --serve-only",
     "test:ae": "node ae_test.js"

@@ -130,26 +130,34 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .caption-transport input { flex: 1 1 auto; min-width: 0; }
 .caption-timeline-toolbar { display: flex; align-items: center; justify-content: space-between; color: var(--muted); font: 10px var(--mono); }
 .caption-timeline-toolbar div { display: flex; gap: 4px; }
-.caption-timeline { overflow-x: auto; border: 1px solid var(--line); border-radius: 6px; background: #101014; }
-.caption-timeline-content { position: relative; display: grid; grid-template-columns: 66px minmax(0,1fr); grid-template-rows: 22px auto 30px; min-width: 100%; }
-.caption-track-label { display: grid; place-items: center start; padding-left: 8px; border-right: 1px solid var(--line); color: var(--faint); font: 9px var(--mono); }
-.caption-video-track { margin: 6px 8px; border-radius: 3px; background: #292932; }
-.caption-segment-track { position: relative; margin: 5px 8px; }
+.caption-timeline { display: flex; border: 1px solid var(--line); border-radius: 6px; background: #101014; }
+.caption-timeline-heads { flex: 0 0 72px; border-right: 1px solid var(--line); }
+.caption-ruler-head { height: 22px; border-bottom: 1px solid var(--line); }
+.caption-track-label { display: grid; place-items: center start; padding-left: 8px; color: var(--faint); font: 9px var(--mono); }
+.caption-video-head { height: 30px; }
+.caption-track-labels { display: grid; grid-auto-rows: 28px; row-gap: 4px; align-content: start; padding: 5px 0; }
+.caption-track-labels .caption-track-name { display: block; overflow: hidden; padding: 0 4px 0 8px; border: 0; background: none; color: var(--faint); font: 9px var(--mono); line-height: 28px; text-align: left; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+.caption-track-labels .caption-track-name[aria-pressed=true] { color: var(--cyan); }
+.caption-timeline-scroll { flex: 1 1 auto; min-width: 0; overflow-x: auto; overflow-y: hidden; outline-offset: -2px; }
+.caption-timeline-content { position: relative; min-width: 100%; }
+.caption-ruler { position: sticky; left: 0; display: block; height: 22px; border-bottom: 1px solid var(--line); cursor: col-resize; touch-action: none; }
+.caption-video-track { position: relative; height: 30px; }
+.caption-video-track::before { content: ""; position: absolute; inset: 6px 0; border-radius: 3px; background: #292932; }
+.caption-video-cut { position: absolute; top: 6px; bottom: 6px; border-radius: 3px; background: repeating-linear-gradient(45deg, #101014 0 4px, #3a2b30 4px 8px); }
+.caption-segment-track { position: relative; padding: 5px 0; }
 .caption-track-row { position: relative; height: 28px; margin-bottom: 4px; }
 .caption-track-row:last-child { margin-bottom: 0; }
-.caption-track-labels { display: grid; grid-auto-rows: 28px; row-gap: 4px; align-content: start; padding: 5px 0; }
-.caption-track-labels .caption-track-name { display: block; overflow: hidden; padding: 0 4px 0 8px; border: 0; background: none; color: inherit; font: inherit; line-height: 28px; text-align: left; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
-.caption-track-labels .caption-track-name[aria-pressed=true] { color: var(--cyan); }
-.caption-timeline-segment { position: absolute; top: 0; height: 28px; min-width: 2px; overflow: visible; border: 1px solid #8d610e; border-radius: 3px; background: rgba(245,165,12,.22); color: var(--text); font-size: 9px; text-overflow: ellipsis; }
+.caption-timeline-segment { position: absolute; top: 0; height: 28px; box-sizing: border-box; min-width: 2px; overflow: visible; border: 1px solid #8d610e; border-radius: 3px; background: rgba(245,165,12,.22); color: var(--text); font-size: 9px; }
 .caption-timeline-segment.selected { border-color: var(--cyan); background: rgba(22,244,212,.17); }
+.caption-block-text { display: block; overflow: hidden; padding: 0 3px; line-height: 26px; text-overflow: ellipsis; white-space: nowrap; pointer-events: none; }
+.caption-block-words { position: absolute; inset: 0; overflow: hidden; border-radius: 2px; pointer-events: none; }
+.caption-word-mark { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--faint); opacity: .7; pointer-events: auto; }
+.caption-word-mark:hover { background: var(--cyan); opacity: 1; }
+.caption-word-mark span { position: absolute; top: 14px; left: 3px; display: none; width: max-content; max-width: 90px; overflow: hidden; color: var(--muted); font: 8px var(--mono); text-overflow: ellipsis; pointer-events: none; }
+.caption-timeline[data-word-labels=true] .caption-word-mark span { display: block; }
+.caption-timeline[data-word-labels=true] .caption-block-text { line-height: 14px; }
 .caption-boundary-handle { position: absolute; z-index: 3; top: -3px; right: -5px; width: 9px; height: 32px; padding: 0; border: 0; border-radius: 2px; background: var(--amber); cursor: ew-resize; }
-.caption-word-track { position: relative; margin: 3px 8px; border-top: 1px solid var(--line); }
-.caption-word-mark { position: absolute; top: 2px; display: none; width: 2px; height: 20px; padding: 0; border: 0; border-radius: 0; background: var(--faint); overflow: visible; }
-.caption-timeline[data-zoomed=true] .caption-word-mark { display: block; }
-.caption-word-mark:hover, .caption-word-mark:focus-visible { background: var(--cyan); }
-.caption-word-mark span { position: absolute; top: 11px; left: 3px; display: none; width: max-content; max-width: 90px; overflow: hidden; color: var(--muted); font: 8px var(--mono); text-overflow: ellipsis; }
-.caption-timeline[data-zoomed=true] .caption-word-mark span { display: block; }
-.caption-playhead { position: absolute; z-index: 4; top: 0; bottom: 0; left: 66px; width: 1px; background: var(--rose); pointer-events: none; }
+.caption-playhead { position: absolute; z-index: 4; top: 0; bottom: 0; left: 0; width: 1px; background: var(--rose); pointer-events: none; will-change: transform; }
 .caption-inspector .field, .caption-left .field { display: grid; gap: 5px; margin-bottom: 12px; color: var(--muted); font-size: 11px; }
 .caption-inspector .field select, .caption-left .field select { width: 100%; }
 .caption-inspector .field input[type=range], .caption-left .field input[type=range] { width: 100%; }

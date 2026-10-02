@@ -312,18 +312,24 @@
         <div class="caption-strip-head">
           <div class="caption-transport">
             <button id="captionPlay" type="button" class="play" disabled aria-label="再生">▶</button>
-            <span id="captionTime" class="tc">00:00.00</span>
-            <input id="captionScrub" type="range" min="0" max="1000" value="0" disabled aria-label="動画の再生位置">
-            <span id="captionDuration" class="tc muted">00:00.00</span>
+            <span id="captionTime" class="tc">00:00.00</span><span class="tc muted">/</span><span id="captionDuration" class="tc muted">00:00.00</span>
+            <input id="captionScrub" class="sr-only" type="range" min="0" max="1000" value="0" disabled aria-label="動画の再生位置">
           </div>
           <div class="caption-timeline-toolbar"><span>タイムライン</span><div><button id="captionTimelineOut" type="button" class="small" aria-label="タイムラインを縮小">−</button><button id="captionTimelineIn" type="button" class="small" aria-label="タイムラインを拡大">＋</button><button id="captionTimelineFit" type="button" class="small">全体</button></div></div>
         </div>
-        <div id="captionTimeline" class="caption-timeline" aria-label="字幕タイムライン" tabindex="0">
-          <div id="captionTimelineContent" class="caption-timeline-content">
-            <div class="caption-track-label">VIDEO</div><div id="captionVideoTrack" class="caption-video-track" title="縞模様の部分はトリムで削除され、書き出されません"></div>
-            <div id="captionTrackLabels" class="caption-track-label caption-track-labels">CAPTIONS</div><div id="captionSegmentTrack" class="caption-segment-track"></div>
-            <div class="caption-track-label">WORDS</div><div id="captionWordTrack" class="caption-word-track"></div>
-            <div id="captionPlayhead" class="caption-playhead" aria-hidden="true"></div>
+        <div id="captionTimeline" class="caption-timeline" aria-label="字幕タイムライン">
+          <div class="caption-timeline-heads">
+            <div class="caption-ruler-head"></div>
+            <div class="caption-track-label caption-video-head">VIDEO</div>
+            <div id="captionTrackLabels" class="caption-track-labels"></div>
+          </div>
+          <div id="captionTimelineScroll" class="caption-timeline-scroll" tabindex="0">
+            <div id="captionTimelineContent" class="caption-timeline-content">
+              <canvas id="captionRuler" class="caption-ruler" aria-label="時間目盛り（クリックまたはドラッグで移動）"></canvas>
+              <div id="captionVideoTrack" class="caption-video-track" title="縞模様の部分はトリムで削除され、書き出されません"></div>
+              <div id="captionSegmentTrack" class="caption-segment-track"></div>
+              <div id="captionPlayhead" class="caption-playhead" aria-hidden="true"></div>
+            </div>
           </div>
         </div>
       </footer>

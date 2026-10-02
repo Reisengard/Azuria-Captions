@@ -8,11 +8,14 @@ const body = fs.readFileSync(path.join(root, 'app', 'body.html'), 'utf8');
 const ui = require('./caption_ui_source').workbenchSource(root);
 const store = fs.readFileSync(path.join(root, 'src', '12b_caption_store.js'), 'utf8');
 
-for (const id of ['captionTimeline', 'captionTimelineContent', 'captionSegmentTrack', 'captionWordTrack', 'captionPlayhead', 'captionTimelineIn', 'captionTimelineOut', 'captionTimelineFit']) assert.match(body, new RegExp(`id="${id}"`));
+for (const id of ['captionTimeline', 'captionTimelineContent', 'captionTimelineScroll', 'captionRuler', 'captionSegmentTrack', 'captionTrackLabels', 'captionScrub', 'captionPlayhead', 'captionTimelineIn', 'captionTimelineOut', 'captionTimelineFit']) assert.match(body, new RegExp(`id="${id}"`));
 assert.match(ui, /timelineTimeAt/, 'timeline does not map pointer position to media time');
 assert.match(ui, /data-word-id/, 'word timing inspection is missing');
 assert.match(ui, /startBoundaryDrag/, 'segment boundary drag is missing');
-assert.match(ui, /ui\.timelineZoom >= 2/, 'word boundaries are not gated by sufficient zoom');
+assert.match(ui, /wordTicksVisible/, 'word boundaries are not gated by sufficient zoom');
+assert.match(ui, /syncRows|blocks\.get/, 'timeline blocks are not kept between renders');
+assert.doesNotMatch(ui.slice(ui.indexOf('function renderTimeline'), ui.indexOf('function updateWords')), /replaceChildren\(\)/, 'the timeline is rebuilt wholesale again');
+assert.match(body, /id="captionScrub" class="sr-only"/, 'the scrub slider must stay in the DOM, visually hidden');
 assert.match(store, /set-segment-boundary/, 'boundary adjustment is not an atomic command');
 assert.match(store, /boundary < leftToken\.end \|\| boundary > rightToken\.start/, 'boundary command does not enforce neighboring token constraints');
 console.log('Gate 5.5 timeline UI tests passed.');

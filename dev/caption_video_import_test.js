@@ -5,13 +5,15 @@ const path = require('node:path');
 const vm = require('node:vm');
 const root = path.resolve(__dirname, '..');
 class Element {
-  constructor() { this.listeners = {}; this.style = {}; this.dataset = {}; this.value = ''; this.options = []; this.selectedIndex = -1; this.classList = { toggle() {} }; }
+  constructor() { this.listeners = {}; this.style = {}; this.dataset = {}; this.value = ''; this.options = []; this.selectedIndex = -1; this.classList = { toggle() {} }; this.children = []; }
   addEventListener(name, fn) { (this.listeners[name] ||= new Set()).add(fn); }
   removeEventListener(name, fn) { this.listeners[name]?.delete(fn); }
   emit(name, extra = {}) { for (const fn of this.listeners[name] || []) fn({ target: this, ...extra }); }
   replaceChildren() {}
   setAttribute() {}
   appendChild(child) { return child; }
+  insertBefore(child) { return child; }
+  remove() {}
   append() {}
   querySelectorAll() { return []; }
   closest() { return null; }
