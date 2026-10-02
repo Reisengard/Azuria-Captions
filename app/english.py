@@ -554,7 +554,7 @@ CAPTION_UI = {
     # Tap sync for words (C5)
     '>単語を同期': '>Sync words', 'title="この字幕をループ再生し、各単語が始まる瞬間に Space を押して単語のタイミングを合わせます"': 'title="Loop this caption and press Space as each word starts to set the word timing"',
     "'単語を同期する字幕を選んでください。'": "'Select the caption whose words you want to sync.'",
-    "'この字幕のタイミングは固定中のため、同期できません。'": "'This caption's timing is kept as is, so it cannot be synced.'",
+    "'この字幕のタイミングは固定中のため、同期できません。'": "'The timing of this caption is kept as is, so it cannot be synced.'",
     "'同期できる単語がありません。'": "'There are no words to sync.'",
     "`単語の同期: 字幕がループします。各単語が始まる瞬間に Space を押してください（${tokens.length}語）。`": "`Word sync: the caption loops. Press Space the moment each word starts (${tokens.length}).`",
     "`${done}語のタイミングを同期しました`": "`Synced the timing of ${done} word(s)`",

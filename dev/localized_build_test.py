@@ -20,4 +20,15 @@ for relative in (Path('index.html'), Path('en/index.html')):
     assert 'window.JIZURA_BUNDLED_FONTS' in html, f'{relative} omitted the bundled font list'
     assert '<option value="creator">Creator</option>' in html, f'{relative} omitted the Creator style option'
 
+# A translation with a stray quote breaks the whole page (the editor never starts), so every inline script must still parse.
+import re, subprocess, tempfile
+for name in EDITIONS:
+    html = (ROOT / name).read_text(encoding='utf-8')
+    for index, match in enumerate(re.finditer(r'<script>(.*?)</script>', html, re.S)):
+        with tempfile.NamedTemporaryFile('w', suffix='.js', delete=False, encoding='utf-8') as handle:
+            handle.write(match.group(1))
+        result = subprocess.run(['node', '--check', handle.name], capture_output=True, text=True)
+        Path(handle.name).unlink()
+        assert result.returncode == 0, f'{name} script #{index} has a syntax error: {result.stderr[:300]}'
+
 print('Localized product mode and caption style build tests passed.')
