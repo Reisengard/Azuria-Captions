@@ -314,6 +314,7 @@
             <button id="captionPlay" type="button" class="play" disabled aria-label="再生" title="再生 / 一時停止（Space）">▶</button>
             <button id="captionLoop" type="button" class="small" aria-pressed="false" title="選んだ字幕、または指定した範囲をループ（L）。ルーラーを Alt+ドラッグで範囲指定">ループ</button>
             <button id="captionSpeed" type="button" class="small" title="再生速度">1×</button>
+            <button id="captionSnap" type="button" class="small" aria-pressed="true" title="ドラッグ中に再生位置や他の字幕の端へ吸着します（Alt を押しながらドラッグで一時的にオフ）">スナップ</button>
             <span id="captionTime" class="tc">00:00.00</span><span class="tc muted">/</span><span id="captionDuration" class="tc muted">00:00.00</span>
             <input id="captionScrub" class="sr-only" type="range" min="0" max="1000" value="0" disabled aria-label="動画の再生位置">
           </div>
@@ -646,7 +647,8 @@
       <kbd>Space</kbd><span>再生 / 一時停止</span><kbd>L</kbd><span>ループ オン/オフ</span>
       <kbd>← / →</kbd><span>1フレーム戻る / 進む</span><kbd>Shift+← / →</kbd><span>1秒戻る / 進む</span>
       <kbd>↑ / ↓</kbd><span>前 / 次の字幕</span><kbd>Home / End</kbd><span>先頭 / 末尾</span>
-      <kbd>+ / − / 0</kbd><span>拡大 / 縮小 / 全体</span><kbd>Esc</kbd><span>ループ解除 / 選択解除</span>
+      <kbd>+ / − / 0</kbd><span>拡大 / 縮小 / 全体</span><kbd>Esc</kbd><span>ドラッグ取消 / ループ解除 / 選択解除</span>
+      <kbd>, / .</kbd><span>選んだ字幕を 0.05 秒ずらす</span><kbd>Shift+ドラッグ（端）</kbd><span>単語の長さも合わせて調整</span>
     </div>
     <p class="terms-sub">ルーラーを Alt+ドラッグ（または上半分をドラッグ）すると、ループする範囲を指定できます。</p>
     <p class="terms-sub">かんたん：演出はおまかせ。詳細：演出の技法を自分で選べます。</p>

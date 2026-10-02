@@ -156,6 +156,24 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .caption-word-mark span { position: absolute; top: 14px; left: 3px; display: none; width: max-content; max-width: 90px; overflow: hidden; color: var(--muted); font: 8px var(--mono); text-overflow: ellipsis; pointer-events: none; }
 .caption-timeline[data-word-labels=true] .caption-word-mark span { display: block; }
 .caption-timeline[data-word-labels=true] .caption-block-text { line-height: 14px; }
+.caption-timeline-segment { cursor: grab; touch-action: none; }
+.caption-timeline-segment.is-locked { cursor: not-allowed; border-style: dashed; }
+.caption-timeline-segment.is-dragging { opacity: .35; }
+.caption-trim-handle { position: absolute; z-index: 2; top: 0; bottom: 0; width: 6px; cursor: ew-resize; }
+.caption-trim-handle.is-start { left: 0; border-radius: 3px 0 0 3px; }
+.caption-trim-handle.is-end { right: 0; border-radius: 0 3px 3px 0; }
+.caption-trim-handle:hover { background: rgba(245,165,12,.55); }
+.caption-timeline-segment.is-locked .caption-trim-handle { display: none; }
+.caption-lock-badge { position: absolute; top: 1px; right: 2px; font-size: 8px; line-height: 1; pointer-events: none; }
+.caption-lock-badge[hidden] { display: none; }
+.caption-drag-ghost { position: absolute; z-index: 5; top: 0; height: 28px; box-sizing: border-box; border: 1px solid var(--cyan); border-radius: 3px; background: rgba(22,244,212,.28); pointer-events: none; }
+.caption-drag-ghost.is-invalid { border-color: #ff5d6c; background: rgba(255,93,108,.3); }
+.caption-drag-ghost.is-invalid::after { content: attr(data-reason); position: absolute; inset: 0; overflow: hidden; padding: 0 4px; color: #ffe1e4; font-size: 10px; line-height: 26px; text-overflow: ellipsis; white-space: nowrap; }
+.caption-drag-snap { position: absolute; z-index: 5; top: 0; bottom: 0; width: 1px; background: var(--cyan); pointer-events: none; }
+.caption-drag-snap[hidden] { display: none; }
+.caption-drag-readout { position: absolute; z-index: 6; top: 2px; transform: translateX(6px); padding: 0 4px; border-radius: 3px; background: var(--raised); color: var(--text); font: 10px var(--mono); pointer-events: none; white-space: nowrap; }
+.caption-drag-readout.is-invalid { color: #ff5d6c; }
+body.is-caption-dragging { cursor: grabbing; user-select: none; }
 .caption-boundary-handle { position: absolute; z-index: 3; top: -3px; right: -5px; width: 9px; height: 32px; padding: 0; border: 0; border-radius: 2px; background: var(--amber); cursor: ew-resize; }
 .caption-loop-region { position: absolute; z-index: 3; top: 0; bottom: 0; left: 0; box-sizing: border-box; border-inline: 1px solid var(--cyan); background: rgba(22,244,212,.07); pointer-events: none; }
 .caption-loop-region::before { content: ''; position: absolute; inset: 0 0 auto; height: 22px; background: rgba(22,244,212,.22); }

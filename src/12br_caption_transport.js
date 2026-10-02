@@ -97,7 +97,7 @@ function onKey(event) {
   // Native widgets that use the same keys keep them: buttons take Space, sliders take the arrows.
   if (action === 'play' && target.tagName === 'BUTTON') return;
   if (/^(back|forward)-/.test(action) || action === 'prev-caption' || action === 'next-caption') { if (target.closest && target.closest('[data-boundary-segment]')) return; }
-  if (!sourceVideo() && action !== 'escape') return;
+  if (!sourceVideo() && action !== 'escape' && !/^nudge-/.test(action)) return;
   const handled = run(action); if (!handled) return;
   event.preventDefault(); event.stopImmediatePropagation();
 }
@@ -113,6 +113,8 @@ function run(action) {
     case 'start': seekEdge(false); return true;
     case 'end': seekEdge(true); return true;
     case 'loop': setLoop(!tr.loopOn); return true;
+    case 'nudge-back': return W.nudgeSegment(-1);
+    case 'nudge-forward': return W.nudgeSegment(1);
     case 'zoom-in': ui.timeline.follow = false; W.zoomTimeline(2); return true;
     case 'zoom-out': ui.timeline.follow = false; W.zoomTimeline(.5); return true;
     case 'zoom-fit': W.fitTimeline(); return true;
@@ -128,6 +130,7 @@ function init() {
   $('captionPlay').addEventListener('click', togglePlay);
   $('captionScrub').addEventListener('input', event => scrubTo(event.target.value));
   $('captionSpeed').addEventListener('click', () => setSpeed(TL.nextSpeed(tr.speed)));
+  $('captionSnap').addEventListener('click', () => { tr.snap = !tr.snap; $('captionSnap').setAttribute('aria-pressed', String(tr.snap)); });
   $('captionLoop').addEventListener('click', () => setLoop(!tr.loopOn));
   // Capture phase: the Lyric Motion shortcuts live on the same document and must not also fire.
   document.addEventListener('keydown', onKey, true);

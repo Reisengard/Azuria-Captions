@@ -99,11 +99,93 @@ function keyAction(event) {
     case 'Escape': return 'escape';
     default: break;
   }
+  if (event.key === ',' || event.key === '<') return 'nudge-back';
+  if (event.key === '.' || event.key === '>') return 'nudge-forward';
   if (event.key === '+' || event.key === '=') return 'zoom-in';
   if (event.key === '-' || event.key === '_') return 'zoom-out';
   if (event.key === '0') return 'zoom-fit';
   return null;
 }
 
-J.captionTimeline = { FRAME, LOOP_LEAD, SPEEDS, adjacentSegment, keyAction, loopRegion, loopSeek, markRegion, nextSpeed, stepTime, MAX_PPS, TICK_MIN_PX, blockRect, clampPps, clampScroll, contentWidth, fitPps, followScroll, formatTick, overlapsRange, rulerTicks, tickStep, timeToX, visibleRange, wordLabelsVisible, wordTicksVisible, xToTime, zoomAround };
+/* ---- Drag maths (T3): snapping and the resolution of a move / trim drag. Pure: the view passes plain data, the store has the last word. ----
+   A "layout" is { duration, segments: [{ id, start, end, trackId, firstWord, lastWord, block, locked, trackLocked }] } (firstWord / lastWord = start of the first / end of the last word). */
+const SNAP_PX = 6, MIN_SEGMENT = .1, NUDGE = .05, EPS = 1e-6, round6 = value => +value.toFixed(6);
+/* Times a drag can snap to: { time, kind } with kind playhead | caption | word | cut | loop | edge. */
+function snapTargets({ duration, playhead, loop, cuts, segments, excludeId, wordTimes }) {
+  const targets = [{ time: 0, kind: 'edge' }, { time: duration, kind: 'edge' }];
+  if (Number.isFinite(playhead)) targets.push({ time: playhead, kind: 'playhead' });
+  if (loop) targets.push({ time: loop.start, kind: 'loop' }, { time: loop.end, kind: 'loop' });
+  for (const time of cuts || []) targets.push({ time, kind: 'cut' });
+  for (const segment of segments || []) if (segment.id !== excludeId) targets.push({ time: segment.start, kind: 'caption' }, { time: segment.end, kind: 'caption' });
+  for (const time of wordTimes || []) targets.push({ time, kind: 'word' });
+  return targets;
+}
+/* The closest (candidate, target) pair within `px` pixels: { delta, target } to add to the candidate, or null. */
+function nearestSnap(candidates, targets, pps, px = SNAP_PX) {
+  const limit = px / Math.max(1e-9, pps); let best = null;
+  for (const candidate of candidates) for (const target of targets) {
+    const delta = target.time - candidate, distance = Math.abs(delta);
+    if (distance <= limit + EPS && (!best || distance < Math.abs(best.delta) - EPS)) best = { delta, target };
+  }
+  return best;
+}
+/* Neighbours of a segment on its own track (the nearest ones before and after it). */
+function trackNeighbors(layout, segment) {
+  let before = null, after = null;
+  for (const other of layout.segments) {
+    if (other.id === segment.id || other.trackId !== segment.trackId) continue;
+    if (other.end <= segment.start + EPS) { if (!before || other.end > before.end) before = other; }
+    else if (other.start >= segment.end - EPS && (!after || other.start < after.start)) after = other;
+  }
+  return { before, after };
+}
+const overlapsOn = (layout, segment, trackId, start, end) => layout.segments.find(other => other.id !== segment.id && other.trackId === trackId && start < other.end - EPS && end > other.start + EPS) || null;
+/* One drag step. input: { layout, segmentId, mode: 'move' | 'trim-start' | 'trim-end', time (pointer), grab (pointer minus the grabbed edge / start at pointer-down),
+   trackId (row under the pointer), pps, snap (bool), shift (bool), targets }.
+   -> { segmentId, mode, start, end, trackId, valid, code, snappedTo, words, changed }. `code` is a store error code when invalid. */
+function resolveDrag(input) {
+  const { layout, mode } = input, segment = layout.segments.find(item => item.id === input.segmentId); if (!segment) return { valid: false, code: 'SEGMENT_NOT_FOUND', mode };
+  const trackId = input.trackId || segment.trackId, retrack = trackId !== segment.trackId, targets = input.snap ? input.targets || [] : [];
+  const out = { segmentId: segment.id, mode, start: segment.start, end: segment.end, trackId, valid: true, code: null, snappedTo: null, words: 'keep', changed: false };
+  if (segment.locked) return Object.assign(out, { valid: false, code: 'SEGMENT_FIELD_LOCKED', trackId: segment.trackId });
+  if (retrack && segment.trackLocked) return Object.assign(out, { valid: false, code: 'SEGMENT_FIELD_LOCKED' });
+  const { before, after } = trackNeighbors(layout, segment), duration = layout.duration, raw = input.time - input.grab;
+  if (mode === 'move') {
+    const length = segment.end - segment.start;
+    let start = raw; const snap = nearestSnap([start, start + length], targets, input.pps);
+    if (snap) { start += snap.delta; out.snappedTo = snap.target; }
+    let low = 0, high = duration - length;
+    if (!retrack) { if (before) low = Math.max(low, before.end); if (after) high = Math.min(high, after.start - length); }
+    if (high >= low - EPS) {
+      if (start < low) { start = low; out.snappedTo = !retrack && before && Math.abs(low - before.end) < EPS ? { time: before.end, kind: 'caption' } : { time: 0, kind: 'edge' }; }
+      else if (start > high) { start = high; out.snappedTo = !retrack && after && Math.abs(high - (after.start - length)) < EPS ? { time: after.start, kind: 'caption' } : { time: duration, kind: 'edge' }; }
+    }
+    out.start = round6(start); out.end = round6(start + length);
+    out.changed = retrack || Math.abs(out.start - segment.start) > EPS;
+  } else {
+    const trimStart = mode === 'trim-start', fit = !!input.shift || segment.block;
+    let edge = raw; const snap = nearestSnap([edge], targets, input.pps);
+    if (snap) { edge += snap.delta; out.snappedTo = snap.target; }
+    let low, high, wordLow = false, wordHigh = false;   // which wall is a word (shown as a snap) rather than a neighbour or the minimum length
+    if (trimStart) { low = before ? before.end : 0; high = segment.end - MIN_SEGMENT; if (!fit && Number.isFinite(segment.firstWord) && segment.firstWord < high) { high = segment.firstWord; wordHigh = true; } }
+    else { high = after ? after.start : duration; low = segment.start + MIN_SEGMENT; if (!fit && Number.isFinite(segment.lastWord) && segment.lastWord > low) { low = segment.lastWord; wordLow = true; } }
+    if (high < low - EPS) { out.valid = false; out.code = 'SEGMENT_WORDS_OUTSIDE'; return out; }
+    if (edge < low) { edge = low; out.snappedTo = wordLow ? { time: low, kind: 'word' } : trimStart ? (before ? { time: before.end, kind: 'caption' } : { time: 0, kind: 'edge' }) : null; }
+    else if (edge > high) { edge = high; out.snappedTo = wordHigh ? { time: high, kind: 'word' } : trimStart ? null : (after ? { time: after.start, kind: 'caption' } : { time: duration, kind: 'edge' }); }
+    if (trimStart) out.start = round6(edge); else out.end = round6(edge);
+    out.words = input.shift && !segment.block ? 'fit' : 'keep';
+    out.changed = Math.abs(out.start - segment.start) > EPS || Math.abs(out.end - segment.end) > EPS;
+  }
+  if (out.start < -EPS || out.end > duration + EPS || out.end - out.start < MIN_SEGMENT - EPS) { out.valid = false; out.code = 'SEGMENT_TIMING_INVALID'; return out; }
+  const hit = overlapsOn(layout, segment, trackId, out.start, out.end);
+  if (hit) { out.valid = false; out.code = 'TRACK_SEGMENT_OVERLAP'; out.otherSegmentId = hit.id; }
+  return out;
+}
+/* `,` / `.`: move a caption by a fixed step, stopping at its neighbours like a drag does. */
+function nudge(layout, segmentId, direction, step = NUDGE) {
+  const segment = layout.segments.find(item => item.id === segmentId); if (!segment) return null;
+  return resolveDrag({ layout, segmentId, mode: 'move', time: segment.start + direction * step, grab: 0, trackId: segment.trackId, pps: 1, snap: false });
+}
+
+J.captionTimeline = { NUDGE, SNAP_PX, MIN_SEGMENT, nearestSnap, nudge, resolveDrag, snapTargets, trackNeighbors, FRAME, LOOP_LEAD, SPEEDS, adjacentSegment, keyAction, loopRegion, loopSeek, markRegion, nextSpeed, stepTime, MAX_PPS, TICK_MIN_PX, blockRect, clampPps, clampScroll, contentWidth, fitPps, followScroll, formatTick, overlapsRange, rulerTicks, tickStep, timeToX, visibleRange, wordLabelsVisible, wordTicksVisible, xToTime, zoomAround };
 })();
