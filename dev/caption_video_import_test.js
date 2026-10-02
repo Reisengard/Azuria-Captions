@@ -32,7 +32,7 @@ const elements = new Map();
 const el = id => { if (!elements.has(id)) elements.set(id, new Element()); return elements.get(id); };
 let previews = 0;
 const context = vm.createContext({ console, Uint8Array, Set, Map, queueMicrotask,
-  document: { querySelector: () => null, querySelectorAll: () => [], getElementById: el, createElement: tag => tag === 'video' ? new Video() : tag === 'canvas' ? new Canvas() : new Element() },
+  document: { addEventListener() {}, querySelector: () => null, querySelectorAll: () => [], getElementById: el, createElement: tag => tag === 'video' ? new Video() : tag === 'canvas' ? new Canvas() : new Element() },
   URL: { createObjectURL: () => 'blob:test', revokeObjectURL() {} },
   J: {},
   addEventListener() {}
@@ -57,6 +57,8 @@ async function select(id, selected) { el(id).files = [selected]; el(id).emit('ch
   const video = context.J.captionWorkbench.media.current.video;
   el('captionPlay').emit('click'); assert.equal(video.paused, false);
   el('captionScrub').value = 500; el('captionScrub').emit('input'); assert.equal(video.currentTime, 7.5);
+  el('captionSpeed').emit('click'); assert.equal(video.playbackRate, .75); assert.equal(el('captionSpeed').textContent, '0.75×');
+  el('captionLoop').emit('click'); assert.equal(el('captionLoop').attrs && el('captionLoop').attrs['aria-pressed'] || 'false', 'false', 'no caption selected and no range marked: loop stays off');
   el('app').emit('jizura:product-mode', { detail: { mode: 'lyric' } }); assert.equal(video.paused, true);
   await select('captionVideoFile', { ...file, type: 'text/plain' });
   assert.match(el('captionStatus').textContent, /not identified as a video/);

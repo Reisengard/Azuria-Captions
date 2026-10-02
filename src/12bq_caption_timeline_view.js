@@ -112,7 +112,7 @@ function renderTimeline() {
   kept.forEach((clip, i) => { const from = i ? kept[i - 1].end : 0; if (clip.start - from > .001) cuts.push([from, clip.start]); });
   if (kept.length && duration - kept[kept.length - 1].end > .001) cuts.push([kept[kept.length - 1].end, duration]);
   $('captionVideoTrack').replaceChildren(...cuts.map(([from, to]) => { const cut = document.createElement('span'); cut.className = 'caption-video-cut'; cut.style.left = `${from * pps}px`; cut.style.width = `${(to - from) * pps}px`; cut.title = `${fmt(from)}–${fmt(to)}`; return cut; }));
-  drawRuler(); placePlayhead(sourceVideo() ? sourceVideo().currentTime : 0);
+  drawRuler(); placeLoop(); placePlayhead(sourceVideo() ? sourceVideo().currentTime : 0);
 }
 /* Scrolling only changes which blocks are near the viewport: word ticks are (re)built for those. */
 function updateWords() {
@@ -140,6 +140,13 @@ function renderList() {
 }
 function renderSegments() { renderList(); renderTimeline(); }
 
+/* The marked / looping range: a band over the rows, brighter while looping. */
+function placeLoop() {
+  const band = $('captionLoopRegion'), region = ui.transport.marked || (ui.transport.loopOn ? ui.transport.region : null);
+  band.hidden = !region; if (!region) return;
+  band.style.left = `${TL.timeToX(region.start, ui.timeline.pps)}px`; band.style.width = `${Math.max(2, (region.end - region.start) * ui.timeline.pps)}px`;
+  band.classList.toggle('is-looping', ui.transport.loopOn);
+}
 function placePlayhead(time) { $('captionPlayhead').style.transform = `translateX(${TL.timeToX(time, ui.timeline.pps)}px)`; }
 function updatePlayhead(time) {
   const video = sourceVideo(), duration = video ? Number(video.duration) || 0 : Number(ui.store.project.media.duration) || 0;
@@ -216,9 +223,20 @@ function init() {
   });
   // Empty space in the rows or the video row moves the playhead; the ruler scrubs while dragging.
   scroll.addEventListener('click', event => { if (event.target.closest('[data-segment-id],.caption-boundary-handle,#captionRuler')) return; seekTimeline(timelineTimeAt(event.clientX)); });
-  ruler.addEventListener('pointerdown', event => { scrubbing = true; event.preventDefault(); ruler.setPointerCapture && ruler.setPointerCapture(event.pointerId); seekTimeline(timelineTimeAt(event.clientX)); });
-  ruler.addEventListener('pointermove', event => { if (scrubbing) seekTimeline(timelineTimeAt(event.clientX)); });
-  for (const name of ['pointerup', 'pointercancel']) ruler.addEventListener(name, () => { scrubbing = false; });
+  // Alt+drag, or a drag in the upper half of the ruler, marks the loop region; a plain click there still moves the playhead.
+  let marking = null;
+  ruler.addEventListener('pointerdown', event => {
+    event.preventDefault(); ruler.setPointerCapture && ruler.setPointerCapture(event.pointerId);
+    const upper = event.clientY - ruler.getBoundingClientRect().top < ruler.getBoundingClientRect().height / 2;
+    if (event.altKey || upper) { marking = { from: timelineTimeAt(event.clientX), x: event.clientX, moved: false }; return; }
+    scrubbing = true; seekTimeline(timelineTimeAt(event.clientX));
+  });
+  ruler.addEventListener('pointermove', event => {
+    if (marking) { if (!marking.moved && Math.abs(event.clientX - marking.x) < 4) return; marking.moved = true; W.setMarked(TL.markRegion(marking.from, timelineTimeAt(event.clientX), mediaDuration())); return; }
+    if (scrubbing) seekTimeline(timelineTimeAt(event.clientX));
+  });
+  ruler.addEventListener('pointerup', event => { if (marking && !marking.moved) { if (ui.transport.marked) W.setMarked(null); seekTimeline(timelineTimeAt(event.clientX)); } marking = null; scrubbing = false; });
+  ruler.addEventListener('pointercancel', () => { marking = null; scrubbing = false; });
   $('captionSegmentTrack').addEventListener('pointerdown', event => { const handle = event.target.closest('[data-boundary-segment]'); if (handle) startBoundaryDrag(event, handle.dataset.boundarySegment); });
   window.addEventListener('pointermove', moveBoundary); window.addEventListener('pointerup', finishBoundary);
   scroll.addEventListener('wheel', event => {
@@ -237,6 +255,6 @@ function init() {
   for (const id of ['captionSegmentList', 'captionSegmentTrack']) $(id).addEventListener('dblclick', event => { const target = event.target.closest('[data-segment-id]'); if (target) selectSegment(target.dataset.segmentId, true); });
   on('project', renderSegments); on('selection', markSelection);
 }
-Object.assign(W, { finishBoundary, fitTimeline, markNow, markSelection, moveBoundary, renderSegments, renderTimeline, revealTime, seekTimeline, startBoundaryDrag, timelineFollow, timelineTimeAt, updatePlayhead, zoomTimeline });
+Object.assign(W, { finishBoundary, fitTimeline, markNow, markSelection, moveBoundary, placeLoop, renderSegments, renderTimeline, revealTime, seekTimeline, startBoundaryDrag, timelineFollow, timelineTimeAt, updatePlayhead, zoomTimeline });
 W.inits.push(init);
 })();

@@ -57,5 +57,53 @@ function followScroll(scrollLeft, viewportWidth, playheadX, duration, pps) {
   return clampScroll(playheadX - viewportWidth * .1, duration, pps, viewportWidth);
 }
 
-J.captionTimeline = { MAX_PPS, TICK_MIN_PX, blockRect, clampPps, clampScroll, contentWidth, fitPps, followScroll, formatTick, overlapsRange, rulerTicks, tickStep, timeToX, visibleRange, wordLabelsVisible, wordTicksVisible, xToTime, zoomAround };
+/* ---- Transport maths (T2): loop region, speed, stepping, caption neighbours, keyboard map ---- */
+const SPEEDS = [1, .75, .5], FRAME = 1 / 30, LOOP_LEAD = .3, MIN_LOOP = .1;
+const nextSpeed = speed => SPEEDS[(Math.max(0, SPEEDS.findIndex(item => Math.abs(item - speed) < 1e-9)) + 1) % SPEEDS.length];
+/* A dragged range on the ruler; too short to be a loop = null. */
+function markRegion(a, b, duration) {
+  const start = clamp(Math.min(a, b), 0, duration), end = clamp(Math.max(a, b), 0, duration);
+  return end - start >= MIN_LOOP ? { start: +start.toFixed(6), end: +end.toFixed(6) } : null;
+}
+/* What `L` loops: the marked region if there is one, else the selected caption with a lead-in/out. */
+function loopRegion(marked, segment, duration, lead = LOOP_LEAD) {
+  if (marked && marked.end - marked.start >= MIN_LOOP) return { start: marked.start, end: marked.end };
+  if (!segment) return null;
+  return { start: +clamp(segment.start - lead, 0, duration).toFixed(6), end: +clamp(segment.end + lead, 0, duration).toFixed(6) };
+}
+/* Called every frame while playing: where to jump to when the playhead has passed the loop end (else null). */
+const loopSeek = (time, region) => region && time >= region.end ? region.start : null;
+/* Move the playhead by `count` frames or `seconds`; stays inside [0, duration]. */
+function stepTime(time, direction, { seconds, frame = FRAME } = {}, duration) {
+  const index = time / frame, next = seconds ? time + direction * seconds : (direction > 0 ? Math.floor(index + 1e-6) + 1 : Math.ceil(index - 1e-6) - 1) * frame;
+  return clamp(+next.toFixed(6), 0, Math.max(0, duration));
+}
+/* The caption that starts after (direction 1) or before (-1) `time`, over every track. */
+function adjacentSegment(segments, time, direction) {
+  const sorted = segments.slice().sort((a, b) => a.start - b.start || a.end - b.end), eps = .001;
+  return direction > 0 ? sorted.find(segment => segment.start > time + eps) || null : sorted.reverse().find(segment => segment.start < time - eps) || null;
+}
+/* Keyboard map of the transport; the handler decides when keys are ignored (typing, dialogs). */
+function keyAction(event) {
+  if (event.ctrlKey || event.metaKey || event.altKey) return null;
+  const shift = !!event.shiftKey;
+  switch (event.code) {
+    case 'Space': return 'play';
+    case 'ArrowLeft': return shift ? 'back-1s' : 'back-frame';
+    case 'ArrowRight': return shift ? 'forward-1s' : 'forward-frame';
+    case 'ArrowUp': return 'prev-caption';
+    case 'ArrowDown': return 'next-caption';
+    case 'Home': return 'start';
+    case 'End': return 'end';
+    case 'KeyL': return 'loop';
+    case 'Escape': return 'escape';
+    default: break;
+  }
+  if (event.key === '+' || event.key === '=') return 'zoom-in';
+  if (event.key === '-' || event.key === '_') return 'zoom-out';
+  if (event.key === '0') return 'zoom-fit';
+  return null;
+}
+
+J.captionTimeline = { FRAME, LOOP_LEAD, SPEEDS, adjacentSegment, keyAction, loopRegion, loopSeek, markRegion, nextSpeed, stepTime, MAX_PPS, TICK_MIN_PX, blockRect, clampPps, clampScroll, contentWidth, fitPps, followScroll, formatTick, overlapsRange, rulerTicks, tickStep, timeToX, visibleRange, wordLabelsVisible, wordTicksVisible, xToTime, zoomAround };
 })();
