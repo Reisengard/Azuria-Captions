@@ -13,11 +13,9 @@ const DRAWERS = {
   text: { title: '文字', panes: ['captionStylePane_style'] },
   effects: { title: 'エフェクト', panes: ['captionStylePane_effects'] },
   tracks: { title: 'トラック', panes: ['captionStylePane_tracks'] },
-  box: { title: '位置ボックス', panes: ['captionStylePane_box'] },
   video: { title: '動画', panes: ['captionStylePane_video'] },
-  export: { title: '書き出し', panes: ['captionStylePane_export'] },
 };
-const DRAWER_OF_STYLE_TAB = { style: 'text', effects: 'effects', tracks: 'tracks', box: 'box', video: 'video', export: 'export' };
+const DRAWER_OF_STYLE_TAB = { style: 'text', effects: 'effects', tracks: 'tracks', video: 'video' };
 const DRAWER_OF_LEFT_TAB = { transcript: 'captions', roles: 'text' };
 const PREF_KEY = 'jizura.captionShell', DEFAULT_DRAWER = 'captions';
 
@@ -77,14 +75,23 @@ function bindMenu() {
   }, true);
 }
 
+/* The Tracks item is only useful with a second track (the timeline headers cover add / rename / reorder / delete); Advanced always shows it. */
+function syncTracksItem() {
+  const item = $('captionRail_tracks'), workspace = $('videoCaptionsWorkspace'); if (!item) return;
+  const hide = !!(workspace && workspace.classList && workspace.classList.contains && workspace.classList.contains('is-easy')) && W.trackCount() < 2;
+  item.hidden = hide;
+  if (hide && ui.drawer === 'tracks') setDrawer('text', { persist: false });
+}
+
 function init() {
   for (const button of document.querySelectorAll('#captionRail [data-drawer]')) button.addEventListener('click', () => toggleDrawer(button.dataset.drawer));
   $('captionDrawerClose').addEventListener('click', () => { setDrawer(''); const rail = document.querySelector('#captionRail [data-drawer]'); if (rail) rail.focus(); });
   bindMenu();
   setDrawer(readPref(), { persist: false, layout: false });
+  W.on('project', syncTracksItem, 5); syncTracksItem();
 }
 
-Object.assign(W, { openDrawer, toggleDrawer, closeDrawer: () => setDrawer(''), selectStyleTab, selectLeftTab, setMenu });
+Object.assign(W, { openDrawer, toggleDrawer, closeDrawer: () => setDrawer(''), selectStyleTab, selectLeftTab, setMenu, syncTracksItem });
 W.shell = Object.freeze({ drawers: Object.freeze(Object.keys(DRAWERS)), prefKey: PREF_KEY, defaultDrawer: DEFAULT_DRAWER });
 W.inits.push(init);
 })();

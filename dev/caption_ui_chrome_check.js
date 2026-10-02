@@ -99,6 +99,9 @@ const IN_PAGE = `(() => {
     unlockTiming(id) { ui.store.execute({ type: 'set-field-lock', segmentId: id, field: 'timing', locked: false }); J.captionWb.emit('project'); ui.store.undoStack.length = 0; return true; },
     lockBadge(id) { const b = document.querySelector('[data-segment-id="' + id + '"] .caption-lock-badge'); return !!b && !b.hidden; },
     status() { return $('captionStatus').textContent; },
+    u3() { const pop = document.querySelector('.caption-box-popover'), dlg = $('captionExportDlg'), rail = $('captionRail_tracks'), easy = $('videoCaptionsWorkspace').classList.contains('is-easy');
+      return { pop: !!pop, popHasPanel: !!pop && pop.contains($('captionBoxPanel')), popX: $('captionBoxX').value, inHolder: $('captionBoxHolder').contains($('captionBoxPanel')), focusOnEditor: document.activeElement === $('captionBoxEditor'),
+        dlg: !!dlg.open, format: $('captionExportFormat').textContent, start: $('captionExportPanel').textContent, railTracksHidden: rail.hidden, easy, tracks: J.captionWorkbench.store.project.tracks.length, rails: [...document.querySelectorAll('#captionRail [data-drawer]')].map(b => b.dataset.drawer).join(',') }; },
     shell() { const bench = document.querySelector('.caption-workbench'), d = $('captionDrawer'); return { drawer: bench.dataset.drawer, open: !d.hidden, title: $('captionDrawerTitle').textContent, panes: [...document.querySelectorAll('.caption-left-pane, .caption-style-pane')].filter(p => !p.hidden).map(p => p.id).sort().join(','), pref: localStorage.getItem('jizura.captionShell'), menu: !$('captionMenu').hidden, expanded: document.getElementById('captionMenuButton').getAttribute('aria-expanded'), frame: (() => { const f = $('captionPreviewFrame').getBoundingClientRect(), v = $('captionStageView').getBoundingClientRect(); return { w: f.width, h: f.height, vw: v.width, vh: v.height }; })() }; },
     order() { return ui.store.project.tracks.map(item => item.id).join(','); },
     names() { return ui.store.project.tracks.map(item => item.name).join(','); },
@@ -497,6 +500,20 @@ const IN_PAGE = `(() => {
     await clickSel('#captionMenuButton'); await clickSel('#captionDrawerTitle'); shell = await t('shell');
     step('shell: a click outside closes the menu', !shell.menu);
     await clickSel('#captionRail_captions');
+
+    // U3: the box popover opens from the box on the preview, Export is a dialog, the Tracks item waits for a second track in Simple
+    let u3 = await t('u3');
+    step('u3: the rail has no Box or Export item', !/box|export/.test(u3.rails), u3.rails);
+    step('u3: Tracks rail item is hidden in Simple until a second track exists', u3.railTracksHidden === (u3.easy && u3.tracks < 2), JSON.stringify(u3));
+    const boxAt = await t('rect', '#captionBoxEditor'); await mouse('mousePressed', (boxAt.left + boxAt.right) / 2, (boxAt.top + boxAt.bottom) / 2, { clickCount: 1 }); await mouse('mouseReleased', (boxAt.left + boxAt.right) / 2, (boxAt.top + boxAt.bottom) / 2, { clickCount: 1 }); await sleep(150);
+    u3 = await t('u3');
+    step('u3: clicking the box on the preview opens the box popover with the X/Y/W/H fields', u3.pop && u3.popHasPanel && u3.popX !== '', JSON.stringify(u3));
+    await key('Escape', 'Escape', { vk: 27 }); await sleep(100); u3 = await t('u3');
+    step('u3: Esc closes the popover, the panel goes back to its holder, focus returns to the box', !u3.pop && u3.inHolder && u3.focusOnEditor, JSON.stringify(u3));
+    await clickSel('#captionExport'); u3 = await t('u3');
+    step('u3: Export opens a dialog with format and a start button', u3.dlg && u3.format !== '—' && u3.start.length > 0, JSON.stringify(u3));
+    await key('Escape', 'Escape', { vk: 27 }); await sleep(100); u3 = await t('u3');
+    step('u3: Esc closes the export dialog', !u3.dlg);
 
     const problems = log.filter(line => !/favicon|Failed to load resource/.test(line));
     step('no page errors', problems.length === 0, problems.join(' | '));

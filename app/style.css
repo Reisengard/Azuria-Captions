@@ -917,3 +917,14 @@ html[data-product-mode=video-captions] label.file:hover { border-color: var(--am
   .caption-timeline-strip.is-collapsed #captionTimeline, .caption-timeline-strip.is-collapsed .caption-timeline-toolbar { display: flex; }
   .caption-strip-head { flex-wrap: wrap; gap: 8px; }
 }
+
+/* U3: box popover, export dialog */
+.caption-box-popover { width: 260px; max-width: calc(100vw - 8px); padding: 12px; }
+.caption-box-popover .caption-box-panel { margin: 0; padding: 0; border: 0; }
+.caption-box-popover .field { display: grid; gap: 4px; margin-bottom: 8px; color: var(--muted); font-size: 11px; }
+.caption-box-popover .caption-box-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 8px; }
+.caption-box-popover h2 { margin: 0 0 8px; font-size: 12px; letter-spacing: .04em; }
+.caption-export-progress { display: block; width: 100%; height: 8px; margin: 4px 0 8px; accent-color: var(--gold, #B39D68); }
+.caption-export-progress[hidden] { display: none; }
+.caption-export-state { min-height: 1.4em; color: var(--muted); }
+.caption-export-state.error { color: var(--danger, #e8806d); }

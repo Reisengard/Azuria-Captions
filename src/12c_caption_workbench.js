@@ -27,6 +27,7 @@ function renderActions() {
   $('captionUndo').disabled = !ui.store.canUndo(); $('captionRedo').disabled = !ui.store.canRedo();
   $('captionVariation').disabled = !hasTranscript; $('captionSave').disabled = !(hasTranscript || sourceVideo() || ui.store.project.settings.videoEdit);
   $('captionExport').disabled = $('captionExportPanel').disabled = ui.exportAbort ? false : !sourceVideo();
+  $('captionExportPanel').textContent = ui.exportAbort ? 'キャンセル' : '書き出しを開始';
   const out = J.videoOutputSize ? J.videoOutputSize(ui.store.project) : null;
   $('captionExportFormat').textContent = out ? `${out.width} × ${out.height}` : '—';
   $('captionExportDuration').textContent = fmt(J.videoEditDuration(J.videoClips(ui.store.project)));
@@ -59,24 +60,34 @@ function onWorkbenchResize() { fitPreviewFrame(); if (ui.preview) ui.preview.ren
 function drawCaptions(ctx, time, info) {
   return J.drawCaptionOverlay(ctx, ui.store.project, time, Object.assign({}, info, { reducedMotion: !!ui.store.project.settings.reducedMotionPreview }));
 }
+/* Export is a dialog: format, length, caption count, progress, cancel. The top-bar button only opens it; its own button starts or cancels. */
+function exportState(text, fraction, isError) {
+  const state = $('captionExportState'), bar = $('captionExportProgress');
+  state.textContent = text || ''; state.classList.toggle('error', !!isError);
+  bar.hidden = fraction == null; if (fraction != null) bar.value = Math.max(0, Math.min(1, fraction));
+}
+function openExportDialog() {
+  renderActions();
+  const dialog = $('captionExportDlg'); if (dialog.showModal) { if (!dialog.open) dialog.showModal(); } else dialog.setAttribute('open', '');
+}
 async function exportCaptions() {
-  if (ui.exportAbort) { ui.exportAbort.abort(); status('書き出しをキャンセルしています…'); return; }
+  if (ui.exportAbort) { ui.exportAbort.abort(); status('書き出しをキャンセルしています…'); exportState('書き出しをキャンセルしています…'); return; }
   const current = ui.media && ui.media.current; if (!current) return;
   let writable = null;
   try {
     if (typeof window.showSaveFilePicker === 'function') { const handle = await window.showSaveFilePicker({ suggestedName: `jizura-${ui.store.project.id}.mp4`,
       types: [{ description: 'MP4 video', accept: { 'video/mp4': ['.mp4'] } }] }); writable = await handle.createWritable(); }
   } catch (error) { if (error && error.name === 'AbortError') return; throw error; }
-  ui.exportAbort = new AbortController(); ui.exporter = new J.CaptionVideoExporter(); const buttons = [$('captionExport'), $('captionExportPanel')]; buttons.forEach(button => { button.textContent = 'キャンセル'; button.disabled = false; });
+  ui.exportAbort = new AbortController(); ui.exporter = new J.CaptionVideoExporter(); exportState('書き出しを準備しています…', 0); $('captionExport').textContent = '書き出し中…'; $('captionExport').disabled = $('captionExportPanel').disabled = false; renderActions();
   try {
     const result = await ui.exporter.export(current.file, clone(ui.store.project), { writable, signal: ui.exportAbort.signal,
       onProgress: event => { const labels = { checking: '書き出し環境を確認中', video: '字幕付き映像を書き出し中', audio: '元の音声を保持中', finalizing: 'MP4を仕上げています' };
-        status(`${labels[event.phase] || '書き出し中'}… ${Math.round(event.progress * 100)}%`); } });
+        const line = `${labels[event.phase] || '書き出し中'}… ${Math.round(event.progress * 100)}%`; status(line); exportState(line, event.progress); } });
     if (result.blob) await J.saveFile(`jizura-${ui.store.project.id}.mp4`, result.blob);
-    status(`書き出しました（${result.frameCount}フレーム・音声${result.audio.mode !== 'none' ? '保持' : 'なし'}・${result.metrics.elapsedSeconds.toFixed(1)}秒）。`);
+    const done = `書き出しました（${result.frameCount}フレーム・音声${result.audio.mode !== 'none' ? '保持' : 'なし'}・${result.metrics.elapsedSeconds.toFixed(1)}秒）。`; status(done); exportState(done, 1);
   } catch (error) { const recovery = J.recoveryForError ? J.recoveryForError(error) : { display: error.message || '書き出しに失敗しました。' };
-    status(error.code === 'MEDIA_EXPORT_CANCELLED' ? '書き出しをキャンセルしました。' : recovery.display, error.code !== 'MEDIA_EXPORT_CANCELLED'); }
-  finally { ui.exportAbort = null; ui.exporter = null; buttons.forEach(button => { button.textContent = '書き出し'; }); renderActions(); }
+    const cancelled = error.code === 'MEDIA_EXPORT_CANCELLED', text = cancelled ? '書き出しをキャンセルしました。' : recovery.display; status(text, !cancelled); exportState(text, null, !cancelled); }
+  finally { ui.exportAbort = null; ui.exporter = null; $('captionExport').textContent = '書き出し'; renderActions(); }
 }
 async function importVideo(file, expectedMedia) {
   status(expectedMedia ? '動画を照合しています…' : '動画を読み込んでいます…');
@@ -146,7 +157,8 @@ function bind() {
       }
     } catch (error) { status(J.recoveryForError ? J.recoveryForError(error).display : error.message, true); }
   });
-  for (const id of ['captionExport', 'captionExportPanel']) $(id).addEventListener('click', () => exportCaptions().catch(error => status(error.message, true)));
+  $('captionExport').addEventListener('click', openExportDialog);
+  $('captionExportPanel').addEventListener('click', () => exportCaptions().catch(error => { status(error.message, true); exportState(error.message, null, true); }));
   $('captionNew').addEventListener('click', () => { if (ui.preview) ui.preview.disconnect(); if (ui.media) ui.media.close(); ui.media = null; ui.preview = null; ui.selectedId = null; W.clearWaveform(); setProject(emptyProject()); $('captionProjectName').textContent = '無題の字幕プロジェクト'; $('captionRelinkNotice').hidden = true; $('captionPreviewEmpty').hidden = false; $('captionMediaName').textContent = '動画未選択'; $('captionPlay').disabled = true; $('captionScrub').disabled = true; status('新しいプロジェクトを作成しました。'); });
   $('captionHelp').addEventListener('click', () => { const dialog = $('captionHelpDlg'); if (dialog.showModal) { if (!dialog.open) dialog.showModal(); } else dialog.setAttribute('open', ''); });
   window.addEventListener('resize', onWorkbenchResize);
@@ -168,7 +180,7 @@ J.CaptionStore.prototype.setTechnique = function (command) {
   }
 };
 
-Object.assign(W, { afterProject, beforeProject, drawCaptions, emptyProject, exportCaptions, fitPreviewFrame, importTranscript, importVideo, onWorkbenchResize, openProject, projectId, renderActions, setProject });
+Object.assign(W, { afterProject, beforeProject, drawCaptions, emptyProject, exportCaptions, exportState, fitPreviewFrame, importTranscript, importVideo, onWorkbenchResize, openExportDialog, openProject, projectId, renderActions, setProject });
 on('project', beforeProject, -10); on('project', afterProject, 10);
 
 /* The single-file build places scripts after the complete body. Initializing

@@ -92,6 +92,7 @@ function paintSnapLines(hits) {
 
 function startBoxDrag(event) {
   const context = boxContext(); if (!context.box || event.button > 0) return;
+  ui.boxDragged = false;
   event.preventDefault(); if (event.currentTarget.setPointerCapture) try { event.currentTarget.setPointerCapture(event.pointerId); } catch (_) { /* synthetic pointers */ }
   ui.boxDrag = { context, origin: J.roundCaptionBox(context.box), x: event.clientX, y: event.clientY, mode: event.target.dataset && event.target.dataset.boxHandle ? 'resize' : 'move', box: null };
 }
@@ -111,7 +112,7 @@ function moveBoxDrag(event) {
 function finishBoxDrag(cancel) {
   const drag = ui.boxDrag; if (!drag) return; ui.boxDrag = null; paintSnapLines(null);
   if (cancel === true || !drag.box || JSON.stringify(J.roundCaptionBox(drag.box)) === JSON.stringify(drag.origin)) { renderBoxPanel(); return; }
-  commitBox(drag.context, J.roundCaptionBox(drag.box));
+  ui.boxDragged = true; commitBox(drag.context, J.roundCaptionBox(drag.box));
 }
 
 function nudgeBox(event) {
@@ -133,6 +134,19 @@ function applyBoxInputs(input) {
   commitBox(context, J.roundCaptionBox(Object.assign({}, context.box, { [key]: Number(input.value) / 100 })));
 }
 
+/* The box fields live in a popover that opens from the box on the preview (click, or Enter while it has focus); the panel returns to its holder when the popover closes. */
+function openBoxPopover() {
+  const editor = $('captionBoxEditor'), panel = $('captionBoxPanel'), P = J.captionPopover; if (!editor || editor.hidden || !panel || !P) return;
+  renderBoxPanel();
+  P.open(editor, panel, { role: 'dialog', className: 'caption-popover caption-box-popover', label: panel.getAttribute('aria-label') || '', restoreFocus: editor,
+    onClose: () => { ui.boxPopoverClosedAt = Date.now(); $('captionBoxHolder').appendChild(panel); } });
+}
+function onBoxClick() {
+  if (ui.boxDragged) { ui.boxDragged = false; return; }
+  if (ui.boxPopoverClosedAt && Date.now() - ui.boxPopoverClosedAt < 300) return;   // the press that closed it was on the box: a toggle, not a reopen
+  openBoxPopover();
+}
+
 function resetBox() {
   const context = boxContext(); if (!context.box) return;
   if (context.scope === 'segment') runCommand({ type: 'set-segment-box', segmentId: context.segment.id, box: null }, context.segment.id);
@@ -151,13 +165,8 @@ function renderTracksPanel() {
     name.textContent = item.name || item.id; meta.textContent = `${J.captionTrackSegments(project, item.id).length}件の字幕${item.primary ? '・メイン' : ''}`;
     button.append(name, meta); li.appendChild(button); list.appendChild(li);
   }
-  const index = track ? tracks.indexOf(track) : -1, own = track && track.style || {};
-  $('captionTrackAdd').disabled = tracks.length >= J.CAPTION_MAX_TRACKS;
+  const own = track && track.style || {};
   $('captionTrackReroll').disabled = !track || !J.captionTrackSegments(project, track.id).length;
-  const name = $('captionTrackName'); name.disabled = !track; if (document.activeElement !== name) name.value = track ? track.name || '' : '';
-  $('captionTrackForward').disabled = !track || track.primary || index >= tracks.length - 1;
-  $('captionTrackBack').disabled = !track || track.primary || index <= 1;
-  $('captionTrackDelete').disabled = !track || track.primary;
   $('captionTrackPreset').disabled = !track; $('captionTrackPreset').value = own.preset || '';
   $('captionTrackTreatment').disabled = !track; $('captionTrackTreatment').value = own.captionTreatment || '';
   const accent = $('captionTrackAccent'); accent.disabled = !track; if (own.accentColor) accent.value = own.accentColor; accent.dataset.unset = own.accentColor ? '' : '1';
@@ -244,13 +253,11 @@ function init() {
   const boxEditor = $('captionBoxEditor');
   boxEditor.addEventListener('pointerdown', startBoxDrag); boxEditor.addEventListener('pointermove', moveBoxDrag);
   boxEditor.addEventListener('pointerup', () => finishBoxDrag()); boxEditor.addEventListener('pointercancel', () => finishBoxDrag(true)); boxEditor.addEventListener('keydown', nudgeBox);
+  boxEditor.addEventListener('click', onBoxClick); boxEditor.addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); openBoxPopover(); } });
   for (const id of ['captionBoxX', 'captionBoxY', 'captionBoxWidth', 'captionBoxHeight']) $(id).addEventListener('change', () => applyBoxInputs($(id)));
   $('captionBoxScope').addEventListener('change', renderBoxPanel); $('captionBoxReset').addEventListener('click', resetBox);
   $('captionTrackList').addEventListener('click', event => { const target = event.target.closest('[data-track-select]'); if (target) selectTrack(target.dataset.trackSelect); });
   $('captionTrackLabels').addEventListener('click', event => { const target = event.target.closest('[data-track-select]'); if (target) selectTrack(target.dataset.trackSelect); });
-  $('captionTrackAdd').addEventListener('click', addTrack); $('captionTrackDelete').addEventListener('click', () => deleteTrack());
-  $('captionTrackForward').addEventListener('click', () => reorderTrack(1)); $('captionTrackBack').addEventListener('click', () => reorderTrack(-1));
-  $('captionTrackName').addEventListener('change', () => { const track = activeTrack(); if (track) runCommand({ type: 'rename-track', trackId: track.id, name: $('captionTrackName').value }); });
   $('captionTrackReroll').addEventListener('click', () => { const track = activeTrack(); if (track) rerollTrack(track.id); });
   $('captionTrackPreset').addEventListener('change', () => applyTrackStyle('preset', $('captionTrackPreset').value || null));
   $('captionTrackTreatment').addEventListener('change', () => applyTrackStyle('captionTreatment', $('captionTrackTreatment').value || null));
@@ -259,6 +266,7 @@ function init() {
   $('captionMoveSegment').addEventListener('click', () => moveToTrack(true)); $('captionMoveTokens').addEventListener('click', () => moveToTrack(false));
   on('project', () => { renderTracksPanel(); renderBoxPanel(); }); on('selection', onSelectionChanged);
 }
-Object.assign(W, { BOX_STEP, addTrack, renameTrack, rerollTrack, alignPreviewZone, applyBoxInputs, applyTrackStyle, boxContext, boxFrame, buildBoxGhosts, commitBox, deleteTrack, finishBoxDrag, moveBoxDrag, moveToTrack, nudgeBox, onSelectionChanged, paintBoxEditor, paintSnapLines, positionBoxGhosts, renderBoxPanel, renderTracksPanel, reorderTrack, resetBox, selectTrack, startBoxDrag });
+const trackCount = () => (ui.store.project.tracks || []).length;
+Object.assign(W, { BOX_STEP, trackCount, addTrack, renameTrack, rerollTrack, alignPreviewZone, applyBoxInputs, applyTrackStyle, boxContext, boxFrame, buildBoxGhosts, commitBox, deleteTrack, finishBoxDrag, moveBoxDrag, moveToTrack, openBoxPopover, nudgeBox, onSelectionChanged, paintBoxEditor, paintSnapLines, positionBoxGhosts, renderBoxPanel, renderTracksPanel, reorderTrack, resetBox, selectTrack, startBoxDrag });
 W.inits.push(init);
 })();

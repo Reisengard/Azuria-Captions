@@ -51,9 +51,7 @@
         <button id="captionRail_text" type="button" data-drawer="text" aria-controls="captionDrawer" aria-expanded="false"><span class="caption-rail-icon" aria-hidden="true">Aa</span><span class="caption-rail-label">文字</span></button>
         <button id="captionRail_effects" type="button" data-drawer="effects" aria-controls="captionDrawer" aria-expanded="false"><span class="caption-rail-icon" aria-hidden="true">✦</span><span class="caption-rail-label">エフェクト</span></button>
         <button id="captionRail_tracks" type="button" data-drawer="tracks" aria-controls="captionDrawer" aria-expanded="false"><span class="caption-rail-icon" aria-hidden="true">☰</span><span class="caption-rail-label">トラック</span></button>
-        <button id="captionRail_box" type="button" data-drawer="box" aria-controls="captionDrawer" aria-expanded="false"><span class="caption-rail-icon" aria-hidden="true">▢</span><span class="caption-rail-label">位置</span></button>
         <button id="captionRail_video" type="button" data-drawer="video" aria-controls="captionDrawer" aria-expanded="false"><span class="caption-rail-icon" aria-hidden="true">▶</span><span class="caption-rail-label">動画</span></button>
-        <button id="captionRail_export" type="button" data-drawer="export" aria-controls="captionDrawer" aria-expanded="false"><span class="caption-rail-icon" aria-hidden="true">⇪</span><span class="caption-rail-label">出力</span></button>
       </nav>
       <section id="captionDrawer" class="caption-drawer" aria-labelledby="captionDrawerTitle">
         <div class="caption-drawer-head"><h2 id="captionDrawerTitle">字幕</h2><button id="captionDrawerClose" type="button" class="ghost small" aria-label="パネルを閉じる" title="パネルを閉じる">✕</button></div>
@@ -233,17 +231,10 @@
         <div id="captionStylePane_tracks" class="caption-style-pane" hidden>
         <section id="captionTracksPanel" class="caption-box-panel caption-tracks-panel" aria-label="字幕トラック">
           <div class="caption-panel-head segment-head"><h2>字幕トラック</h2></div>
-          <p class="caption-profile-note">字幕を最大3つのトラックに分けると、別々の位置と見た目で同時に表示できます。単語は手動でトラックへ移せます。</p>
+          <p class="caption-profile-note">トラックの追加・名前の変更・並べ替え・削除は、タイムラインの左のトラック名から行います。ここでは、トラックごとの見た目を決めます。</p>
           <ul id="captionTrackList" class="caption-track-list" aria-label="トラック一覧"></ul>
           <div class="caption-track-buttons">
-            <button id="captionTrackAdd" type="button" class="small">トラックを追加</button>
             <button id="captionTrackReroll" type="button" class="small">このトラックをランダムに決める</button>
-          </div>
-          <label class="field">トラック名<input id="captionTrackName" type="text" maxlength="40"></label>
-          <div class="caption-track-buttons">
-            <button id="captionTrackForward" type="button" class="small">手前へ</button>
-            <button id="captionTrackBack" type="button" class="small">奥へ</button>
-            <button id="captionTrackDelete" type="button" class="small danger">トラックを削除</button>
           </div>
           <label class="field">トラックのスタイル<select id="captionTrackPreset"><option value="">全体に合わせる</option><option value="creator">Creator</option><option value="punchy">Punchy</option></select></label>
           <label class="field">トラックの装飾<select id="captionTrackTreatment"><option value="">全体に合わせる</option><option value="outline">Outline</option><option value="backplate">Backplate</option><option value="neon">Neon Glow</option><option value="echo">Color Echo</option></select></label>
@@ -251,27 +242,8 @@
           <div id="captionTrackWarnings" class="caption-box-warnings" role="status"></div>
         </section>
         </div>
-        <div id="captionStylePane_box" class="caption-style-pane" hidden>
-        <section id="captionBoxPanel" class="caption-box-panel" aria-label="字幕の位置ボックス">
-          <div class="caption-panel-head segment-head"><h2>字幕の位置ボックス</h2></div>
-          <label class="field">対象<select id="captionBoxScope"><option value="track">トラック全体</option><option id="captionBoxScopeSegment" value="segment">選択中の字幕のみ</option></select></label>
-          <div class="caption-box-grid">
-            <label class="field">X (%)<input id="captionBoxX" type="number" min="0" max="100" step="0.5"></label>
-            <label class="field">Y (%)<input id="captionBoxY" type="number" min="0" max="100" step="0.5"></label>
-            <label class="field">幅 (%)<input id="captionBoxWidth" type="number" min="5" max="100" step="0.5"></label>
-            <label class="field">高さ (%)<input id="captionBoxHeight" type="number" min="5" max="100" step="0.5"></label>
-          </div>
-          <button id="captionBoxReset" type="button" class="small">位置を初期値に戻す</button>
-          <div id="captionBoxWarnings" class="caption-box-warnings" role="status"></div>
-        </section>
-        </div>
         <div id="captionStylePane_video" class="caption-style-pane" hidden>
           <div id="captionVideoEditor" class="video-edit-tools"></div>
-        </div>
-        <div id="captionStylePane_export" class="caption-style-pane" hidden>
-          <p class="caption-profile-note">字幕付きの MP4 を書き出します。ブラウザ内だけで処理され、動画はどこにも送信されません。</p>
-          <dl class="caption-meta"><dt>形式</dt><dd id="captionExportFormat">—</dd><dt>長さ</dt><dd id="captionExportDuration">—</dd><dt>字幕</dt><dd id="captionExportCaptions">—</dd></dl>
-          <button id="captionExportPanel" type="button" class="primary" disabled>書き出し</button>
         </div>
         </div>
       </section>
@@ -286,6 +258,20 @@
           <div id="captionBoxSnapX" class="caption-snap-line vertical" hidden></div><div id="captionBoxSnapY" class="caption-snap-line horizontal" hidden></div>
           <div id="captionPreviewEmpty" class="caption-preview-empty">動画を選択してプレビューを開始</div>
         </div>
+        </div>
+        <div id="captionBoxHolder" hidden>
+          <section id="captionBoxPanel" class="caption-box-panel" aria-label="字幕の位置ボックス">
+            <div class="caption-panel-head segment-head"><h2>字幕の位置ボックス</h2></div>
+            <label class="field">対象<select id="captionBoxScope"><option value="track">トラック全体</option><option id="captionBoxScopeSegment" value="segment">選択中の字幕のみ</option></select></label>
+            <div class="caption-box-grid">
+              <label class="field">X (%)<input id="captionBoxX" type="number" min="0" max="100" step="0.5"></label>
+              <label class="field">Y (%)<input id="captionBoxY" type="number" min="0" max="100" step="0.5"></label>
+              <label class="field">幅 (%)<input id="captionBoxWidth" type="number" min="5" max="100" step="0.5"></label>
+              <label class="field">高さ (%)<input id="captionBoxHeight" type="number" min="5" max="100" step="0.5"></label>
+            </div>
+            <button id="captionBoxReset" type="button" class="small">位置を初期値に戻す</button>
+            <div id="captionBoxWarnings" class="caption-box-warnings" role="status"></div>
+          </section>
         </div>
         <div id="captionStatus" class="caption-status" role="status" aria-live="polite">準備完了</div>
       </main>
@@ -615,6 +601,16 @@
       <p>MP4 書き出し：mp4-muxer（MIT License）<br>フォント：Google Fonts 配布の各書体（SIL Open Font License 1.1）</p>
     </details>
     <div class="terms-foot"><span class="muted mono">© 2026 hakoniwa · MIT</span><button value="close" class="primary" autofocus>閉じる</button></div>
+  </form>
+</dialog>
+<dialog id="captionExportDlg" class="terms" aria-labelledby="captionExportTitle">
+  <form method="dialog">
+    <h2 id="captionExportTitle">書き出し</h2>
+    <p>字幕付きの MP4 を書き出します。ブラウザ内だけで処理され、動画はどこにも送信されません。</p>
+    <dl class="caption-meta"><dt>形式</dt><dd id="captionExportFormat">—</dd><dt>長さ</dt><dd id="captionExportDuration">—</dd><dt>字幕</dt><dd id="captionExportCaptions">—</dd></dl>
+    <progress id="captionExportProgress" class="caption-export-progress" max="1" value="0" hidden aria-label="書き出しの進み具合"></progress>
+    <p id="captionExportState" class="caption-export-state" role="status"></p>
+    <div class="terms-foot"><button value="close" class="ghost">閉じる</button><button id="captionExportPanel" type="button" class="primary" disabled>書き出しを開始</button></div>
   </form>
 </dialog>
 <dialog id="captionHelpDlg" class="terms" aria-labelledby="captionHelpTitle">

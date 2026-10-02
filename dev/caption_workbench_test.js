@@ -24,8 +24,12 @@ assert.ok(order.every(index => index > 0) && order.every((index, i) => i === 0 |
 const css = fs.readFileSync(path.join(root, 'app', 'style.css'), 'utf8');
 assert.match(css, /\.caption-rail \{ grid-column: 1;[\s\S]*\.caption-drawer \{ grid-column: 2;[\s\S]*\.caption-stage \{ grid-column: 3;/, 'desktop order must be rail | drawer | preview');
 assert.match(css, /\.caption-workbench\[data-drawer=""\] \{ --caption-drawer-w: 0px; \}/, 'a closed drawer must give its width to the preview');
-assert.ok(body.indexOf('id="captionVideoEditor"') > body.indexOf('id="captionStylePane_video"') && body.indexOf('id="captionVideoEditor"') < body.indexOf('id="captionStylePane_export"'), 'video editor is not in the Video pane');
-for (const name of ['captions', 'text', 'effects', 'tracks', 'box', 'video', 'export']) assert.match(body, new RegExp(`id="captionRail_${name}"[^>]*data-drawer="${name}"`), `the rail has no ${name} item`);
+assert.ok(body.indexOf('id="captionVideoEditor"') > body.indexOf('id="captionStylePane_video"') && body.indexOf('id="captionVideoEditor"') < body.indexOf('class="caption-stage"'), 'video editor is not in the Video pane');
+// U3: the Box and Export tabs are gone; the box is a popover on the preview, Export is a dialog
+for (const name of ['box', 'export']) assert.doesNotMatch(body, new RegExp(`id="captionRail_${name}"|id="captionStylePane_${name}"`), `the ${name} pane must be gone (U3)`);
+assert.match(body, /<dialog id="captionExportDlg"[\s\S]*id="captionExportProgress"[\s\S]*id="captionExportPanel"[\s\S]*<\/dialog>/, 'Export is a dialog with progress and a start / cancel button');
+assert.ok(body.indexOf('id="captionBoxPanel"') > body.indexOf('id="captionBoxHolder"') && body.indexOf('id="captionBoxHolder"') > body.indexOf('class="caption-stage"'), 'the box panel waits in a holder beside the preview until its popover opens');
+for (const name of ['captions', 'text', 'effects', 'tracks', 'video']) assert.match(body, new RegExp(`id="captionRail_${name}"[^>]*data-drawer="${name}"`), `the rail has no ${name} item`);
 assert.doesNotMatch(body, /id="captionLeftPane_roles"/, 'Style and Word styles are one Text pane (U2)');
 assert.ok(body.indexOf('id="captionStylePane_style"') > body.indexOf('id="captionDrawer"') && body.indexOf('id="captionStylePane_style"') < body.indexOf('class="caption-stage"'), 'the Text pane is not in the drawer');
 /* slim top bar: undo / redo, mode, menu, export; everything else lives in the ⋯ menu */
@@ -50,7 +54,7 @@ for (const id of ['captionRoleBaseFont', 'captionRoleBaseColor', 'captionRoleBas
   assert.match(rolesPane, new RegExp(`data-role-clear="${id}"`), `#${id} has no reset button`);
 }
 const shell = fs.readFileSync(path.join(root, 'src', '12bx_caption_shell.js'), 'utf8');
-assert.match(shell, /const DRAWER_OF_STYLE_TAB = \{ style: 'text', effects: 'effects', tracks: 'tracks', box: 'box', video: 'video', export: 'export' \}/, 'old Style tabs do not route to drawers');
+assert.match(shell, /const DRAWER_OF_STYLE_TAB = \{ style: 'text', effects: 'effects', tracks: 'tracks', video: 'video' \}/, 'old Style tabs do not route to drawers');
 assert.match(shell, /DRAWER_OF_LEFT_TAB = \{ transcript: 'captions', roles: 'text' \}/, 'old left tabs do not route to drawers');
 assert.match(shell, /localStorage\.setItem\(PREF_KEY/, 'the open drawer is not kept as a view preference');
 assert.doesNotMatch(shell, /store\.|runCommand/, 'the shell must not touch the project');
