@@ -91,6 +91,7 @@ const IN_PAGE = `(() => {
     readout() { const r = document.querySelector('.caption-drag-readout'); return r && r.textContent; },
     edges(id) { return ui.store.project.segments.filter(s => s.id !== id).flatMap(s => [s.start, s.end]).concat([0, ui.store.project.media.duration]); },
     select(id) { ui.selectedId = id; },
+    waveDrawn() { const c = document.getElementById('captionWaveform'), ctx = c.getContext('2d'), d = ctx.getImageData(0, 0, c.width, c.height).data; let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i]) n++; return { drawn: c.dataset.drawn, painted: n }; },
     setSnap(on) { if (ui.transport.snap !== on) $('captionSnap').click(); },
     lockTiming(id) { ui.store.execute({ type: 'set-field-lock', segmentId: id, field: 'timing', locked: true }); J.captionWb.emit('project'); ui.store.undoStack.length = 0; },
     unlockTiming(id) { ui.store.execute({ type: 'set-field-lock', segmentId: id, field: 'timing', locked: false }); J.captionWb.emit('project'); ui.store.undoStack.length = 0; return true; },
@@ -339,6 +340,18 @@ const IN_PAGE = `(() => {
     step('Delete: removes the selected caption', (await t('count')) === countBefore - 1 && (await t('seg', 'blockB')) === undefined, await t('status'));
     await t('undo2'); step('Delete: undo brings it back', (await t('seg', 'blockB')) !== undefined && (await t('count')) === countBefore);
     await t('blur');
+
+    // T6: waveform behind the VIDEO row, resizable and collapsible strip
+    let wave = { drawn: '0', painted: 0 }; for (let i = 0; i < 40 && wave.drawn !== '1'; i++) { await sleep(100); wave = await t('waveDrawn'); }
+    step('waveform: drawn behind the VIDEO row from the decoded audio', wave.drawn === '1' && wave.painted > 200, JSON.stringify(wave));
+    const stripH = (await t('rect', '#captionStrip')).height, gripBox = await t('rect', '#captionStripGrip'), gx = (gripBox.left + gripBox.right) / 2, gy = (gripBox.top + gripBox.bottom) / 2;
+    await drag({ x: gx, y: gy }, { x: gx, y: gy - 60 }); await sleep(100);
+    const grown = (await t('rect', '#captionStrip')).height; step('strip: dragging the top edge up makes it taller', grown > stripH + 40, `${stripH} -> ${grown}`);
+    const g2 = await t('rect', '#captionStripGrip'); await mouse('mousePressed', gx, (g2.top + g2.bottom) / 2, { clickCount: 1 }); await mouse('mouseReleased', gx, (g2.top + g2.bottom) / 2);
+    await mouse('mousePressed', gx, (g2.top + g2.bottom) / 2, { clickCount: 2 }); await mouse('mouseReleased', gx, (g2.top + g2.bottom) / 2, { clickCount: 2 }); await sleep(100);
+    step('strip: double-click collapses it to the transport line', (await t('rect', '#captionTimeline')).height === 0 && (await t('rect', '#captionStrip')).height < stripH, JSON.stringify(await t('rect', '#captionTimeline')));
+    const g3 = await t('rect', '#captionStripGrip'); await mouse('mousePressed', gx, (g3.top + g3.bottom) / 2, { clickCount: 2 }); await mouse('mouseReleased', gx, (g3.top + g3.bottom) / 2, { clickCount: 2 }); await sleep(150);
+    step('strip: double-click expands it again, keeping its height', (await t('rect', '#captionTimeline')).height > 50 && Math.abs((await t('rect', '#captionStrip')).height - grown) < 2);
 
     const problems = log.filter(line => !/favicon|Failed to load resource/.test(line));
     step('no page errors', problems.length === 0, problems.join(' | '));

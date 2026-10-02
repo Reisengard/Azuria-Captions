@@ -271,5 +271,29 @@ function nudge(layout, segmentId, direction, step = NUDGE) {
   return resolveDrag({ layout, segmentId, mode: 'move', time: segment.start + direction * step, grab: 0, trackId: segment.trackId, pps: 1, snap: false });
 }
 
-J.captionTimeline = { NEW_LENGTH, createRange, freeGap, groupMoveOrder, marqueeHits, newBlockRange, resolveGroupMove, adjacentTrackId, reorderIndex, NUDGE, SNAP_PX, MIN_SEGMENT, nearestSnap, nudge, resolveDrag, snapTargets, trackNeighbors, FRAME, LOOP_LEAD, SPEEDS, adjacentSegment, keyAction, loopRegion, loopSeek, markRegion, nextSpeed, stepTime, MAX_PPS, TICK_MIN_PX, blockRect, clampPps, clampScroll, contentWidth, fitPps, followScroll, formatTick, overlapsRange, rulerTicks, tickStep, timeToX, visibleRange, wordLabelsVisible, wordTicksVisible, xToTime, zoomAround };
+/* Waveform (T6): peaks are the largest |sample| per 1/WAVE_RATE s over all channels, computed once; drawing reads a column per pixel. */
+const WAVE_RATE = 100, WAVE_MAX_SECONDS = 600, WAVE_MAX_BYTES = 600 * 1024 * 1024;
+const waveformAllowed = (duration, bytes) => duration > 0 && duration <= WAVE_MAX_SECONDS && !(bytes > WAVE_MAX_BYTES);
+function waveformPeaks(channels, sampleRate, rate = WAVE_RATE) {
+  const length = channels.length ? channels[0].length : 0, size = Math.max(1, Math.round(sampleRate / rate)), count = Math.ceil(length / size), peaks = new Float32Array(count);
+  for (const data of channels) for (let b = 0; b < count; b++) { let peak = peaks[b]; for (let i = b * size, end = Math.min(length, i + size); i < end; i++) { const v = data[i] < 0 ? -data[i] : data[i]; if (v > peak) peak = v; } peaks[b] = peak; }
+  return peaks;
+}
+/* One amplitude (0..1, scaled so the loudest peak is 1) per pixel column of the window starting at `scrollLeft`. */
+function waveformColumns(peaks, rate, pps, scrollLeft, width) {
+  const out = new Float32Array(Math.max(0, Math.floor(width))); let top = 0; for (let i = 0; i < peaks.length; i++) if (peaks[i] > top) top = peaks[i];
+  if (!top) return out;
+  for (let x = 0; x < out.length; x++) {
+    const from = Math.max(0, Math.floor((scrollLeft + x) / pps * rate)), to = Math.min(peaks.length, Math.max(from + 1, Math.ceil((scrollLeft + x + 1) / pps * rate))); let peak = 0;
+    for (let i = from; i < to; i++) if (peaks[i] > peak) peak = peaks[i];
+    out[x] = peak / top;
+  }
+  return out;
+}
+
+/* Strip height (T6): dragged between a minimum and 70 % of the window. */
+const STRIP_MIN = 96;
+const clampStripHeight = (height, windowHeight) => clamp(Math.round(height), STRIP_MIN, Math.max(STRIP_MIN, Math.round(windowHeight * .7)));
+
+J.captionTimeline = { WAVE_RATE, WAVE_MAX_SECONDS, waveformAllowed, waveformPeaks, waveformColumns, STRIP_MIN, clampStripHeight, NEW_LENGTH, createRange, freeGap, groupMoveOrder, marqueeHits, newBlockRange, resolveGroupMove, adjacentTrackId, reorderIndex, NUDGE, SNAP_PX, MIN_SEGMENT, nearestSnap, nudge, resolveDrag, snapTargets, trackNeighbors, FRAME, LOOP_LEAD, SPEEDS, adjacentSegment, keyAction, loopRegion, loopSeek, markRegion, nextSpeed, stepTime, MAX_PPS, TICK_MIN_PX, blockRect, clampPps, clampScroll, contentWidth, fitPps, followScroll, formatTick, overlapsRange, rulerTicks, tickStep, timeToX, visibleRange, wordLabelsVisible, wordTicksVisible, xToTime, zoomAround };
 })();

@@ -46,6 +46,62 @@ function drawRuler() {
   }
 }
 
+/* Waveform behind the VIDEO row: decoded once per imported video, drawn for the visible window only. Skipped above ~10 min. */
+let waveSeq = 0;
+function clearWaveform() { waveSeq++; ui.timeline.wave = null; drawWaveform(); }
+async function loadWaveform(file, duration) {
+  const seq = ++waveSeq; ui.timeline.wave = null; drawWaveform();
+  if (!file || !(window.AudioContext || window.webkitAudioContext)) return;
+  if (!TL.waveformAllowed(duration, file.size)) { status('音声の波形を表示できません（長さが10分を超える動画では省略されます）。'); return; }
+  let context;
+  try {
+    context = new (window.AudioContext || window.webkitAudioContext)();
+    const buffer = await context.decodeAudioData(await file.arrayBuffer());
+    if (seq !== waveSeq) return;
+    ui.timeline.wave = { peaks: TL.waveformPeaks(Array.from({ length: buffer.numberOfChannels }, (_, c) => buffer.getChannelData(c)), buffer.sampleRate), rate: TL.WAVE_RATE };
+  } catch (error) { if (seq === waveSeq) ui.timeline.wave = null; }   // no audio track or an undecodable one: the row stays plain
+  finally { try { context && context.close(); } catch (error) {} }
+  if (seq === waveSeq) drawWaveform();
+}
+function drawWaveform() {
+  const canvas = $('captionWaveform'), ctx = canvas.getContext && canvas.getContext('2d'); if (!ctx) return;
+  const width = viewportWidth(), dpr = window.devicePixelRatio || 1, height = 30, wave = ui.timeline.wave;
+  if (canvas.width !== Math.round(width * dpr)) { canvas.width = Math.round(width * dpr); canvas.height = height * dpr; canvas.style.width = `${width}px`; }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, width, height);
+  canvas.dataset.drawn = '0'; if (!wave || !ui.store) return;
+  const columns = TL.waveformColumns(wave.peaks, wave.rate, ui.timeline.pps, scrollEl().scrollLeft, width), mid = height / 2, half = height / 2 - 7;
+  ctx.fillStyle = 'rgba(22,244,212,.5)';
+  for (let x = 0; x < columns.length; x++) { const h = Math.max(1, columns[x] * half * 2); ctx.fillRect(x, mid - h / 2, 1, h); }
+  canvas.dataset.drawn = '1';
+}
+
+/* Strip height: drag the top edge to resize, double-click (or Enter) to collapse to the transport line. A view preference, kept in this browser. */
+const STRIP_KEY = 'jizura.captionStrip';
+function saveStrip() { try { localStorage.setItem(STRIP_KEY, JSON.stringify({ height: ui.timeline.stripHeight || null, collapsed: !!ui.timeline.collapsed })); } catch (error) {} }
+function applyStrip() {
+  const strip = $('captionStrip'), { stripHeight, collapsed } = ui.timeline;
+  strip.classList.toggle('is-collapsed', !!collapsed); $('captionStripGrip').setAttribute('aria-expanded', String(!collapsed));
+  strip.style.height = stripHeight && !collapsed ? `${stripHeight}px` : ''; strip.style.maxHeight = stripHeight && !collapsed ? 'none' : '';
+}
+function setStripHeight(height) { ui.timeline.stripHeight = TL.clampStripHeight(height, window.innerHeight); ui.timeline.collapsed = false; applyStrip(); }
+function toggleStrip() { ui.timeline.collapsed = !ui.timeline.collapsed; applyStrip(); saveStrip(); if (!ui.timeline.collapsed && ui.store) renderTimeline(); }
+function initStrip() {
+  const strip = $('captionStrip'), grip = $('captionStripGrip'); let resize = null;
+  try { const saved = JSON.parse(localStorage.getItem(STRIP_KEY) || 'null'); if (saved) { ui.timeline.stripHeight = saved.height ? TL.clampStripHeight(saved.height, window.innerHeight) : 0; ui.timeline.collapsed = !!saved.collapsed; } } catch (error) {}
+  applyStrip();
+  grip.addEventListener('pointerdown', event => { if (event.button) return; event.preventDefault(); resize = { y: event.clientY, height: strip.getBoundingClientRect().height, moved: false }; });
+  window.addEventListener('pointermove', event => { if (!resize) return; if (!resize.moved && Math.abs(event.clientY - resize.y) < 3) return; resize.moved = true; document.body.classList.add('is-strip-resizing'); setStripHeight(resize.height + resize.y - event.clientY); });
+  const end = () => { if (resize && resize.moved) saveStrip(); resize = null; document.body.classList.remove('is-strip-resizing'); };
+  window.addEventListener('pointerup', end); window.addEventListener('pointercancel', end);
+  grip.addEventListener('dblclick', toggleStrip);
+  grip.addEventListener('keydown', event => {
+    if (event.key === 'Enter') { event.preventDefault(); toggleStrip(); return; }
+    if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+    event.preventDefault(); setStripHeight(strip.getBoundingClientRect().height + (event.key === 'ArrowUp' ? 24 : -24)); saveStrip();
+  });
+  window.addEventListener('resize', () => { if (ui.timeline.stripHeight && !ui.timeline.collapsed) { ui.timeline.stripHeight = TL.clampStripHeight(ui.timeline.stripHeight, window.innerHeight); applyStrip(); } });
+}
+
 /* One row and one header per track, reused between renders. */
 function syncRows(project) {
   const track = $('captionSegmentTrack'), heads = $('captionTrackLabels'), current = activeTrack(), seen = new Set();
@@ -203,8 +259,9 @@ function renderTimeline() {
   const kept = J.videoClips(project, duration), cuts = [];
   kept.forEach((clip, i) => { const from = i ? kept[i - 1].end : 0; if (clip.start - from > .001) cuts.push([from, clip.start]); });
   if (kept.length && duration - kept[kept.length - 1].end > .001) cuts.push([kept[kept.length - 1].end, duration]);
-  $('captionVideoTrack').replaceChildren(...cuts.map(([from, to]) => { const cut = document.createElement('span'); cut.className = 'caption-video-cut'; cut.style.left = `${from * pps}px`; cut.style.width = `${(to - from) * pps}px`; cut.title = `${fmt(from)}–${fmt(to)}`; return cut; }));
-  drawRuler(); placeLoop(); placePlayhead(sourceVideo() ? sourceVideo().currentTime : 0);
+  const videoTrack = $('captionVideoTrack'); videoTrack.querySelectorAll('.caption-video-cut').forEach(node => node.remove());
+  videoTrack.append(...cuts.map(([from, to]) => { const cut = document.createElement('span'); cut.className = 'caption-video-cut'; cut.style.left = `${from * pps}px`; cut.style.width = `${(to - from) * pps}px`; cut.title = `${fmt(from)}–${fmt(to)}`; return cut; }));
+  drawRuler(); drawWaveform(); placeLoop(); placePlayhead(sourceVideo() ? sourceVideo().currentTime : 0);
 }
 /* Scrolling only changes which blocks are near the viewport: word ticks are (re)built for those. */
 function updateWords() {
@@ -587,7 +644,7 @@ function markSelection() {
 }
 
 function init() {
-  const scroll = scrollEl(), ruler = $('captionRuler');
+  const scroll = scrollEl(), ruler = $('captionRuler'); initStrip();
   $('captionSegmentList').addEventListener('click', event => { const target = event.target.closest('[data-segment-id]'); if (target) selectSegment(target.dataset.segmentId); });
   const heads = $('captionTrackLabels');
   heads.addEventListener('click', event => { const more = event.target.closest('[data-track-menu]'); if (more) openTrackMenu(more.dataset.trackMenu); });
@@ -644,7 +701,7 @@ function init() {
   }, { passive: false });
   scroll.addEventListener('scroll', () => {
     if (expectedScroll !== null && Math.abs(scroll.scrollLeft - expectedScroll) < 1) expectedScroll = null; else { expectedScroll = null; ui.timeline.follow = false; }
-    ui.timeline.scrollLeft = scroll.scrollLeft; drawRuler(); if (!wordsFrame) wordsFrame = requestAnimationFrame(updateWords);
+    ui.timeline.scrollLeft = scroll.scrollLeft; drawRuler(); drawWaveform(); if (!wordsFrame) wordsFrame = requestAnimationFrame(updateWords);
   });
   if (typeof ResizeObserver === 'function') new ResizeObserver(() => { if (ui.store) renderTimeline(); }).observe(scroll);
   $('captionTimelineIn').addEventListener('click', () => { ui.timeline.follow = false; zoomTimeline(2); });
@@ -653,6 +710,6 @@ function init() {
   for (const id of ['captionSegmentList', 'captionSegmentTrack']) $(id).addEventListener('dblclick', event => { const target = event.target.closest('[data-segment-id]'); if (target) selectSegment(target.dataset.segmentId, true); });
   on('project', renderSegments); on('selection', markSelection);
 }
-Object.assign(W, { deleteSelected, duplicateSelected, newCaptionAtPlayhead, splitAtPlayhead, moveSelectedTrack, openTrackMenu, renameInline, cancelSegmentDrag, dragging, nudgeSegment, finishBoundary, fitTimeline, markNow, markSelection, moveBoundary, placeLoop, renderSegments, renderTimeline, revealTime, seekTimeline, startBoundaryDrag, timelineFollow, timelineTimeAt, updatePlayhead, zoomTimeline });
+Object.assign(W, { loadWaveform, clearWaveform, toggleStrip, deleteSelected, duplicateSelected, newCaptionAtPlayhead, splitAtPlayhead, moveSelectedTrack, openTrackMenu, renameInline, cancelSegmentDrag, dragging, nudgeSegment, finishBoundary, fitTimeline, markNow, markSelection, moveBoundary, placeLoop, renderSegments, renderTimeline, revealTime, seekTimeline, startBoundaryDrag, timelineFollow, timelineTimeAt, updatePlayhead, zoomTimeline });
 W.inits.push(init);
 })();

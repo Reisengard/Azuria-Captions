@@ -59,3 +59,16 @@ near(TL.followScroll(0, 600, 590, 15, 100), 530);
 near(TL.followScroll(900, 600, 100, 15, 100), 40);
 near(TL.followScroll(0, 600, 1500, 15, 100), 900);   // clamped to the end
 console.log('Caption timeline model tests passed.');
+
+// T6: waveform peaks and columns, strip height
+{
+  const sr = 1000, a = new Float32Array(1000), b = new Float32Array(1000); a[5] = .5; a[995] = -1; b[15] = .8;
+  const peaks = TL.waveformPeaks([a, b], sr, 100);   // 10 samples per bucket
+  assert.equal(peaks.length, 100); near(peaks[0], .5); near(peaks[1], .8); near(peaks[99], 1); near(peaks[50], 0);
+  const cols = TL.waveformColumns(peaks, 100, 50, 0, 100);   // 50 px/s → 2 px per second... 1 px = 0.02 s = 2 buckets
+  assert.equal(cols.length, 100); near(cols[0], .8); near(cols[49], 1); near(cols[99], 0);
+  assert.ok(cols.every(v => v >= 0 && v <= 1)); assert.equal(TL.waveformColumns(new Float32Array(10), 100, 50, 0, 20).every(v => v === 0), true);
+  near(TL.waveformColumns(peaks, 100, 50, 10000, 5)[0], 0);   // past the end → silence
+  assert.ok(TL.waveformAllowed(30, 1e6)); assert.ok(!TL.waveformAllowed(601, 1e6)); assert.ok(!TL.waveformAllowed(0, 1));
+  assert.equal(TL.clampStripHeight(10, 900), TL.STRIP_MIN); assert.equal(TL.clampStripHeight(5000, 900), 630); assert.equal(TL.clampStripHeight(200.4, 900), 200);
+}

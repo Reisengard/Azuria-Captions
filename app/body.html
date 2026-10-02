@@ -308,7 +308,8 @@
 <div id="captionStatus" class="caption-status" role="status" aria-live="polite">準備完了</div>
       </aside>
 
-      <footer class="caption-timeline-strip" aria-label="再生とタイムライン">
+      <footer id="captionStrip" class="caption-timeline-strip" aria-label="再生とタイムライン">
+        <div id="captionStripGrip" class="caption-strip-grip" role="separator" aria-orientation="horizontal" tabindex="0" aria-label="タイムラインの高さ" title="ドラッグで高さを変更、ダブルクリックで折りたたみ / 展開"></div>
         <div class="caption-strip-head">
           <div class="caption-transport">
             <button id="captionPlay" type="button" class="play" disabled aria-label="再生" title="再生 / 一時停止（Space）">▶</button>
@@ -330,7 +331,7 @@
           <div id="captionTimelineScroll" class="caption-timeline-scroll" tabindex="0">
             <div id="captionTimelineContent" class="caption-timeline-content">
               <canvas id="captionRuler" class="caption-ruler" aria-label="時間目盛り（クリックまたはドラッグで移動）"></canvas>
-              <div id="captionVideoTrack" class="caption-video-track" title="縞模様の部分はトリムで削除され、書き出されません"></div>
+              <div id="captionVideoTrack" class="caption-video-track" title="縞模様の部分はトリムで削除され、書き出されません"><canvas id="captionWaveform" class="caption-waveform" aria-hidden="true"></canvas></div>
               <div id="captionSegmentTrack" class="caption-segment-track"></div>
               <div id="captionLoopRegion" class="caption-loop-region" hidden aria-hidden="true"></div>
               <div id="captionPlayhead" class="caption-playhead" aria-hidden="true"></div>
