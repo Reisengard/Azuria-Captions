@@ -321,7 +321,7 @@ One step at a time; each leaves the app working and tests green; commit per step
 - Then start E0.
 
 **Phase A — foundations (no visible redesign yet)**
-- [ ] **E0 — Lyric Motion hidden, default mode Video Captions.** Flag in `11z_product_shell.js`; `product_mode_shell_test.js` updated; `lyric_smoke.js` unchanged and green.
+- [x] **E0 — Lyric Motion hidden, default mode Video Captions.** Flag in `11z_product_shell.js`; `product_mode_shell_test.js` updated; `lyric_smoke.js` unchanged and green.
 - [x] **E1 — Timing rules into the store + new commands.** §3.2–3.4: `captionSegmentFits`, `move-segment`, `trim-segment`, `split-segment` by time, `delete-segment`, `edit-segment-text`, `retime-tokens`, `batch`; per-track token overlap; load-time overlap = warning. ADR 0010. UI unchanged except `applyTiming` now relies on the store. Tests as in §3.
   - Done 2026-10-02: ADR 0010; `dev/caption_timing_commands_test.js` (`npm run test:timing-commands`). `set-segment-timing` is an alias of `trim-segment` (words kept); `applyTiming` sends `trim-segment`. Load-time overlap is reported by `J.captionTrackOverlaps` (no UI display yet). `validateTranscript` takes `options.segments` (per-track rule) and `ignoreUnowned` (planner).
 - [ ] **E2 — Split `12c` + event bus + selection model.** Pure refactor into the files of §6.4 (panels move as they are); `renderAll` replaced by subscriptions; selection decoupled from the playhead (decision 6). No markup change. Structural tests re-pointed to the new files.
