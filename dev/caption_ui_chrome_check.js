@@ -110,6 +110,7 @@ const IN_PAGE = `(() => {
     removeTrack(id) { ui.store.execute({ type: 'remove-track', trackId: id }); J.captionWb.emit('project'); },
     errors() { return JSON.stringify(ui.errors); },
     count() { return ui.store.project.segments.length; },
+    u4(query, warn) { const search = $('captionListSearch'), warnBtn = $('captionListWarn'); search.value = query || ''; search.dispatchEvent(new Event('input', { bubbles: true })); if (warn !== undefined && (warnBtn.getAttribute('aria-pressed') === 'true') !== warn) warnBtn.click(); const rows = [...$('captionSegmentList').querySelectorAll('[data-segment-id]')]; return { rows: rows.length, total: ui.store.project.segments.length, count: $('captionListCount').textContent, noMatch: !$('captionListNoMatch').hidden, pressed: warnBtn.getAttribute('aria-pressed'), warned: rows.filter(r => r.querySelector('.caption-segment-warning')).length }; },
     sel() { return JSON.stringify([...ui.selection.segmentIds].sort()); },
     undo2() { const ok = ui.store.undo(); J.captionWb.emit('project'); return ok; },
     syncState() { const p = document.getElementById('captionSyncPanel'), v = ui.media.current.video; return { panel: !!p && !p.hidden, speed: ui.transport.speed, paused: v.paused, next: p ? document.getElementById('captionSyncNext').textContent : '' }; },
@@ -514,6 +515,16 @@ const IN_PAGE = `(() => {
     step('u3: Export opens a dialog with format and a start button', u3.dlg && u3.format !== '—' && u3.start.length > 0, JSON.stringify(u3));
     await key('Escape', 'Escape', { vk: 27 }); await sleep(100); u3 = await t('u3');
     step('u3: Esc closes the export dialog', !u3.dlg);
+
+    // U4: the Captions drawer list filters by text and by warnings without touching the project
+    let u4 = await t('u4', '');
+    step('u4: the list shows every caption and its count', u4.rows === u4.total && u4.total > 0 && /\d/.test(u4.count), JSON.stringify(u4));
+    u4 = await t('u4', 'zzzz-no-such-caption');
+    step('u4: a search with no hit shows the empty note and no rows', u4.rows === 0 && u4.noMatch, JSON.stringify(u4));
+    u4 = await t('u4', '', true);
+    step('u4: the warning filter keeps only captions with a warning', u4.pressed === 'true' && u4.rows === u4.warned, JSON.stringify(u4));
+    u4 = await t('u4', '', false);
+    step('u4: clearing the filters brings every caption back', u4.rows === u4.total && u4.pressed === 'false', JSON.stringify(u4));
 
     const problems = log.filter(line => !/favicon|Failed to load resource/.test(line));
     step('no page errors', problems.length === 0, problems.join(' | '));

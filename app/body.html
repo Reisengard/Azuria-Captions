@@ -57,7 +57,7 @@
         <div class="caption-drawer-head"><h2 id="captionDrawerTitle">字幕</h2><button id="captionDrawerClose" type="button" class="ghost small" aria-label="パネルを閉じる" title="パネルを閉じる">✕</button></div>
         <div class="caption-drawer-body">
       <div id="captionLeftPane_transcript" class="caption-panel caption-transcript caption-left-pane" role="group" aria-label="文字起こしと字幕セグメント">
-        <div class="caption-panel-head"><h2>文字起こし</h2><span id="captionTimingBadge" class="caption-badge">未読込</span></div>
+        <div class="caption-panel-head"><h2>字幕</h2><span id="captionTimingBadge" class="caption-badge">未読込</span></div>
         <div id="captionDropZone" class="caption-import-zone">
           <strong>まず動画を読み込む</strong>
           <p>ローカル動画はブラウザ内だけで扱われます。</p>
@@ -79,9 +79,15 @@
           <p>プロジェクトには動画本体を保存しません。同じ動画を選ぶと編集を再開できます。</p>
           <label class="file">動画を再リンク<input id="captionRelinkFile" type="file" accept="video/*,.mp4,.webm,.mov,.m4v"></label>
         </div>
+        <div id="captionListTools" class="caption-list-tools" role="search">
+          <input id="captionListSearch" type="search" placeholder="字幕を検索" aria-label="字幕を検索" autocomplete="off" spellcheck="false">
+          <button id="captionListWarn" type="button" class="small" aria-pressed="false" title="警告のある字幕だけ表示">⚠ 警告のみ</button>
+        </div>
+        <div id="captionListCount" class="caption-list-count muted" aria-live="polite"></div>
         <ol id="captionSegmentList" class="caption-segment-list" aria-label="字幕セグメント"></ol>
+        <div id="captionListNoMatch" class="caption-empty" hidden>条件に合う字幕がありません。</div>
         <div id="captionTranscriptEmpty" class="caption-empty">① 動画を選ぶ → ② 字幕を追加（単語タイムスタンプ JSON・SRT・VTT を読み込む／台本を貼り付ける／タイムラインで入力）</div>
-      </aside>
+      </div>
       <div id="captionEditHolder" hidden>
         <div id="captionSegmentInspector" class="caption-edit" hidden>
           <div id="captionEditError" class="caption-validation" role="alert" hidden></div>

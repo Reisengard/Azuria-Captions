@@ -248,10 +248,16 @@ function updateWords() {
   for (const segment of project.segments) { const entry = blocks.get(segment.id); if (entry) syncBlockWords(entry, segment, tokens, range, ui.timeline.pps); }
 }
 
+/* Search / warning filter of the Captions drawer list: a view state only, the timeline and the project are untouched. */
+const listFilter = { query: '', warnOnly: false };
 function renderList() {
   const list = $('captionSegmentList'), project = ui.store.project, tracks = project.tracks || [];
   list.replaceChildren();
+  const query = listFilter.query.trim().toLowerCase(), shown = [];
   project.segments.forEach(segment => {
+    if (query && !segmentText(segment).toLowerCase().includes(query)) return;
+    if (listFilter.warnOnly && !accessibilityWarnings(segment).length) return;
+    shown.push(segment);
     const text = segmentText(segment), item = document.createElement('li'), button = document.createElement('button');
     button.type = 'button'; button.className = 'caption-segment'; button.dataset.segmentId = segment.id; button.classList.toggle('is-now', ui.currentIds.has(segment.id));
     button.setAttribute('aria-selected', String(ui.selection.segmentIds.has(segment.id)));
@@ -260,7 +266,11 @@ function renderList() {
     button.innerHTML = `<span class="caption-segment-time">${fmt(segment.start)}</span><span>${tag}${escapeHtml(text)} ${warning}</span>`;
     item.appendChild(button); list.appendChild(item);
   });
-  $('captionTranscriptEmpty').hidden = project.segments.length > 0;
+  const total = project.segments.length, filtered = !!(query || listFilter.warnOnly);
+  $('captionTranscriptEmpty').hidden = total > 0;
+  $('captionListTools').hidden = !total;
+  $('captionListNoMatch').hidden = !(total && !shown.length);
+  $('captionListCount').textContent = !total ? '' : filtered ? `${shown.length} / ${total} 件` : `${total} 件`;
   const quality = project.transcript.timingQuality || 'word';
   $('captionTimingBadge').title = quality === 'estimated' ? 'SRT/VTT and manually entered captions use estimated word timings. Captions are ready to preview.' : '';
   $('captionTimingBadge').textContent = project.transcript.tokens.length ? (quality === 'estimated' ? '推定タイミング' : '単語タイミング') : '未読込';
@@ -620,6 +630,8 @@ function markSelection() {
 
 function init() {
   const scroll = scrollEl(), ruler = $('captionRuler'); initStrip();
+  $('captionListSearch').addEventListener('input', event => { listFilter.query = event.target.value; renderList(); });
+  $('captionListWarn').addEventListener('click', event => { listFilter.warnOnly = !listFilter.warnOnly; event.currentTarget.setAttribute('aria-pressed', String(listFilter.warnOnly)); renderList(); });
   $('captionSegmentList').addEventListener('click', event => { const target = event.target.closest('[data-segment-id]'); if (target) selectSegment(target.dataset.segmentId); });
   const heads = $('captionTrackLabels');
   heads.addEventListener('click', event => { const more = event.target.closest('[data-track-menu]'); if (more) openTrackMenu(more.dataset.trackMenu); });

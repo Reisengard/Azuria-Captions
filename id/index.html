@@ -915,6 +915,11 @@ html[data-product-mode=video-captions] label.file:hover { border-color: var(--am
 #captionStylePane_style > .caption-role-sample { position: sticky; top: -14px; z-index: 1; }
 #captionRolesReset { margin-top: 10px; }
 .caption-transcript > .caption-panel-head h2 { display: none; }
+.caption-list-tools { display: flex; gap: 6px; margin: 10px 0 4px; }
+.caption-list-tools[hidden], .caption-empty[hidden] { display: none; }
+.caption-list-tools input { flex: 1; min-width: 0; }
+.caption-list-tools button[aria-pressed="true"] { border-color: var(--cyan); color: var(--cyan); }
+.caption-list-count { font-size: 12px; margin: 0 0 6px; }
 .caption-look-global { margin: 0 0 12px; }
 .caption-stage { grid-column: 3; grid-row: 1; display: flex; min-width: 0; min-height: 0; flex-direction: column; gap: 6px; padding: 12px 14px 8px; overflow: hidden; background: radial-gradient(circle at 50% 30%, #17203a 0, var(--ink) 70%); }
 .caption-stage-view { position: relative; flex: 1 1 auto; min-height: 0; display: grid; place-items: center; }
@@ -1025,7 +1030,7 @@ html[data-product-mode=video-captions] label.file:hover { border-color: var(--am
         <div class="caption-drawer-head"><h2 id="captionDrawerTitle">字幕</h2><button id="captionDrawerClose" type="button" class="ghost small" aria-label="パネルをTutup" title="パネルをTutup">✕</button></div>
         <div class="caption-drawer-body">
       <div id="captionLeftPane_transcript" class="caption-panel caption-transcript caption-left-pane" role="group" aria-label="文字起こしと字幕セグメント">
-        <div class="caption-panel-head"><h2>文字起こし</h2><span id="captionTimingBadge" class="caption-badge">未読込</span></div>
+        <div class="caption-panel-head"><h2>字幕</h2><span id="captionTimingBadge" class="caption-badge">未読込</span></div>
         <div id="captionDropZone" class="caption-import-zone">
           <strong>まず動画を読み込む</strong>
           <p>ローカル動画はブラウザ内だけで扱われます。</p>
@@ -1047,9 +1052,15 @@ html[data-product-mode=video-captions] label.file:hover { border-color: var(--am
           <p>プロジェクトには動画本体をSimpanしません。同じ動画を選ぶと編集を再開できます。</p>
           <label class="file">動画を再リンク<input id="captionRelinkFile" type="file" accept="video/*,.mp4,.webm,.mov,.m4v"></label>
         </div>
+        <div id="captionListTools" class="caption-list-tools" role="search">
+          <input id="captionListSearch" type="search" placeholder="字幕を検索" aria-label="字幕を検索" autocomplete="off" spellcheck="false">
+          <button id="captionListWarn" type="button" class="small" aria-pressed="false" title="警告のある字幕だけ表示">⚠ 警告のみ</button>
+        </div>
+        <div id="captionListCount" class="caption-list-count muted" aria-live="polite"></div>
         <ol id="captionSegmentList" class="caption-segment-list" aria-label="字幕セグメント"></ol>
+        <div id="captionListNoMatch" class="caption-empty" hidden>条件に合う字幕がありません。</div>
         <div id="captionTranscriptEmpty" class="caption-empty">① 動画を選ぶ → ② 字幕をBaru（単語タイムスタンプ JSON・SRT・VTT を読み込む／台本を貼り付ける／タイムラインで入力）</div>
-      </aside>
+      </div>
       <div id="captionEditHolder" hidden>
         <div id="captionSegmentInspector" class="caption-edit" hidden>
           <div id="captionEditError" class="caption-validation" role="alert" hidden></div>
@@ -44998,10 +45009,16 @@ function updateWords() {
   for (const segment of project.segments) { const entry = blocks.get(segment.id); if (entry) syncBlockWords(entry, segment, tokens, range, ui.timeline.pps); }
 }
 
+/* Search / warning filter of the Captions drawer list: a view state only, the timeline and the project are untouched. */
+const listFilter = { query: '', warnOnly: false };
 function renderList() {
   const list = $('captionSegmentList'), project = ui.store.project, tracks = project.tracks || [];
   list.replaceChildren();
+  const query = listFilter.query.trim().toLowerCase(), shown = [];
   project.segments.forEach(segment => {
+    if (query && !segmentText(segment).toLowerCase().includes(query)) return;
+    if (listFilter.warnOnly && !accessibilityWarnings(segment).length) return;
+    shown.push(segment);
     const text = segmentText(segment), item = document.createElement('li'), button = document.createElement('button');
     button.type = 'button'; button.className = 'caption-segment'; button.dataset.segmentId = segment.id; button.classList.toggle('is-now', ui.currentIds.has(segment.id));
     button.setAttribute('aria-selected', String(ui.selection.segmentIds.has(segment.id)));
@@ -45010,7 +45027,11 @@ function renderList() {
     button.innerHTML = `<span class="caption-segment-time">${fmt(segment.start)}</span><span>${tag}${escapeHtml(text)} ${warning}</span>`;
     item.appendChild(button); list.appendChild(item);
   });
-  $('captionTranscriptEmpty').hidden = project.segments.length > 0;
+  const total = project.segments.length, filtered = !!(query || listFilter.warnOnly);
+  $('captionTranscriptEmpty').hidden = total > 0;
+  $('captionListTools').hidden = !total;
+  $('captionListNoMatch').hidden = !(total && !shown.length);
+  $('captionListCount').textContent = !total ? '' : filtered ? `${shown.length} / ${total} 件` : `${total} 件`;
   const quality = project.transcript.timingQuality || 'word';
   $('captionTimingBadge').title = quality === 'estimated' ? 'SRT/VTT and manually entered captions use estimated word timings. Captions are ready to preview.' : '';
   $('captionTimingBadge').textContent = project.transcript.tokens.length ? (quality === 'estimated' ? '推定タイミング' : '単語タイミング') : '未読込';
@@ -45370,6 +45391,8 @@ function markSelection() {
 
 function init() {
   const scroll = scrollEl(), ruler = $('captionRuler'); initStrip();
+  $('captionListSearch').addEventListener('input', event => { listFilter.query = event.target.value; renderList(); });
+  $('captionListWarn').addEventListener('click', event => { listFilter.warnOnly = !listFilter.warnOnly; event.currentTarget.setAttribute('aria-pressed', String(listFilter.warnOnly)); renderList(); });
   $('captionSegmentList').addEventListener('click', event => { const target = event.target.closest('[data-segment-id]'); if (target) selectSegment(target.dataset.segmentId); });
   const heads = $('captionTrackLabels');
   heads.addEventListener('click', event => { const more = event.target.closest('[data-track-menu]'); if (more) openTrackMenu(more.dataset.trackMenu); });

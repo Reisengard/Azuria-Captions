@@ -892,6 +892,11 @@ html[data-product-mode=video-captions] label.file:hover { border-color: var(--am
 #captionStylePane_style > .caption-role-sample { position: sticky; top: -14px; z-index: 1; }
 #captionRolesReset { margin-top: 10px; }
 .caption-transcript > .caption-panel-head h2 { display: none; }
+.caption-list-tools { display: flex; gap: 6px; margin: 10px 0 4px; }
+.caption-list-tools[hidden], .caption-empty[hidden] { display: none; }
+.caption-list-tools input { flex: 1; min-width: 0; }
+.caption-list-tools button[aria-pressed="true"] { border-color: var(--cyan); color: var(--cyan); }
+.caption-list-count { font-size: 12px; margin: 0 0 6px; }
 .caption-look-global { margin: 0 0 12px; }
 .caption-stage { grid-column: 3; grid-row: 1; display: flex; min-width: 0; min-height: 0; flex-direction: column; gap: 6px; padding: 12px 14px 8px; overflow: hidden; background: radial-gradient(circle at 50% 30%, #17203a 0, var(--ink) 70%); }
 .caption-stage-view { position: relative; flex: 1 1 auto; min-height: 0; display: grid; place-items: center; }
