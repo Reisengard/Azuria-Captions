@@ -907,8 +907,13 @@ html[data-product-mode=video-captions] label.file:hover { border-color: var(--am
 .caption-drawer-body { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; padding: 14px; overflow: auto; }
 .caption-drawer-body > .caption-panel, .caption-drawer-body > .caption-style-pane { flex: none; padding: 0; overflow: visible; background: none; border: 0; }
 .caption-drawer-body > [hidden] { display: none; }
-#captionStylePane_style { order: 1; }
-#captionLeftPane_roles { order: 2; margin-top: 8px; padding-top: 14px; border-top: 1px solid var(--line); }
+/* Text drawer: one sample on top, then folded sections */
+.caption-fold { margin: 0 0 6px; padding: 0 0 6px; border-bottom: 1px solid var(--line); }
+.caption-fold > summary { padding: 6px 0; color: var(--muted); font: 600 10px var(--mono); letter-spacing: .08em; text-transform: uppercase; cursor: pointer; }
+.caption-fold[open] > summary { color: var(--text); }
+.caption-fold.caption-role { margin-top: 0; padding: 0 0 6px; border-radius: 0; }
+#captionStylePane_style > .caption-role-sample { position: sticky; top: -14px; z-index: 1; }
+#captionRolesReset { margin-top: 10px; }
 .caption-transcript > .caption-panel-head h2 { display: none; }
 .caption-look-global { margin: 0 0 12px; }
 .caption-stage { grid-column: 3; grid-row: 1; display: flex; min-width: 0; min-height: 0; flex-direction: column; gap: 6px; padding: 12px 14px 8px; overflow: hidden; background: radial-gradient(circle at 50% 30%, #17203a 0, var(--ink) 70%); }
@@ -1036,35 +1041,6 @@ html[data-product-mode=video-captions] label.file:hover { border-color: var(--am
         <ol id="captionSegmentList" class="caption-segment-list" aria-label="Caption segments"></ol>
         <div id="captionTranscriptEmpty" class="caption-empty">1 Choose a video → 2 Add captions (import word-timestamp JSON, SRT or VTT / paste a script / type on the timeline)</div>
       </aside>
-        <div id="captionLeftPane_roles" class="caption-panel caption-left-pane" hidden>
-        <section id="captionRolesPanel" class="caption-box-panel caption-roles-panel" aria-label="Word styles">
-          <div class="caption-panel-head segment-head"><h2>Word styles</h2></div>
-          <label id="captionRoleTrackField" class="field" hidden>Track<select id="captionRoleTrack"></select></label>
-          <canvas id="captionRoleSample" class="caption-role-sample" width="800" height="250" role="img" aria-label="Word style sample (the second word is being spoken, the last word is highlighted)"></canvas>
-          <p class="caption-role-note">All text sets the layout and line breaks. The spoken word and highlighted words only change how they look, never where they sit.</p>
-          <fieldset class="caption-role" data-caption-role="base"><legend>All text</legend>
-            <label class="caption-role-row"><span>Font</span><select id="captionRoleBaseFont"></select><button type="button" class="ghost small" data-role-clear="captionRoleBaseFont" title="Back to automatic" aria-label="Font back to automatic">↺</button></label>
-            <label class="caption-role-row"><span>Color</span><input id="captionRoleBaseColor" type="color" value="#ffffff"><output data-role-value="captionRoleBaseColor"></output><button type="button" class="ghost small" data-role-clear="captionRoleBaseColor" title="Back to automatic" aria-label="Color back to automatic">↺</button></label>
-            <label class="caption-role-row"><span>Size</span><input id="captionRoleBaseFontSize" type="range" min="24" max="200" step="2"><output data-role-value="captionRoleBaseFontSize"></output><button type="button" class="ghost small" data-role-clear="captionRoleBaseFontSize" title="Back to automatic" aria-label="Size back to automatic">↺</button></label>
-          </fieldset>
-          <fieldset class="caption-role" data-caption-role="active"><legend>Word being spoken</legend>
-            <label class="caption-role-row"><span>Color</span><input id="captionRoleActiveColor" type="color" value="#f5a50c"><output data-role-value="captionRoleActiveColor"></output><button type="button" class="ghost small" data-role-clear="captionRoleActiveColor" title="Back to automatic" aria-label="Color back to automatic">↺</button></label>
-            <p id="captionRoleActiveColorNote" class="caption-role-note" hidden>A color set in the spoken-word effect settings (Effects) is used instead of this one.</p>
-            <p class="caption-role-note"><span id="captionRoleActiveHint"></span> <button id="captionRoleActiveOpen" type="button" class="ghost small" hidden>Open Effects</button></p>
-            <div id="captionRoleActiveOverride" class="caption-warning caption-role-override" hidden><span id="captionRoleActiveOverrideText"></span><button id="captionRoleActiveOverrideClear" type="button" class="small">Remove override</button></div>
-          </fieldset>
-          <fieldset class="caption-role" data-caption-role="emphasis"><legend>Highlighted words</legend>
-            <p class="caption-role-note">Numbers, “!” and similar words are picked automatically. Change single words with ✎ Text.</p>
-            <label class="caption-role-row"><span>Color</span><input id="captionRoleEmphasisColor" type="color" value="#ffde59"><output data-role-value="captionRoleEmphasisColor"></output><button type="button" class="ghost small" data-role-clear="captionRoleEmphasisColor" title="Remove" aria-label="Remove color">↺</button></label>
-            <label class="caption-role-row"><span>Second font</span><select id="captionRoleEmphasisFont"></select><button type="button" class="ghost small" data-role-clear="captionRoleEmphasisFont" title="None" aria-label="No second font">↺</button></label>
-            <label class="caption-role-row"><span>Size</span><input id="captionRoleEmphasisScale" type="range" min="0.9" max="1.15" step="0.01"><output data-role-value="captionRoleEmphasisScale"></output><button type="button" class="ghost small" data-role-clear="captionRoleEmphasisScale" title="Remove" aria-label="Remove size change">↺</button></label>
-            <label class="caption-role-row"><span>How many</span><input id="captionRoleEmphasisAmount" type="range" min="0" max="1" step="0.05" aria-describedby="captionRoleEmphasisCount"><output id="captionRoleEmphasisCount" data-role-value="captionRoleEmphasisAmount"></output><button type="button" class="ghost small" data-role-clear="captionRoleEmphasisAmount" title="Back to automatic" aria-label="How many back to automatic">↺</button></label>
-            <p id="captionRoleEmphasisHint" class="caption-role-note is-warn" hidden>Pick a color, second font or size to make highlighted words stand out. Until then they look like the rest.</p>
-          </fieldset>
-          <button id="captionRolesReset" type="button" class="small">Reset all word styles</button>
-          <div id="captionRolesWarnings" class="caption-box-warnings" role="status"></div>
-        </section>
-        </div>
       <div id="captionEditHolder" hidden>
         <div id="captionSegmentInspector" class="caption-edit" hidden>
           <div id="captionEditError" class="caption-validation" role="alert" hidden></div>
@@ -1123,26 +1099,50 @@ html[data-product-mode=video-captions] label.file:hover { border-color: var(--am
 
 
       <div id="captionStylePane_style" class="caption-style-pane">
-          <section class="caption-style-group"><h3>Style family</h3>
-            <label class="field">Style family<select id="captionStyle"><option value="creator">Creator</option><option value="punchy">Punchy</option></select></label>
-            <p id="captionProfileNote" class="caption-profile-note">A standard style prioritizing readability.</p>
-          </section>
-          <section class="caption-style-group"><h3>Text look</h3>
-            <label class="field">Text finish<select id="captionTreatment"><option value="outline">Outline</option><option value="backplate">Backplate</option><option value="neon">Neon Glow</option><option value="echo">Color Echo</option></select></label>
-            <label class="field">Accent color<input id="captionAccent" type="color" value="#f5a50c"></label>
-            <label class="field caption-adv-only">Text direction<select id="captionWritingMode"><option value="horizontal">Horizontal</option><option value="vertical">Vertical</option></select></label>
-          </section>
-          <section class="caption-style-group"><h3>Position and amount</h3>
-            <label class="field">Text alignment<select id="captionAlignment"><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option></select></label>
-            <label class="field caption-adv-only">Words per caption<input id="captionDensity" type="range" min="2" max="8" value="6"><output id="captionDensityValue">6</output></label>
-          </section>
-          <section class="caption-style-group"><h3>Motion</h3>
-            <label class="field caption-adv-only">Intensity<input id="captionIntensity" type="range" min="0" max="100" value="50"></label>
-            <label class="field caption-adv-only">Motion<input id="captionMotion" type="range" min="0" max="100" value="45"></label>
-            <label class="field caption-adv-only">Emphasis strength<input id="captionEmphasisStrength" type="range" min="0" max="100" value="100"></label>
-            <label class="caption-reduced-motion"><input id="captionReducedMotion" type="checkbox"> Reduce preview motion</label>
-          </section>
-        </div>
+        <label id="captionRoleTrackField" class="field" hidden>Track<select id="captionRoleTrack"></select></label>
+        <canvas id="captionRoleSample" class="caption-role-sample" width="800" height="250" role="img" aria-label="Word style sample (the second word is being spoken, the last word is highlighted)"></canvas>
+        <details class="caption-fold" open><summary>Style family</summary>
+          <label class="field">Style family<select id="captionStyle"><option value="creator">Creator</option><option value="punchy">Punchy</option></select></label>
+          <p id="captionProfileNote" class="caption-profile-note">A standard style prioritizing readability.</p>
+        </details>
+        <details class="caption-fold caption-role" data-caption-role="base" open><summary>All text</summary>
+          <p class="caption-role-note">All text sets the layout and line breaks. The spoken word and highlighted words only change how they look, never where they sit.</p>
+          <label class="caption-role-row"><span>Font</span><select id="captionRoleBaseFont"></select><button type="button" class="ghost small" data-role-clear="captionRoleBaseFont" title="Back to automatic" aria-label="Font back to automatic">↺</button></label>
+            <label class="caption-role-row"><span>Color</span><input id="captionRoleBaseColor" type="color" value="#ffffff"><output data-role-value="captionRoleBaseColor"></output><button type="button" class="ghost small" data-role-clear="captionRoleBaseColor" title="Back to automatic" aria-label="Color back to automatic">↺</button></label>
+            <label class="caption-role-row"><span>Size</span><input id="captionRoleBaseFontSize" type="range" min="24" max="200" step="2"><output data-role-value="captionRoleBaseFontSize"></output><button type="button" class="ghost small" data-role-clear="captionRoleBaseFontSize" title="Back to automatic" aria-label="Size back to automatic">↺</button></label>
+        </details>
+        <details class="caption-fold"><summary>Text look</summary>
+          <label class="field">Text finish<select id="captionTreatment"><option value="outline">Outline</option><option value="backplate">Backplate</option><option value="neon">Neon Glow</option><option value="echo">Color Echo</option></select></label>
+          <label class="field">Accent color<input id="captionAccent" type="color" value="#f5a50c"></label>
+          <label class="field caption-adv-only">Text direction<select id="captionWritingMode"><option value="horizontal">Horizontal</option><option value="vertical">Vertical</option></select></label>
+        </details>
+        <details class="caption-fold"><summary>Position and amount</summary>
+          <label class="field">Text alignment<select id="captionAlignment"><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option></select></label>
+          <label class="field caption-adv-only">Words per caption<input id="captionDensity" type="range" min="2" max="8" value="6"><output id="captionDensityValue">6</output></label>
+        </details>
+        <details class="caption-fold caption-role" data-caption-role="active"><summary>Word being spoken</summary>
+          <label class="caption-role-row"><span>Color</span><input id="captionRoleActiveColor" type="color" value="#f5a50c"><output data-role-value="captionRoleActiveColor"></output><button type="button" class="ghost small" data-role-clear="captionRoleActiveColor" title="Back to automatic" aria-label="Color back to automatic">↺</button></label>
+            <p id="captionRoleActiveColorNote" class="caption-role-note" hidden>A color set in the spoken-word effect settings (Effects) is used instead of this one.</p>
+            <p class="caption-role-note"><span id="captionRoleActiveHint"></span> <button id="captionRoleActiveOpen" type="button" class="ghost small" hidden>Open Effects</button></p>
+            <div id="captionRoleActiveOverride" class="caption-warning caption-role-override" hidden><span id="captionRoleActiveOverrideText"></span><button id="captionRoleActiveOverrideClear" type="button" class="small">Remove override</button></div>
+        </details>
+        <details class="caption-fold caption-role" data-caption-role="emphasis"><summary>Highlighted words</summary>
+          <p class="caption-role-note">Numbers, “!” and similar words are picked automatically. Change single words with ✎ Text.</p>
+            <label class="caption-role-row"><span>Color</span><input id="captionRoleEmphasisColor" type="color" value="#ffde59"><output data-role-value="captionRoleEmphasisColor"></output><button type="button" class="ghost small" data-role-clear="captionRoleEmphasisColor" title="Remove" aria-label="Remove color">↺</button></label>
+            <label class="caption-role-row"><span>Second font</span><select id="captionRoleEmphasisFont"></select><button type="button" class="ghost small" data-role-clear="captionRoleEmphasisFont" title="None" aria-label="No second font">↺</button></label>
+            <label class="caption-role-row"><span>Size</span><input id="captionRoleEmphasisScale" type="range" min="0.9" max="1.15" step="0.01"><output data-role-value="captionRoleEmphasisScale"></output><button type="button" class="ghost small" data-role-clear="captionRoleEmphasisScale" title="Remove" aria-label="Remove size change">↺</button></label>
+            <label class="caption-role-row"><span>How many</span><input id="captionRoleEmphasisAmount" type="range" min="0" max="1" step="0.05" aria-describedby="captionRoleEmphasisCount"><output id="captionRoleEmphasisCount" data-role-value="captionRoleEmphasisAmount"></output><button type="button" class="ghost small" data-role-clear="captionRoleEmphasisAmount" title="Back to automatic" aria-label="How many back to automatic">↺</button></label>
+            <p id="captionRoleEmphasisHint" class="caption-role-note is-warn" hidden>Pick a color, second font or size to make highlighted words stand out. Until then they look like the rest.</p>
+        </details>
+        <details class="caption-fold"><summary>Motion</summary>
+          <label class="field caption-adv-only">Intensity<input id="captionIntensity" type="range" min="0" max="100" value="50"></label>
+          <label class="field caption-adv-only">Motion<input id="captionMotion" type="range" min="0" max="100" value="45"></label>
+          <label class="field caption-adv-only">Emphasis strength<input id="captionEmphasisStrength" type="range" min="0" max="100" value="100"></label>
+          <label class="caption-reduced-motion"><input id="captionReducedMotion" type="checkbox"> Reduce preview motion</label>
+        </details>
+        <button id="captionRolesReset" type="button" class="small">Reset all word styles</button>
+        <div id="captionRolesWarnings" class="caption-box-warnings" role="status"></div>
+      </div>
 <div id="captionStylePane_effects" class="caption-style-pane" hidden>
         <div class="caption-look-actions caption-look-global"><button id="captionVariation" type="button" class="small" disabled>Randomize look</button></div>
         <div id="captionTechniqueHost" hidden></div>
@@ -47015,7 +47015,7 @@ const { ui, $ } = W;
 /* Each rail item opens one drawer; a drawer shows one or more of the existing panes (their ids and markup are unchanged). */
 const DRAWERS = {
   captions: { title: 'Captions', panes: ['captionLeftPane_transcript'] },
-  text: { title: 'Text', panes: ['captionStylePane_style', 'captionLeftPane_roles'] },
+  text: { title: 'Text', panes: ['captionStylePane_style'] },
   effects: { title: 'Effects', panes: ['captionStylePane_effects'] },
   tracks: { title: 'Tracks', panes: ['captionStylePane_tracks'] },
   box: { title: 'Placement box', panes: ['captionStylePane_box'] },

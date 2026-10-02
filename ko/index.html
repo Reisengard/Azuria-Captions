@@ -907,8 +907,13 @@ html[data-product-mode=video-captions] label.file:hover { border-color: var(--am
 .caption-drawer-body { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; padding: 14px; overflow: auto; }
 .caption-drawer-body > .caption-panel, .caption-drawer-body > .caption-style-pane { flex: none; padding: 0; overflow: visible; background: none; border: 0; }
 .caption-drawer-body > [hidden] { display: none; }
-#captionStylePane_style { order: 1; }
-#captionLeftPane_roles { order: 2; margin-top: 8px; padding-top: 14px; border-top: 1px solid var(--line); }
+/* Text drawer: one sample on top, then folded sections */
+.caption-fold { margin: 0 0 6px; padding: 0 0 6px; border-bottom: 1px solid var(--line); }
+.caption-fold > summary { padding: 6px 0; color: var(--muted); font: 600 10px var(--mono); letter-spacing: .08em; text-transform: uppercase; cursor: pointer; }
+.caption-fold[open] > summary { color: var(--text); }
+.caption-fold.caption-role { margin-top: 0; padding: 0 0 6px; border-radius: 0; }
+#captionStylePane_style > .caption-role-sample { position: sticky; top: -14px; z-index: 1; }
+#captionRolesReset { margin-top: 10px; }
 .caption-transcript > .caption-panel-head h2 { display: none; }
 .caption-look-global { margin: 0 0 12px; }
 .caption-stage { grid-column: 3; grid-row: 1; display: flex; min-width: 0; min-height: 0; flex-direction: column; gap: 6px; padding: 12px 14px 8px; overflow: hidden; background: radial-gradient(circle at 50% 30%, #17203a 0, var(--ink) 70%); }
@@ -1036,35 +1041,6 @@ html[data-product-mode=video-captions] label.file:hover { border-color: var(--am
         <ol id="captionSegmentList" class="caption-segment-list" aria-label="字幕セグメント"></ol>
         <div id="captionTranscriptEmpty" class="caption-empty">① 動画を選ぶ → ② 字幕を추가（単語タイムスタンプ JSON・SRT・VTT を読み込む／台本を貼り付ける／タイムラインで入力）</div>
       </aside>
-        <div id="captionLeftPane_roles" class="caption-panel caption-left-pane" hidden>
-        <section id="captionRolesPanel" class="caption-box-panel caption-roles-panel" aria-label="文字스타일">
-          <div class="caption-panel-head segment-head"><h2>文字스타일</h2></div>
-          <label id="captionRoleTrackField" class="field" hidden>編集するトラック<select id="captionRoleTrack"></select></label>
-          <canvas id="captionRoleSample" class="caption-role-sample" width="800" height="250" role="img" aria-label="文字스타일の見本（2語目が話している単語、最後の語が強調する単語）"></canvas>
-          <p class="caption-role-note">並びと改行は「すべての文字」で決まります。話している単語と強調する単語は、位置を動かさずに見た目だけ変わります。</p>
-          <fieldset class="caption-role" data-caption-role="base"><legend>すべての文字</legend>
-            <label class="caption-role-row"><span>フォント</span><select id="captionRoleBaseFont"></select><button type="button" class="ghost small" data-role-clear="captionRoleBaseFont" title="자동に戻す" aria-label="フォントを자동に戻す">↺</button></label>
-            <label class="caption-role-row"><span>色</span><input id="captionRoleBaseColor" type="color" value="#ffffff"><output data-role-value="captionRoleBaseColor"></output><button type="button" class="ghost small" data-role-clear="captionRoleBaseColor" title="자동に戻す" aria-label="色を자동に戻す">↺</button></label>
-            <label class="caption-role-row"><span>大きさ</span><input id="captionRoleBaseFontSize" type="range" min="24" max="200" step="2"><output data-role-value="captionRoleBaseFontSize"></output><button type="button" class="ghost small" data-role-clear="captionRoleBaseFontSize" title="자동に戻す" aria-label="大きさを자동に戻す">↺</button></label>
-          </fieldset>
-          <fieldset class="caption-role" data-caption-role="active"><legend>話している単語</legend>
-            <label class="caption-role-row"><span>色</span><input id="captionRoleActiveColor" type="color" value="#f5a50c"><output data-role-value="captionRoleActiveColor"></output><button type="button" class="ghost small" data-role-clear="captionRoleActiveColor" title="자동に戻す" aria-label="色を자동に戻す">↺</button></label>
-            <p id="captionRoleActiveColorNote" class="caption-role-note" hidden>エフェクトの設定で話している単語の色が指定されているため、ここで選んだ色は使われません。</p>
-            <p class="caption-role-note"><span id="captionRoleActiveHint"></span> <button id="captionRoleActiveOpen" type="button" class="ghost small" hidden>エフェクトを열기</button></p>
-            <div id="captionRoleActiveOverride" class="caption-warning caption-role-override" hidden><span id="captionRoleActiveOverrideText"></span><button id="captionRoleActiveOverrideClear" type="button" class="small">固定を外す</button></div>
-          </fieldset>
-          <fieldset class="caption-role" data-caption-role="emphasis"><legend>強調する単語</legend>
-            <p class="caption-role-note">数字や「!」のある単語が자동で選ばれます。単語ごとの指定は字幕の編集（✎ 文字）で変えられます。</p>
-            <label class="caption-role-row"><span>色</span><input id="captionRoleEmphasisColor" type="color" value="#ffde59"><output data-role-value="captionRoleEmphasisColor"></output><button type="button" class="ghost small" data-role-clear="captionRoleEmphasisColor" title="元に戻す" aria-label="色を戻す">↺</button></label>
-            <label class="caption-role-row"><span>2つ目のフォント</span><select id="captionRoleEmphasisFont"></select><button type="button" class="ghost small" data-role-clear="captionRoleEmphasisFont" title="使わない" aria-label="2つ目のフォントを使わない">↺</button></label>
-            <label class="caption-role-row"><span>大きさ</span><input id="captionRoleEmphasisScale" type="range" min="0.9" max="1.15" step="0.01"><output data-role-value="captionRoleEmphasisScale"></output><button type="button" class="ghost small" data-role-clear="captionRoleEmphasisScale" title="元に戻す" aria-label="大きさを戻す">↺</button></label>
-            <label class="caption-role-row"><span>強調する量</span><input id="captionRoleEmphasisAmount" type="range" min="0" max="1" step="0.05" aria-describedby="captionRoleEmphasisCount"><output id="captionRoleEmphasisCount" data-role-value="captionRoleEmphasisAmount"></output><button type="button" class="ghost small" data-role-clear="captionRoleEmphasisAmount" title="자동に戻す" aria-label="強調する量を자동に戻す">↺</button></label>
-            <p id="captionRoleEmphasisHint" class="caption-role-note is-warn" hidden>色・2つ目のフォント・大きさのどれかを選ぶと、強調する単語が目立つようになります。</p>
-          </fieldset>
-          <button id="captionRolesReset" type="button" class="small">文字스타일をすべて初期値に戻す</button>
-          <div id="captionRolesWarnings" class="caption-box-warnings" role="status"></div>
-        </section>
-        </div>
       <div id="captionEditHolder" hidden>
         <div id="captionSegmentInspector" class="caption-edit" hidden>
           <div id="captionEditError" class="caption-validation" role="alert" hidden></div>
@@ -1123,26 +1099,50 @@ html[data-product-mode=video-captions] label.file:hover { border-color: var(--am
 
 
       <div id="captionStylePane_style" class="caption-style-pane">
-          <section class="caption-style-group"><h3>스타일の種類</h3>
-            <label class="field">스타일ファミリー<select id="captionStyle"><option value="creator">Creator</option><option value="punchy">Punchy</option></select></label>
-            <p id="captionProfileNote" class="caption-profile-note">読みやすさを優先した표준스타일です。</p>
-          </section>
-          <section class="caption-style-group"><h3>文字の見た目</h3>
-            <label class="field">文字の装飾<select id="captionTreatment"><option value="outline">Outline</option><option value="backplate">Backplate</option><option value="neon">Neon Glow</option><option value="echo">Color Echo</option></select></label>
-            <label class="field">アクセント色<input id="captionAccent" type="color" value="#f5a50c"></label>
-            <label class="field caption-adv-only">文字方向<select id="captionWritingMode"><option value="horizontal">横書き</option><option value="vertical">세로書き</option></select></label>
-          </section>
-          <section class="caption-style-group"><h3>位置と分量</h3>
-            <label class="field">文字揃え<select id="captionAlignment"><option value="left">左</option><option value="center">中央</option><option value="right">右</option></select></label>
-            <label class="field caption-adv-only">字幕あたりの単語数<input id="captionDensity" type="range" min="2" max="8" value="6"><output id="captionDensityValue">6</output></label>
-          </section>
-          <section class="caption-style-group"><h3>動き</h3>
-            <label class="field caption-adv-only">強さ<input id="captionIntensity" type="range" min="0" max="100" value="50"></label>
-            <label class="field caption-adv-only">動き<input id="captionMotion" type="range" min="0" max="100" value="45"></label>
-            <label class="field caption-adv-only">強調の強さ<input id="captionEmphasisStrength" type="range" min="0" max="100" value="100"></label>
-            <label class="caption-reduced-motion"><input id="captionReducedMotion" type="checkbox"> 미리보기の動きを減らす</label>
-          </section>
-        </div>
+        <label id="captionRoleTrackField" class="field" hidden>編集するトラック<select id="captionRoleTrack"></select></label>
+        <canvas id="captionRoleSample" class="caption-role-sample" width="800" height="250" role="img" aria-label="文字스타일の見本（2語目が話している単語、最後の語が強調する単語）"></canvas>
+        <details class="caption-fold" open><summary>스타일の種類</summary>
+          <label class="field">스타일ファミリー<select id="captionStyle"><option value="creator">Creator</option><option value="punchy">Punchy</option></select></label>
+          <p id="captionProfileNote" class="caption-profile-note">読みやすさを優先した표준스타일です。</p>
+        </details>
+        <details class="caption-fold caption-role" data-caption-role="base" open><summary>すべての文字</summary>
+          <p class="caption-role-note">並びと改行は「すべての文字」で決まります。話している単語と強調する単語は、位置を動かさずに見た目だけ変わります。</p>
+          <label class="caption-role-row"><span>フォント</span><select id="captionRoleBaseFont"></select><button type="button" class="ghost small" data-role-clear="captionRoleBaseFont" title="자동に戻す" aria-label="フォントを자동に戻す">↺</button></label>
+            <label class="caption-role-row"><span>色</span><input id="captionRoleBaseColor" type="color" value="#ffffff"><output data-role-value="captionRoleBaseColor"></output><button type="button" class="ghost small" data-role-clear="captionRoleBaseColor" title="자동に戻す" aria-label="色を자동に戻す">↺</button></label>
+            <label class="caption-role-row"><span>大きさ</span><input id="captionRoleBaseFontSize" type="range" min="24" max="200" step="2"><output data-role-value="captionRoleBaseFontSize"></output><button type="button" class="ghost small" data-role-clear="captionRoleBaseFontSize" title="자동に戻す" aria-label="大きさを자동に戻す">↺</button></label>
+        </details>
+        <details class="caption-fold"><summary>文字の見た目</summary>
+          <label class="field">文字の装飾<select id="captionTreatment"><option value="outline">Outline</option><option value="backplate">Backplate</option><option value="neon">Neon Glow</option><option value="echo">Color Echo</option></select></label>
+          <label class="field">アクセント色<input id="captionAccent" type="color" value="#f5a50c"></label>
+          <label class="field caption-adv-only">文字方向<select id="captionWritingMode"><option value="horizontal">横書き</option><option value="vertical">세로書き</option></select></label>
+        </details>
+        <details class="caption-fold"><summary>位置と分量</summary>
+          <label class="field">文字揃え<select id="captionAlignment"><option value="left">左</option><option value="center">中央</option><option value="right">右</option></select></label>
+          <label class="field caption-adv-only">字幕あたりの単語数<input id="captionDensity" type="range" min="2" max="8" value="6"><output id="captionDensityValue">6</output></label>
+        </details>
+        <details class="caption-fold caption-role" data-caption-role="active"><summary>話している単語</summary>
+          <label class="caption-role-row"><span>色</span><input id="captionRoleActiveColor" type="color" value="#f5a50c"><output data-role-value="captionRoleActiveColor"></output><button type="button" class="ghost small" data-role-clear="captionRoleActiveColor" title="자동に戻す" aria-label="色を자동に戻す">↺</button></label>
+            <p id="captionRoleActiveColorNote" class="caption-role-note" hidden>エフェクトの設定で話している単語の色が指定されているため、ここで選んだ色は使われません。</p>
+            <p class="caption-role-note"><span id="captionRoleActiveHint"></span> <button id="captionRoleActiveOpen" type="button" class="ghost small" hidden>エフェクトを열기</button></p>
+            <div id="captionRoleActiveOverride" class="caption-warning caption-role-override" hidden><span id="captionRoleActiveOverrideText"></span><button id="captionRoleActiveOverrideClear" type="button" class="small">固定を外す</button></div>
+        </details>
+        <details class="caption-fold caption-role" data-caption-role="emphasis"><summary>強調する単語</summary>
+          <p class="caption-role-note">数字や「!」のある単語が자동で選ばれます。単語ごとの指定は字幕の編集（✎ 文字）で変えられます。</p>
+            <label class="caption-role-row"><span>色</span><input id="captionRoleEmphasisColor" type="color" value="#ffde59"><output data-role-value="captionRoleEmphasisColor"></output><button type="button" class="ghost small" data-role-clear="captionRoleEmphasisColor" title="元に戻す" aria-label="色を戻す">↺</button></label>
+            <label class="caption-role-row"><span>2つ目のフォント</span><select id="captionRoleEmphasisFont"></select><button type="button" class="ghost small" data-role-clear="captionRoleEmphasisFont" title="使わない" aria-label="2つ目のフォントを使わない">↺</button></label>
+            <label class="caption-role-row"><span>大きさ</span><input id="captionRoleEmphasisScale" type="range" min="0.9" max="1.15" step="0.01"><output data-role-value="captionRoleEmphasisScale"></output><button type="button" class="ghost small" data-role-clear="captionRoleEmphasisScale" title="元に戻す" aria-label="大きさを戻す">↺</button></label>
+            <label class="caption-role-row"><span>強調する量</span><input id="captionRoleEmphasisAmount" type="range" min="0" max="1" step="0.05" aria-describedby="captionRoleEmphasisCount"><output id="captionRoleEmphasisCount" data-role-value="captionRoleEmphasisAmount"></output><button type="button" class="ghost small" data-role-clear="captionRoleEmphasisAmount" title="자동に戻す" aria-label="強調する量を자동に戻す">↺</button></label>
+            <p id="captionRoleEmphasisHint" class="caption-role-note is-warn" hidden>色・2つ目のフォント・大きさのどれかを選ぶと、強調する単語が目立つようになります。</p>
+        </details>
+        <details class="caption-fold"><summary>動き</summary>
+          <label class="field caption-adv-only">強さ<input id="captionIntensity" type="range" min="0" max="100" value="50"></label>
+          <label class="field caption-adv-only">動き<input id="captionMotion" type="range" min="0" max="100" value="45"></label>
+          <label class="field caption-adv-only">強調の強さ<input id="captionEmphasisStrength" type="range" min="0" max="100" value="100"></label>
+          <label class="caption-reduced-motion"><input id="captionReducedMotion" type="checkbox"> 미리보기の動きを減らす</label>
+        </details>
+        <button id="captionRolesReset" type="button" class="small">文字스타일をすべて初期値に戻す</button>
+        <div id="captionRolesWarnings" class="caption-box-warnings" role="status"></div>
+      </div>
 <div id="captionStylePane_effects" class="caption-style-pane" hidden>
         <div class="caption-look-actions caption-look-global"><button id="captionVariation" type="button" class="small" disabled>全体をランダムに決める</button></div>
         <div id="captionTechniqueHost" hidden></div>
@@ -47294,7 +47294,7 @@ const { ui, $ } = W;
 /* Each rail item opens one drawer; a drawer shows one or more of the existing panes (their ids and markup are unchanged). */
 const DRAWERS = {
   captions: { title: '字幕', panes: ['captionLeftPane_transcript'] },
-  text: { title: '文字', panes: ['captionStylePane_style', 'captionLeftPane_roles'] },
+  text: { title: '文字', panes: ['captionStylePane_style'] },
   effects: { title: 'エフェクト', panes: ['captionStylePane_effects'] },
   tracks: { title: 'トラック', panes: ['captionStylePane_tracks'] },
   box: { title: '位置ボックス', panes: ['captionStylePane_box'] },
