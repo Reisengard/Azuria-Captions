@@ -35,6 +35,7 @@
     "test:timing-commands": "node caption_timing_commands_test.js",
     "test:timeline-model": "node caption_timeline_model_test.js",
     "test:transport": "node caption_transport_test.js",
+    "test:tap-sync": "node caption_tap_sync_test.js",
     "test:timeline-drag": "node caption_timeline_drag_test.js",
     "test:timeline-tracks": "node caption_timeline_tracks_test.js",
     "test:timeline-create": "node caption_timeline_create_test.js",

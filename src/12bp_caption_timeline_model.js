@@ -298,5 +298,43 @@ function waveformColumns(peaks, rate, pps, scrollLeft, width) {
 const STRIP_MIN = 96;
 const clampStripHeight = (height, windowHeight) => clamp(Math.round(height), STRIP_MIN, Math.max(STRIP_MIN, Math.round(windowHeight * .7)));
 
-J.captionTimeline = { WAVE_RATE, WAVE_MAX_SECONDS, waveformAllowed, waveformPeaks, waveformColumns, STRIP_MIN, clampStripHeight, NEW_LENGTH, createRange, freeGap, groupMoveOrder, marqueeHits, newBlockRange, resolveGroupMove, adjacentTrackId, reorderIndex, NUDGE, SNAP_PX, MIN_SEGMENT, nearestSnap, nudge, resolveDrag, snapTargets, trackNeighbors, FRAME, LOOP_LEAD, SPEEDS, adjacentSegment, keyAction, loopRegion, loopSeek, markRegion, nextSpeed, stepTime, MAX_PPS, TICK_MIN_PX, blockRect, clampPps, clampScroll, contentWidth, fitPps, followScroll, formatTick, overlapsRange, rulerTicks, tickStep, timeToX, visibleRange, wordLabelsVisible, wordTicksVisible, xToTime, zoomAround };
+/* ---- Tap sync (C4). Pure: the session in 12bs feeds plain data; the result is the proposed window of every tapped caption. ----
+   A press shorter than TAP_HOLD is a "tap" (the caption lasts until the next one starts); a longer press is a "hold" (release sets the end).
+   The reaction offset is subtracted from every time. */
+const TAP_HOLD = .3, REACTION_MAX = .3, REACTION_DEFAULT = .12;
+const clampReaction = value => { const number = Number(value); return Number.isFinite(number) ? clamp(number, 0, REACTION_MAX) : REACTION_DEFAULT; };
+/* segments: [{ id, trackId, start, end, locked }] (any order). Scope = the captions of `trackId` from `fromId` to the end of the track, or only
+   those starting inside `region`. `floor` = end of the caption before the scope, `after` = start of the first caption after it (null = none). */
+function tapSyncScope(segments, options) {
+  const o = options || {}, track = segments.filter(item => item.trackId === o.trackId).sort((a, b) => a.start - b.start || a.end - b.end);
+  let first, last;
+  if (o.region) {
+    const inside = track.map((item, index) => (item.start >= o.region.start - EPS && item.start < o.region.end - EPS) ? index : -1).filter(index => index >= 0);
+    if (!inside.length) return { items: [], skipped: 0, floor: 0, after: null };
+    first = inside[0]; last = inside[inside.length - 1];
+  } else {
+    first = track.findIndex(item => item.id === o.fromId); if (first < 0) return { items: [], skipped: 0, floor: 0, after: null };
+    last = track.length - 1;
+  }
+  const inScope = track.slice(first, last + 1), items = inScope.filter(item => !item.locked);
+  return { items, skipped: inScope.length - items.length, floor: first > 0 ? track[first - 1].end : 0, after: last + 1 < track.length ? track[last + 1].start : null };
+}
+/* items: the scope in order [{ id, start, end }]; taps: [{ down, up }] for the first taps.length items (`up` null while still held).
+   Returns [{ id, start, end }] for the tapped captions. Windows never overlap, never go below MIN_SEGMENT and stay between `floor` and `after` / `duration`. */
+function tapSyncWindows(items, taps, options) {
+  const o = options || {}, offset = clampReaction(o.offset === undefined ? REACTION_DEFAULT : o.offset), duration = Number.isFinite(o.duration) ? o.duration : Infinity;
+  const out = []; let previousEnd = Number.isFinite(o.floor) ? o.floor : 0;
+  taps.forEach((tap, index) => {
+    const item = items[index], next = taps[index + 1], ceiling = next ? Infinity : (items[index + 1] ? items[index + 1].start : Number.isFinite(o.after) ? o.after : duration);
+    const start = Math.min(Math.max(previousEnd, tap.down - offset, 0), duration - MIN_SEGMENT);
+    const held = tap.up !== null && tap.up !== undefined && tap.up - tap.down >= TAP_HOLD;
+    let end = held ? tap.up - offset : next ? next.down - offset : start + (item.end - item.start);
+    if (next && held) end = Math.min(end, next.down - offset);
+    end = Math.min(Math.max(end, start + MIN_SEGMENT), Math.min(ceiling, duration));
+    out.push({ id: item.id, start: round6(start), end: round6(Math.max(end, start)) }); previousEnd = end;
+  });
+  return out;
+}
+
+J.captionTimeline = { TAP_HOLD, REACTION_MAX, REACTION_DEFAULT, clampReaction, tapSyncScope, tapSyncWindows, WAVE_RATE, WAVE_MAX_SECONDS, waveformAllowed, waveformPeaks, waveformColumns, STRIP_MIN, clampStripHeight, NEW_LENGTH, createRange, freeGap, groupMoveOrder, marqueeHits, newBlockRange, resolveGroupMove, adjacentTrackId, reorderIndex, NUDGE, SNAP_PX, MIN_SEGMENT, nearestSnap, nudge, resolveDrag, snapTargets, trackNeighbors, FRAME, LOOP_LEAD, SPEEDS, adjacentSegment, keyAction, loopRegion, loopSeek, markRegion, nextSpeed, stepTime, MAX_PPS, TICK_MIN_PX, blockRect, clampPps, clampScroll, contentWidth, fitPps, followScroll, formatTick, overlapsRange, rulerTicks, tickStep, timeToX, visibleRange, wordLabelsVisible, wordTicksVisible, xToTime, zoomAround };
 })();

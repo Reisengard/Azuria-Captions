@@ -864,6 +864,16 @@ button.small.primary { padding: 4px 12px; }
 .caption-tool-warn { color: var(--amber); }
 .caption-warn-badge { position: absolute; top: 1px; left: 2px; color: var(--amber); font-size: 9px; line-height: 1; pointer-events: none; }
 .caption-warn-badge[hidden] { display: none; }
+.caption-timeline-segment.is-sync-replaced { opacity: .35; }
+.caption-sync-ghost { background: rgba(255,200,64,.3); border-color: #ffc840; }
+.caption-sync-ghost.is-held { background: rgba(255,200,64,.5); }
+.caption-sync-panel { position: absolute; z-index: 6; left: 50%; top: 8px; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; max-width: calc(100% - 16px); padding: 8px 10px; transform: translateX(-50%); border: 1px solid var(--line, #333); border-radius: 10px; background: rgba(12,14,18,.92); }
+.caption-sync-panel[hidden] { display: none; }
+.caption-sync-next { flex: 1 1 100%; max-width: 100%; overflow: hidden; font-size: 12px; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
+.caption-sync-tap { min-width: 132px; min-height: 44px; font-size: 15px; }
+.caption-sync-tap.is-down { filter: brightness(1.35); }
+.caption-sync-offset { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; }
+.caption-sync-offset input { width: 90px; }
 .caption-toasts { position: absolute; z-index: 5; left: 50%; bottom: 12px; display: grid; justify-items: center; transform: translateX(-50%); pointer-events: none; }
 .caption-toast { display: flex; align-items: center; gap: 10px; padding: 7px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); box-shadow: 0 4px 16px rgba(0,0,0,.5); color: var(--text); font-size: 12px; pointer-events: auto; }
 .caption-toast-action { padding: 3px 8px; border: 1px solid var(--cyan, #16f4d4); border-radius: 5px; background: none; color: var(--cyan, #16f4d4); font-size: 12px; cursor: pointer; }

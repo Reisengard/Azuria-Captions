@@ -72,7 +72,7 @@ function attachVideo(video) {
 /* Per frame while playing: wrap at the loop end, and jump over the trimmed-away parts of the source video. */
 function skipCuts(frame, video) {
   if (video.paused || video.seeking) return;
-  const wrap = tr.loopOn ? TL.loopSeek(frame.mediaTime, tr.region) : null;
+  const wrap = tr.loopOn && !tr.syncing ? TL.loopSeek(frame.mediaTime, tr.region) : null;
   if (wrap !== null) { video.currentTime = wrap; return; }
   const clips = J.videoClips(ui.store.project);
   if (!clips.some(clip => frame.mediaTime >= clip.start && frame.mediaTime < clip.end)) {
@@ -94,6 +94,7 @@ function onKey(event) {
   const root = document.getElementById('app'); if (root && root.dataset.productMode && root.dataset.productMode !== 'video-captions') return;
   const action = TL.keyAction(event); if (!action || ignoresKey(event)) return;
   const target = event.target || {};
+  if (W.syncKey && W.syncKey(event)) { event.preventDefault(); event.stopImmediatePropagation(); return; }   // during a tap-sync pass Space taps, Enter confirms, Esc discards
   // Native widgets that use the same keys keep them: buttons take Space, sliders take the arrows.
   if ((action === 'play' || action === 'edit') && target.tagName === 'BUTTON') return;
   if (/^(back|forward)-/.test(action) || action === 'prev-caption' || action === 'next-caption') { if (target.closest && target.closest('[data-boundary-segment]')) return; }

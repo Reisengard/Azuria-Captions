@@ -108,6 +108,8 @@ const IN_PAGE = `(() => {
     count() { return ui.store.project.segments.length; },
     sel() { return JSON.stringify([...ui.selection.segmentIds].sort()); },
     undo2() { const ok = ui.store.undo(); J.captionWb.emit('project'); return ok; },
+    syncState() { const p = document.getElementById('captionSyncPanel'), v = ui.media.current.video; return { panel: !!p && !p.hidden, speed: ui.transport.speed, paused: v.paused, next: p ? document.getElementById('captionSyncNext').textContent : '' }; },
+    syncStart() { return J.captionWb.syncStart(); },
     seek(time) { J.captionWb.seekTimeline(time); return true; },
     playhead() { return ui.media.current.video.currentTime; },
     focusId() { return document.activeElement && document.activeElement.id; },
@@ -408,6 +410,27 @@ const IN_PAGE = `(() => {
       await t('select', first.id); await t('emitSelection'); await t('seek', before.end + .05); await sleep(250); await key('o', 'KeyO', { text: 'o', vk: 79 }); await sleep(150);
       const grown3 = await t('seg', first.id); step('O: end goes to the playhead (or is refused by a neighbour)', Math.abs(grown3.end - (before.end + .05)) < .06 || grown3.end === before.end, JSON.stringify(grown3));
       await t('undo2'); await t('blur');
+    }
+
+    // C4: tap sync for captions (Space taps, Enter confirms, one undo, Esc discards)
+    {
+      const beforeA = await t('seg', 'blockA'), beforeB = await t('seg', 'blockB'), depth4 = await t('depth');
+      await t('select', 'blockA'); await t('emitSelection'); await sleep(100);
+      const syncBtn = await t('rect', '#captionSync'); await mouse('mousePressed', (syncBtn.left + syncBtn.right) / 2, (syncBtn.top + syncBtn.bottom) / 2); await mouse('mouseReleased', (syncBtn.left + syncBtn.right) / 2, (syncBtn.top + syncBtn.bottom) / 2); await sleep(300);
+      const started = await t('syncState'); step('sync: the Sync button starts a pass (panel shown, 0.75x, playing, next caption named)', started.panel && started.speed === .75 && !started.paused && /Alpha|Bravo|Next|次/.test(started.next), JSON.stringify(started));
+      const waitFor = async time => { for (let i = 0; i < 200 && (await t('playhead')) < time; i++) await sleep(50); };
+      await waitFor(beforeA.start - .1); const t1 = await t('playhead'); await key(' ', 'Space', { text: ' ', vk: 32 }); await sleep(60);
+      step('sync: Space taps (the video keeps playing, a ghost shows the new time, nothing committed yet)', (await t('ghostCount')) >= 1 && JSON.stringify(await t('seg', 'blockA')) === JSON.stringify(beforeA) && !(await t('syncState')).paused, JSON.stringify(await t('syncState')));
+      await waitFor(beforeB.start - .1); const t2 = await t('playhead'); await key(' ', 'Space', { text: ' ', vk: 32 }); await sleep(60);
+      await key('Enter', 'Enter', { vk: 13, text: String.fromCharCode(13) }); await sleep(200);
+      const a = await t('seg', 'blockA'), b = await t('seg', 'blockB'), done = await t('syncState');
+      step('sync: Enter commits both captions, offset subtracted, a tap ends where the next starts', !done.panel && Math.abs(a.start - (t1 - .12)) < .3 && Math.abs(a.end - b.start) < 1e-6 && Math.abs(b.start - (t2 - .12)) < .3 && Math.abs((b.end - b.start) - (beforeB.end - beforeB.start)) < 1e-6, JSON.stringify({ a, b, t1, t2 }));
+      step('sync: the whole pass is one undo step, speed restored', (await t('depth')) === depth4 + 1 && done.speed === 1 && done.paused, JSON.stringify({ depth: await t('depth'), done }));
+      await t('undo2'); step('sync: one undo restores both', JSON.stringify(await t('seg', 'blockA')) === JSON.stringify(beforeA) && JSON.stringify(await t('seg', 'blockB')) === JSON.stringify(beforeB));
+      await t('select', 'blockA'); await t('emitSelection'); await sleep(100); await t('syncStart'); await sleep(200);
+      await key(' ', 'Space', { text: ' ', vk: 32 }); await sleep(60); await key('Escape', 'Escape', { vk: 27 }); await sleep(150);
+      step('sync: Esc discards the pass (nothing changed, panel and ghosts gone)', !(await t('syncState')).panel && JSON.stringify(await t('seg', 'blockA')) === JSON.stringify(beforeA) && (await t('depth')) === depth4 && (await t('ghostCount')) === 0, JSON.stringify(await t('syncState')));
+      await t('blur');
     }
 
     // T6: waveform behind the VIDEO row, resizable and collapsible strip
