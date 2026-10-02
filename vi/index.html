@@ -86,7 +86,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .caption-stage { grid-column: 3; grid-row: 1; }
 .caption-panel { min-width: 0; padding: 14px; overflow: auto; background: var(--panel); }
 .caption-inspector { border-right: 1px solid var(--line); }
-.caption-timeline-strip { grid-column: 1 / -1; grid-row: 2; display: flex; flex-direction: column; gap: 6px; min-width: 0; max-height: 38vh; padding: 8px 14px 10px; overflow: auto; border-top: 1px solid var(--line); background: var(--panel); }
+.caption-timeline-strip { position: relative; grid-column: 1 / -1; grid-row: 2; display: flex; flex-direction: column; gap: 6px; min-width: 0; max-height: 38vh; padding: 8px 14px 10px; overflow: auto; border-top: 1px solid var(--line); background: var(--panel); }
 .caption-strip-head { display: flex; align-items: center; gap: 18px; }
 .caption-strip-head .caption-transport { flex: 1 1 auto; min-width: 0; }
 .caption-strip-head .caption-timeline-toolbar { flex: 0 0 auto; gap: 10px; }
@@ -180,6 +180,12 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .caption-ruler { position: sticky; left: 0; display: block; height: 22px; border-bottom: 1px solid var(--line); cursor: col-resize; touch-action: none; }
 .caption-video-track { position: relative; height: 30px; }
 .caption-video-track::before { content: ""; position: absolute; inset: 6px 0; border-radius: 3px; background: #292932; }
+.caption-strip-grip { position: sticky; top: 0; z-index: 8; flex: 0 0 6px; height: 6px; margin: -8px -14px 2px; background: transparent; cursor: ns-resize; touch-action: none; }
+.caption-strip-grip::after { content: ""; position: absolute; left: 50%; top: 1px; width: 36px; height: 3px; margin-left: -18px; border-radius: 2px; background: var(--line2); }
+.caption-strip-grip:hover::after, .caption-strip-grip:focus-visible::after, body.is-strip-resizing .caption-strip-grip::after { background: var(--cyan); }
+body.is-strip-resizing { cursor: ns-resize; user-select: none; }
+.caption-timeline-strip.is-collapsed #captionTimeline, .caption-timeline-strip.is-collapsed .caption-timeline-toolbar { display: none; }
+.caption-waveform { position: sticky; left: 0; display: block; height: 30px; pointer-events: none; }
 .caption-video-cut { position: absolute; top: 6px; bottom: 6px; border-radius: 3px; background: repeating-linear-gradient(45deg, #101014 0 4px, #3a2b30 4px 8px); }
 .caption-segment-track { position: relative; padding: 5px 0; }
 .caption-track-row { position: relative; height: 28px; margin-bottom: 4px; }
@@ -324,7 +330,9 @@ body.is-caption-dragging { cursor: grabbing; user-select: none; }
   .caption-left { flex: 0 0 auto; border: 0; }
   .caption-inspector { display: block; }
   .caption-panel, .caption-stage { min-height: 420px; border: 0; border-bottom: 1px solid var(--line); }
-  .caption-timeline-strip { max-height: none; }
+  .caption-timeline-strip { height: auto !important; max-height: none !important; }
+  .caption-strip-grip { display: none; }
+  .caption-timeline-strip.is-collapsed #captionTimeline, .caption-timeline-strip.is-collapsed .caption-timeline-toolbar { display: flex; }
   .caption-strip-head { flex-wrap: wrap; gap: 8px; }
 }
 
@@ -1193,7 +1201,8 @@ button.small.primary { padding: 4px 12px; }
 <div id="captionStatus" class="caption-status" role="status" aria-live="polite">準備完了</div>
       </aside>
 
-      <footer class="caption-timeline-strip" aria-label="Phátとタイムライン">
+      <footer id="captionStrip" class="caption-timeline-strip" aria-label="Phátとタイムライン">
+        <div id="captionStripGrip" class="caption-strip-grip" role="separator" aria-orientation="horizontal" tabindex="0" aria-label="タイムラインのCaoさ" title="ドラッグでCaoさを変更、ダブルクリックで折りたたみ / 展開"></div>
         <div class="caption-strip-head">
           <div class="caption-transport">
             <button id="captionPlay" type="button" class="play" disabled aria-label="Phát" title="Phát / 一時停止（Space）">▶</button>
@@ -1215,7 +1224,7 @@ button.small.primary { padding: 4px 12px; }
           <div id="captionTimelineScroll" class="caption-timeline-scroll" tabindex="0">
             <div id="captionTimelineContent" class="caption-timeline-content">
               <canvas id="captionRuler" class="caption-ruler" aria-label="時間目盛り（クリックまたはドラッグで移動）"></canvas>
-              <div id="captionVideoTrack" class="caption-video-track" title="縞模様の部分はトリムで削除され、書き出されません"></div>
+              <div id="captionVideoTrack" class="caption-video-track" title="縞模様の部分はトリムで削除され、書き出されません"><canvas id="captionWaveform" class="caption-waveform" aria-hidden="true"></canvas></div>
               <div id="captionSegmentTrack" class="caption-segment-track"></div>
               <div id="captionLoopRegion" class="caption-loop-region" hidden aria-hidden="true"></div>
               <div id="captionPlayhead" class="caption-playhead" aria-hidden="true"></div>
@@ -44504,7 +44513,31 @@ function nudge(layout, segmentId, direction, step = NUDGE) {
   return resolveDrag({ layout, segmentId, mode: 'move', time: segment.start + direction * step, grab: 0, trackId: segment.trackId, pps: 1, snap: false });
 }
 
-J.captionTimeline = { NEW_LENGTH, createRange, freeGap, groupMoveOrder, marqueeHits, newBlockRange, resolveGroupMove, adjacentTrackId, reorderIndex, NUDGE, SNAP_PX, MIN_SEGMENT, nearestSnap, nudge, resolveDrag, snapTargets, trackNeighbors, FRAME, LOOP_LEAD, SPEEDS, adjacentSegment, keyAction, loopRegion, loopSeek, markRegion, nextSpeed, stepTime, MAX_PPS, TICK_MIN_PX, blockRect, clampPps, clampScroll, contentWidth, fitPps, followScroll, formatTick, overlapsRange, rulerTicks, tickStep, timeToX, visibleRange, wordLabelsVisible, wordTicksVisible, xToTime, zoomAround };
+/* Waveform (T6): peaks are the largest |sample| per 1/WAVE_RATE s over all channels, computed once; drawing reads a column per pixel. */
+const WAVE_RATE = 100, WAVE_MAX_SECONDS = 600, WAVE_MAX_BYTES = 600 * 1024 * 1024;
+const waveformAllowed = (duration, bytes) => duration > 0 && duration <= WAVE_MAX_SECONDS && !(bytes > WAVE_MAX_BYTES);
+function waveformPeaks(channels, sampleRate, rate = WAVE_RATE) {
+  const length = channels.length ? channels[0].length : 0, size = Math.max(1, Math.round(sampleRate / rate)), count = Math.ceil(length / size), peaks = new Float32Array(count);
+  for (const data of channels) for (let b = 0; b < count; b++) { let peak = peaks[b]; for (let i = b * size, end = Math.min(length, i + size); i < end; i++) { const v = data[i] < 0 ? -data[i] : data[i]; if (v > peak) peak = v; } peaks[b] = peak; }
+  return peaks;
+}
+/* One amplitude (0..1, scaled so the loudest peak is 1) per pixel column of the window starting at `scrollLeft`. */
+function waveformColumns(peaks, rate, pps, scrollLeft, width) {
+  const out = new Float32Array(Math.max(0, Math.floor(width))); let top = 0; for (let i = 0; i < peaks.length; i++) if (peaks[i] > top) top = peaks[i];
+  if (!top) return out;
+  for (let x = 0; x < out.length; x++) {
+    const from = Math.max(0, Math.floor((scrollLeft + x) / pps * rate)), to = Math.min(peaks.length, Math.max(from + 1, Math.ceil((scrollLeft + x + 1) / pps * rate))); let peak = 0;
+    for (let i = from; i < to; i++) if (peaks[i] > peak) peak = peaks[i];
+    out[x] = peak / top;
+  }
+  return out;
+}
+
+/* Strip height (T6): dragged between a minimum and 70 % of the window. */
+const STRIP_MIN = 96;
+const clampStripHeight = (height, windowHeight) => clamp(Math.round(height), STRIP_MIN, Math.max(STRIP_MIN, Math.round(windowHeight * .7)));
+
+J.captionTimeline = { WAVE_RATE, WAVE_MAX_SECONDS, waveformAllowed, waveformPeaks, waveformColumns, STRIP_MIN, clampStripHeight, NEW_LENGTH, createRange, freeGap, groupMoveOrder, marqueeHits, newBlockRange, resolveGroupMove, adjacentTrackId, reorderIndex, NUDGE, SNAP_PX, MIN_SEGMENT, nearestSnap, nudge, resolveDrag, snapTargets, trackNeighbors, FRAME, LOOP_LEAD, SPEEDS, adjacentSegment, keyAction, loopRegion, loopSeek, markRegion, nextSpeed, stepTime, MAX_PPS, TICK_MIN_PX, blockRect, clampPps, clampScroll, contentWidth, fitPps, followScroll, formatTick, overlapsRange, rulerTicks, tickStep, timeToX, visibleRange, wordLabelsVisible, wordTicksVisible, xToTime, zoomAround };
 })();
 
 /* ============================================================
@@ -44553,6 +44586,62 @@ function drawRuler() {
     ctx.fillStyle = tick.major ? muted : faint; ctx.fillRect(x, tick.major ? 10 : 16, 1, tick.major ? 12 : 6);
     if (tick.label) { ctx.fillStyle = muted; ctx.fillText(tick.label, x + 3, 2); }
   }
+}
+
+/* Waveform behind the VIDEO row: decoded once per imported video, drawn for the visible window only. Skipped above ~10 min. */
+let waveSeq = 0;
+function clearWaveform() { waveSeq++; ui.timeline.wave = null; drawWaveform(); }
+async function loadWaveform(file, duration) {
+  const seq = ++waveSeq; ui.timeline.wave = null; drawWaveform();
+  if (!file || !(window.AudioContext || window.webkitAudioContext)) return;
+  if (!TL.waveformAllowed(duration, file.size)) { status('音声の波形を表示できません（長さが10分を超える動画では省略されます）。'); return; }
+  let context;
+  try {
+    context = new (window.AudioContext || window.webkitAudioContext)();
+    const buffer = await context.decodeAudioData(await file.arrayBuffer());
+    if (seq !== waveSeq) return;
+    ui.timeline.wave = { peaks: TL.waveformPeaks(Array.from({ length: buffer.numberOfChannels }, (_, c) => buffer.getChannelData(c)), buffer.sampleRate), rate: TL.WAVE_RATE };
+  } catch (error) { if (seq === waveSeq) ui.timeline.wave = null; }   // no audio track or an undecodable one: the row stays plain
+  finally { try { context && context.close(); } catch (error) {} }
+  if (seq === waveSeq) drawWaveform();
+}
+function drawWaveform() {
+  const canvas = $('captionWaveform'), ctx = canvas.getContext && canvas.getContext('2d'); if (!ctx) return;
+  const width = viewportWidth(), dpr = window.devicePixelRatio || 1, height = 30, wave = ui.timeline.wave;
+  if (canvas.width !== Math.round(width * dpr)) { canvas.width = Math.round(width * dpr); canvas.height = height * dpr; canvas.style.width = `${width}px`; }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, width, height);
+  canvas.dataset.drawn = '0'; if (!wave || !ui.store) return;
+  const columns = TL.waveformColumns(wave.peaks, wave.rate, ui.timeline.pps, scrollEl().scrollLeft, width), mid = height / 2, half = height / 2 - 7;
+  ctx.fillStyle = 'rgba(22,244,212,.5)';
+  for (let x = 0; x < columns.length; x++) { const h = Math.max(1, columns[x] * half * 2); ctx.fillRect(x, mid - h / 2, 1, h); }
+  canvas.dataset.drawn = '1';
+}
+
+/* Strip height: drag the top edge to resize, double-click (or Enter) to collapse to the transport line. A view preference, kept in this browser. */
+const STRIP_KEY = 'jizura.captionStrip';
+function saveStrip() { try { localStorage.setItem(STRIP_KEY, JSON.stringify({ height: ui.timeline.stripHeight || null, collapsed: !!ui.timeline.collapsed })); } catch (error) {} }
+function applyStrip() {
+  const strip = $('captionStrip'), { stripHeight, collapsed } = ui.timeline;
+  strip.classList.toggle('is-collapsed', !!collapsed); $('captionStripGrip').setAttribute('aria-expanded', String(!collapsed));
+  strip.style.height = stripHeight && !collapsed ? `${stripHeight}px` : ''; strip.style.maxHeight = stripHeight && !collapsed ? 'none' : '';
+}
+function setStripHeight(height) { ui.timeline.stripHeight = TL.clampStripHeight(height, window.innerHeight); ui.timeline.collapsed = false; applyStrip(); }
+function toggleStrip() { ui.timeline.collapsed = !ui.timeline.collapsed; applyStrip(); saveStrip(); if (!ui.timeline.collapsed && ui.store) renderTimeline(); }
+function initStrip() {
+  const strip = $('captionStrip'), grip = $('captionStripGrip'); let resize = null;
+  try { const saved = JSON.parse(localStorage.getItem(STRIP_KEY) || 'null'); if (saved) { ui.timeline.stripHeight = saved.height ? TL.clampStripHeight(saved.height, window.innerHeight) : 0; ui.timeline.collapsed = !!saved.collapsed; } } catch (error) {}
+  applyStrip();
+  grip.addEventListener('pointerdown', event => { if (event.button) return; event.preventDefault(); resize = { y: event.clientY, height: strip.getBoundingClientRect().height, moved: false }; });
+  window.addEventListener('pointermove', event => { if (!resize) return; if (!resize.moved && Math.abs(event.clientY - resize.y) < 3) return; resize.moved = true; document.body.classList.add('is-strip-resizing'); setStripHeight(resize.height + resize.y - event.clientY); });
+  const end = () => { if (resize && resize.moved) saveStrip(); resize = null; document.body.classList.remove('is-strip-resizing'); };
+  window.addEventListener('pointerup', end); window.addEventListener('pointercancel', end);
+  grip.addEventListener('dblclick', toggleStrip);
+  grip.addEventListener('keydown', event => {
+    if (event.key === 'Enter') { event.preventDefault(); toggleStrip(); return; }
+    if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+    event.preventDefault(); setStripHeight(strip.getBoundingClientRect().height + (event.key === 'ArrowUp' ? 24 : -24)); saveStrip();
+  });
+  window.addEventListener('resize', () => { if (ui.timeline.stripHeight && !ui.timeline.collapsed) { ui.timeline.stripHeight = TL.clampStripHeight(ui.timeline.stripHeight, window.innerHeight); applyStrip(); } });
 }
 
 /* One row and one header per track, reused between renders. */
@@ -44712,8 +44801,9 @@ function renderTimeline() {
   const kept = J.videoClips(project, duration), cuts = [];
   kept.forEach((clip, i) => { const from = i ? kept[i - 1].end : 0; if (clip.start - from > .001) cuts.push([from, clip.start]); });
   if (kept.length && duration - kept[kept.length - 1].end > .001) cuts.push([kept[kept.length - 1].end, duration]);
-  $('captionVideoTrack').replaceChildren(...cuts.map(([from, to]) => { const cut = document.createElement('span'); cut.className = 'caption-video-cut'; cut.style.left = `${from * pps}px`; cut.style.width = `${(to - from) * pps}px`; cut.title = `${fmt(from)}–${fmt(to)}`; return cut; }));
-  drawRuler(); placeLoop(); placePlayhead(sourceVideo() ? sourceVideo().currentTime : 0);
+  const videoTrack = $('captionVideoTrack'); videoTrack.querySelectorAll('.caption-video-cut').forEach(node => node.remove());
+  videoTrack.append(...cuts.map(([from, to]) => { const cut = document.createElement('span'); cut.className = 'caption-video-cut'; cut.style.left = `${from * pps}px`; cut.style.width = `${(to - from) * pps}px`; cut.title = `${fmt(from)}–${fmt(to)}`; return cut; }));
+  drawRuler(); drawWaveform(); placeLoop(); placePlayhead(sourceVideo() ? sourceVideo().currentTime : 0);
 }
 /* Scrolling only changes which blocks are near the viewport: word ticks are (re)built for those. */
 function updateWords() {
@@ -45096,7 +45186,7 @@ function markSelection() {
 }
 
 function init() {
-  const scroll = scrollEl(), ruler = $('captionRuler');
+  const scroll = scrollEl(), ruler = $('captionRuler'); initStrip();
   $('captionSegmentList').addEventListener('click', event => { const target = event.target.closest('[data-segment-id]'); if (target) selectSegment(target.dataset.segmentId); });
   const heads = $('captionTrackLabels');
   heads.addEventListener('click', event => { const more = event.target.closest('[data-track-menu]'); if (more) openTrackMenu(more.dataset.trackMenu); });
@@ -45153,7 +45243,7 @@ function init() {
   }, { passive: false });
   scroll.addEventListener('scroll', () => {
     if (expectedScroll !== null && Math.abs(scroll.scrollLeft - expectedScroll) < 1) expectedScroll = null; else { expectedScroll = null; ui.timeline.follow = false; }
-    ui.timeline.scrollLeft = scroll.scrollLeft; drawRuler(); if (!wordsFrame) wordsFrame = requestAnimationFrame(updateWords);
+    ui.timeline.scrollLeft = scroll.scrollLeft; drawRuler(); drawWaveform(); if (!wordsFrame) wordsFrame = requestAnimationFrame(updateWords);
   });
   if (typeof ResizeObserver === 'function') new ResizeObserver(() => { if (ui.store) renderTimeline(); }).observe(scroll);
   $('captionTimelineIn').addEventListener('click', () => { ui.timeline.follow = false; zoomTimeline(2); });
@@ -45162,7 +45252,7 @@ function init() {
   for (const id of ['captionSegmentList', 'captionSegmentTrack']) $(id).addEventListener('dblclick', event => { const target = event.target.closest('[data-segment-id]'); if (target) selectSegment(target.dataset.segmentId, true); });
   on('project', renderSegments); on('selection', markSelection);
 }
-Object.assign(W, { deleteSelected, duplicateSelected, newCaptionAtPlayhead, splitAtPlayhead, moveSelectedTrack, openTrackMenu, renameInline, cancelSegmentDrag, dragging, nudgeSegment, finishBoundary, fitTimeline, markNow, markSelection, moveBoundary, placeLoop, renderSegments, renderTimeline, revealTime, seekTimeline, startBoundaryDrag, timelineFollow, timelineTimeAt, updatePlayhead, zoomTimeline });
+Object.assign(W, { loadWaveform, clearWaveform, toggleStrip, deleteSelected, duplicateSelected, newCaptionAtPlayhead, splitAtPlayhead, moveSelectedTrack, openTrackMenu, renameInline, cancelSegmentDrag, dragging, nudgeSegment, finishBoundary, fitTimeline, markNow, markSelection, moveBoundary, placeLoop, renderSegments, renderTimeline, revealTime, seekTimeline, startBoundaryDrag, timelineFollow, timelineTimeAt, updatePlayhead, zoomTimeline });
 W.inits.push(init);
 })();
 
@@ -46673,6 +46763,7 @@ async function importVideo(file, expectedMedia) {
     },
     onError: error => status(error.message || 'Video preview could not render a frame.', true) }).connect();
   W.attachVideo(loaded.video);
+  W.loadWaveform(file, Number(project.media.duration) || Number(loaded.video.duration) || 0);
   status('動画を読み込みました。文字起こしを追加できます。');
 }
 
@@ -46680,7 +46771,7 @@ async function openProject(file) {
   status('プロジェクトを開いています…');
   const loaded = J.loadProject(await file.text());
   if (loaded.mode !== 'video-captions') { const error = new Error('Video Captions プロジェクトを選んでください。'); error.code = 'CAPTION_PROJECT_REQUIRED'; throw error; }
-  if (ui.preview) ui.preview.disconnect(); if (ui.media) ui.media.close(); ui.preview = null; ui.media = null; ui.selectedId = null;
+  if (ui.preview) ui.preview.disconnect(); if (ui.media) ui.media.close(); ui.preview = null; ui.media = null; ui.selectedId = null; W.clearWaveform();
   setProject(loaded); $('captionProjectName').textContent = file.name.replace(/\.json$/i, '') || loaded.id;
   const needsRelink = !!(loaded.media && (loaded.media.fingerprint || loaded.media.relinkRequired));
   $('captionRelinkNotice').hidden = !needsRelink; $('captionPreviewEmpty').hidden = false; $('captionPlay').disabled = true; $('captionScrub').disabled = true;
@@ -46718,7 +46809,7 @@ function bind() {
     } catch (error) { status(J.recoveryForError ? J.recoveryForError(error).display : error.message, true); }
   });
   for (const id of ['captionExport', 'captionExportPanel']) $(id).addEventListener('click', () => exportCaptions().catch(error => status(error.message, true)));
-  $('captionNew').addEventListener('click', () => { if (ui.preview) ui.preview.disconnect(); if (ui.media) ui.media.close(); ui.media = null; ui.preview = null; ui.selectedId = null; setProject(emptyProject()); $('captionProjectName').textContent = '無題の字幕プロジェクト'; $('captionRelinkNotice').hidden = true; $('captionPreviewEmpty').hidden = false; $('captionMediaName').textContent = '動画未選択'; $('captionPlay').disabled = true; $('captionScrub').disabled = true; status('新しいプロジェクトを作成しました。'); });
+  $('captionNew').addEventListener('click', () => { if (ui.preview) ui.preview.disconnect(); if (ui.media) ui.media.close(); ui.media = null; ui.preview = null; ui.selectedId = null; W.clearWaveform(); setProject(emptyProject()); $('captionProjectName').textContent = '無題の字幕プロジェクト'; $('captionRelinkNotice').hidden = true; $('captionPreviewEmpty').hidden = false; $('captionMediaName').textContent = '動画未選択'; $('captionPlay').disabled = true; $('captionScrub').disabled = true; status('新しいプロジェクトを作成しました。'); });
   $('captionHelp').addEventListener('click', () => { const dialog = $('captionHelpDlg'); if (dialog.showModal) { if (!dialog.open) dialog.showModal(); } else dialog.setAttribute('open', ''); });
   window.addEventListener('resize', onWorkbenchResize);
   if (typeof ResizeObserver === 'function') { const observer = new ResizeObserver(onWorkbenchResize); observer.observe(document.querySelector('.caption-stage')); }   // strip height changes with the track count
